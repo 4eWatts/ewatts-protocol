@@ -1,4 +1,4 @@
-use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey};
+use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey, SecretKey};
 use serde::{Serialize, Deserialize};
 use rand::RngCore;
 use crate::constants;
@@ -58,20 +58,23 @@ pub fn validate_commitment(c: &Commitment, r: &[f64]) -> Result<(), String> {
 mod tests {
     use super::*;
     use ed25519_dalek::Signer;
+    fn make_key() -> SigningKey {
+        let mut b = [0u8; 32]; rand::thread_rng().fill_bytes(&mut b);
+        SigningKey::from_bytes(&b)
+    }
     #[test] fn test_eff() { assert!((compute_efficiency(100.,100.,1.)-1.).abs()<1e-6); }
     #[test] fn test_penalty() { assert!((effective_commitment(100.,0.5)-50.).abs()<1e-6); }
     #[test] fn test_cap() { assert!((effective_commitment(100.,2.0)-130.).abs()<1e-6); }
-    #[test] fn test_sign_and_verify() {
-        let sk = SigningKey::generate(&mut rand::thread_rng());
+    #[test] fn test_sign() {
+        let sk = make_key();
         let pk = sk.verifying_key().to_bytes();
         let mut c = Commitment { miner_id: pk, bandwidth_gbps: 100., block_number: 1,
             work_gb: 100., time_seconds: 1., signature: vec![] };
         let msg = commit_msg(&c);
-        let sig = sk.sign(&msg);
-        c.signature = sig.to_bytes().to_vec();
+        c.signature = sk.sign(&msg).to_bytes().to_vec();
         assert!(validate_commitment(&c, &[]).is_ok());
     }
-    #[test] fn test_bad_signature() {
+    #[test] fn test_bad_sig() {
         let c = Commitment { miner_id: [0;32], bandwidth_gbps: 100., block_number: 1,
             work_gb: 100., time_seconds: 1., signature: vec![0;64] };
         assert!(validate_commitment(&c, &[]).is_err());
