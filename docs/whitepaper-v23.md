@@ -140,18 +140,22 @@ Where `Historical_Avg_Commitment` = mean of total bandwidth commitments over the
 ### 6.2 Reward Distribution
 
 ```
-Reward_i = (eff_commit_i / Σ eff_commit_j) × (W_i / W_t) × R
+Reward_i = (eff_commit_i / Σ eff_commit_j) × R
 ```
 
 Where:
 - `eff_commit_i` = miner's effective bandwidth commitment (GB/s, after penalty/cap)
-- `W_i` = work completed (GB processed)
-- `W_t` = total work across all miners
 - `R` = current emission rate
 
-Miners who deliver more bandwidth and more work receive proportionally higher rewards.
+Reward is proportional to effective bandwidth share only. The efficiency penalty system (§4.3) already ensures that over-declaration reduces effective bandwidth, so no additional work-weighting is needed. Bandwidth × time is work, and the protocol measures both; but the penalty mechanism makes double-weighting redundant.
 
-**Note: The formula uses proportional weighting (eff_commit / Σ eff_commit), not inverse weighting (1/eff_commit).** Earlier spec versions used inverse weighting, which was removed after game-theoretic analysis proved it rewarded under-declaration: a miner claiming 10 GB/s while delivering 100 GB/s would receive 7.7× more reward than an honest miner under the inverse formula. The proportional formula eliminates this gaming vector.
+**Properties:**
+- Σ reward_i = R (all emission is distributed, no residual)
+- Over-declaration reduces ce via penalty, reducing reward proportionally
+- Under-declaration provides no benefit (cap at 1.3×)
+- Honest declaration at true bandwidth is the unique Nash equilibrium
+
+**Earlier spec versions** used inverse weighting `(1/ce)/Σ(1/ce) × (W_i/W_t)`, which was removed after game-theoretic analysis proved it rewarded under-declaration (a miner claiming 10 GB/s while delivering 100 GB/s would receive 7.7× more reward than an honest miner). Double-weighted formulas `(ce/Σce) × (W_i/W_t)` were also rejected because they leave a residual — the product of two distributions does not sum to 1 unless perfectly correlated, which efficiency penalties break.
 
 ### 6.3 Properties
 
