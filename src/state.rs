@@ -99,6 +99,19 @@ impl UtxoSet {
     pub fn get_utxo(&self, key: &UtxoKey) -> Option<&UtxoEntry> {
         self.utxos.get(key)
     }
+    pub fn validate_transaction(&self, tx: &Transaction) -> Result<(), String> {
+        if tx.inputs.is_empty() && tx.outputs.is_empty() { return Err("Empty tx".into()); }
+        let (mut ins, mut outs) = (0u64, 0u64);
+        for i in &tx.inputs {
+            let key = UtxoKey{tx_hash:i.previous_tx_hash,output_index:i.output_index};
+            let u = self.utxos.get(&key).ok_or("UTXO not found")?;
+            ins = ins.checked_add(u.amount).ok_or("overflow")?;
+            if self.spent_key_images.contains(&i.key_image) { return Err("Double-spend".into()); }
+        }
+        for o in &tx.outputs { outs = outs.checked_add(o.amount).ok_or("overflow")?; }
+        if !tx.inputs.is_empty() && ins < outs { return Err("creates money".into()); }
+        Ok(())
+    }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
         let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
