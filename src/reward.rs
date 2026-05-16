@@ -40,30 +40,39 @@ pub fn compute_block_rewards(commits: &[Commitment], prev: &[f64], avg: f64) -> 
 mod tests {
     use super::*;
     use crate::commitment::Commitment;
+    use crate::commitment;
+    use ed25519_dalek::Signer;
+    use rand::RngCore;
+
+    fn signed_commit(gbps: f64, wk: f64) -> Commitment {
+        let mut seed = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut seed);
+        let sk = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let pk = sk.verifying_key().to_bytes();
+        let mut c = Commitment { miner_id: pk, bandwidth_gbps: gbps, block_number: 1,
+            work_gb: wk, time_seconds: 1.0, signature: vec![] };
+        let msg = commitment::commit_msg(&c);
+        c.signature = sk.sign(&msg).to_bytes().to_vec();
+        c
+    }
+
     #[test] fn test_emission_stable() { assert!((compute_emission_rate(100.,100.) - 100.).abs() < 1e-6); }
     #[test] fn test_emission_double() { assert!((compute_emission_rate(200.,100.) - 200.).abs() < 1e-6); }
     #[test] fn test_emission_floor() { assert!((compute_emission_rate(1.,100.) - 10.).abs() < 1e-6); }
     #[test] fn test_emission_ceiling() { assert!((compute_emission_rate(2000.,100.) - 1000.).abs() < 1e-6); }
     #[test] fn test_rewards_sum_to_emission() {
-        let c = vec![
-            Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 1, work_gb: 100., time_seconds: 1., signature: vec![] },
-            Commitment { miner_id: [2;32], bandwidth_gbps: 80., block_number: 1, work_gb: 80., time_seconds: 1., signature: vec![] },
-        ];
+        let c = vec![signed_commit(100., 100.), signed_commit(80., 80.)];
         let r = compute_block_rewards(&c, &[], 100.0);
         assert!((r.total_emission - r.emission_rate_used).abs() < 1e-6);
     }
     #[test] fn test_rewards_basic() {
-        let c = vec![Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 1,
-            work_gb: 100., time_seconds: 1., signature: vec![] }];
+        let c = vec![signed_commit(100., 100.)];
         let r = compute_block_rewards(&c, &[], 100.0);
         assert!(r.total_emission > 0.0);
         assert!(r.emission_rate_used > 0.0);
     }
     #[test] fn test_two_equal() {
-        let c = vec![
-            Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 1, work_gb: 100., time_seconds: 1., signature: vec![] },
-            Commitment { miner_id: [2;32], bandwidth_gbps: 100., block_number: 1, work_gb: 100., time_seconds: 1., signature: vec![] },
-        ];
+        let c = vec![signed_commit(100., 100.), signed_commit(100., 100.)];
         let r = compute_block_rewards(&c, &[], 100.0);
         assert_eq!(r.miner_rewards.len(), 2);
         assert!((r.miner_rewards[0].1 - r.miner_rewards[1].1).abs() < 1e-6);
