@@ -90,6 +90,15 @@ impl UtxoSet {
         self.utxos.values().filter(|u| u.public_key == pk).map(|u| u.amount).sum()
     }
     pub fn utxo_count(&self) -> usize { self.utxos.len() }
+    pub fn utxo_keys_for(&self, pk: &[u8]) -> Vec<UtxoKey> {
+        self.utxos.iter()
+            .filter(|(_, e)| e.public_key.as_slice() == pk)
+            .map(|(k, _)| k.clone())
+            .collect()
+    }
+    pub fn get_utxo(&self, key: &UtxoKey) -> Option<&UtxoEntry> {
+        self.utxos.get(key)
+    }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
         let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
