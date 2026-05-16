@@ -62,6 +62,7 @@ impl UtxoSet {
         }
         Ok(())
     }
+        pub fn total_supply(&self) -> u64 { self.total_supply }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
         let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
