@@ -45,12 +45,13 @@ fn cmd_init() {
         println!("Already initialized. Delete ewatts_data/ to reset.");
         return;
     }
-    let pubkey = [0u8; 32];
+    let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    let pubkey = sk.verifying_key().to_bytes();
     let utxo_set = crate::state::UtxoSet::genesis(100_000_000_000_000, &pubkey);
     if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
         println!("Error: {}", e);
     } else {
-        println!("Genesis: 1,000,000 Ewatt to 00..00");
+        println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
     }
 }
 
@@ -76,7 +77,7 @@ fn cmd_send(args: &[String]) {
     };
     // Genesis key (all zeros) signs the transaction
     let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
-    let from_pk = vec![0u8; 32]; // genesis pubkey
+    let from_pk = sk.verifying_key().to_bytes().to_vec();
     let balance = state.get_balance(&from_pk);
     if balance < amount { println!("Insufficient balance. Have: {}", balance); return; }
     // Create transaction: spend all genesis UTXOs, send amount to recipient
