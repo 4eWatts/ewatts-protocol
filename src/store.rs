@@ -28,6 +28,8 @@ pub fn save_block(block: &Block) -> Result<(), String> {
     let mut file = fs::OpenOptions::new().create(true).append(true)
         .open(format!("{}/blocks.jsonl", DATA_DIR)).map_err(|e| format!("abrir: {}", e))?;
     writeln!(file, "{}", json).map_err(|e| format!("escrever: {}", e))?;
+    file.flush().map_err(|e| format!("flush: {}", e))?;
+    file.sync_all().map_err(|e| format!("sync: {}", e))?;
     Ok(())
 }
 
