@@ -10,8 +10,29 @@ pub struct UtxoEntry {
     pub amount: u64, pub public_key: Vec<u8>, pub block_height: u64,
     pub tx_index: u32, pub output_index: u32,
 }
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct UtxoKey { pub tx_hash: [u8; 32], pub output_index: u32 }
+
+impl serde::Serialize for UtxoKey {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let hex_str = format!("{:02x}", self.tx_hash.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(""));
+        s.serialize_str(&format!("{}_{}", hex_str, self.output_index))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for UtxoKey {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(d)?;
+        let parts: Vec<&str> = s.split('_').collect();
+        if parts.len() != 2 { return Err(serde::de::Error::custom("invalid key")); }
+        let mut hash = [0u8; 32];
+        for i in 0..32 {
+            hash[i] = u8::from_str_radix(&parts[0][i*2..i*2+2], 16).map_err(serde::de::Error::custom)?;
+        }
+        let idx: u32 = parts[1].parse().map_err(serde::de::Error::custom)?;
+        Ok(UtxoKey { tx_hash: hash, output_index: idx })
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UtxoSet {
