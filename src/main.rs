@@ -11,6 +11,7 @@ pub mod store;
 
 use std::env;
 use rand::RngCore;
+use ed25519_dalek::Signer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
