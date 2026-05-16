@@ -74,7 +74,7 @@ fn cmd_wallet(args: &[String]) {
             let state = crate::store::load_utxo_set().ok();
             for (i, (sec, pk)) in keys.iter().enumerate() {
                 let bal = state.as_ref().map(|s| s.get_balance(pk)).unwrap_or(0);
-                println!("[{}] {}  Balance: {}", i, hex::encode(&pk[..16]), bal);
+                println!("[{}] {}  Balance: {}", i, hex::encode(pk), bal);
             }
         }
         "send" => {
