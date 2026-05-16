@@ -11,6 +11,7 @@ pub mod store;
 pub mod wallet;
 
 use std::env;
+use ed25519_dalek::Signer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
