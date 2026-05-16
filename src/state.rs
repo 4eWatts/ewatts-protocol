@@ -1,5 +1,6 @@
-use ed25519_dalek::{Verifier, VerifyingKey, Signature};
+use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey, SecretKey};
 use std::collections::{HashMap, HashSet};
+use rand::RngCore;
 use crate::block::{Transaction, TxInput, TxOutput, Block};
 
 #[derive(Debug, Clone)]
@@ -23,6 +24,11 @@ pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     for o in &tx.outputs { msg.extend_from_slice(&o.amount.to_le_bytes()); msg.extend_from_slice(&o.public_key); }
     msg.extend_from_slice(&tx.ring_size.to_le_bytes());
     msg
+}
+
+fn make_signing_key() -> SigningKey {
+    let mut b = [0u8; 32]; rand::thread_rng().fill_bytes(&mut b);
+    SigningKey::from_bytes(&b)
 }
 
 pub fn verify_tx_signature(tx: &Transaction, pubkey_bytes: &[u8]) -> Result<(), String> {
@@ -56,31 +62,6 @@ impl UtxoSet {
         }
         Ok(())
     }
-    pub fn validate_transaction(&self, tx: &Transaction) -> Result<(), String> {
-        if tx.inputs.is_empty() && tx.outputs.is_empty() { return Err("Empty tx".into()); }
-        let (mut ins, mut outs) = (0u64, 0u64);
-        for i in &tx.inputs {
-            let key = UtxoKey{tx_hash:i.previous_tx_hash,output_index:i.output_index};
-            let u = self.utxos.get(&key).ok_or("UTXO not found")?;
-            ins = ins.checked_add(u.amount).ok_or("overflow")?;
-            if self.spent_key_images.contains(&i.key_image) { return Err("Double-spend".into()); }
-        }
-        for o in &tx.outputs { outs = outs.checked_add(o.amount).ok_or("overflow")?; }
-        if !tx.inputs.is_empty() && ins < outs { return Err("creates money".into()); }
-        Ok(())
-    }
-    pub fn apply_block(&mut self, block: &Block, bh: u64) -> Result<(), String> {
-        for (ti, tx) in block.body.transactions.iter().enumerate() {
-            let h = tx.hash();
-            if ti == 0 { self.add_transaction_outputs(&h, tx, bh, ti as u32);
-                self.add_coinbase_supply(tx.outputs.iter().map(|o|o.amount).sum()); }
-            else { self.spend_transaction_inputs(tx)?; self.add_transaction_outputs(&h, tx, bh, ti as u32); }
-        }
-        Ok(())
-    }
-    pub fn get_balance(&self, pk: &[u8]) -> u64 { self.utxos.values().filter(|u| u.public_key == pk).map(|u| u.amount).sum() }
-    pub fn utxo_count(&self) -> usize { self.utxos.len() }
-    pub fn total_supply(&self) -> u64 { self.total_supply }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
         let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
@@ -92,41 +73,35 @@ impl UtxoSet {
 mod tests {
     use super::*; use ed25519_dalek::Signer;
     fn out(v:&[u64],pk:&[u8])->Vec<TxOutput>{v.iter().map(|&a|TxOutput{amount:a,public_key:pk.to_vec()}).collect()}
-    fn mk_tx(inp:Vec<TxInput>,out:Vec<TxOutput>,sk:&ed25519_dalek::SigningKey)->Transaction {
+    fn mk_tx(inp:Vec<TxInput>,out:Vec<TxOutput>,sk:&SigningKey)->Transaction {
         let mut tx = Transaction{version:1,inputs:inp,outputs:out,ring_size:1,signatures:vec![]};
         let sig = sk.sign(&tx_msg(&tx)); tx.signatures = vec![sig.to_bytes().to_vec()]; tx
     }
     #[test] fn test_spend() {
         let mut s = UtxoSet::new();
-        let sk = ed25519_dalek::SigningKey::generate(&mut rand::thread_rng());
+        let sk = make_signing_key();
         let pk = sk.verifying_key().to_bytes().to_vec();
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
-        let sp = mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}], out(&[3000],&pk), &sk);
-        assert!(s.spend_transaction_inputs(&sp).is_ok());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk)).is_ok());
     }
     #[test] fn test_wrong_sig() {
         let mut s = UtxoSet::new();
-        let sk = ed25519_dalek::SigningKey::generate(&mut rand::thread_rng());
-        let pk = sk.verifying_key().to_bytes().to_vec();
+        let sk = make_signing_key(); let pk = sk.verifying_key().to_bytes().to_vec();
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
-        let wrong_sk = ed25519_dalek::SigningKey::generate(&mut rand::thread_rng());
-        let sp = mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}], out(&[3000],&pk), &wrong_sk);
-        assert!(s.spend_transaction_inputs(&sp).is_err());
+        let wrong = make_signing_key();
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&wrong)).is_err());
     }
     #[test] fn test_double_spend() {
         let mut s = UtxoSet::new();
-        let sk = ed25519_dalek::SigningKey::generate(&mut rand::thread_rng());
-        let pk = sk.verifying_key().to_bytes().to_vec();
+        let sk = make_signing_key(); let pk = sk.verifying_key().to_bytes().to_vec();
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
-        let sp = mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk);
-        s.spend_transaction_inputs(&sp).unwrap();
-        let sp2 = mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&sk);
-        assert!(s.spend_transaction_inputs(&sp2).is_err());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk)).is_ok());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&sk)).is_err());
     }
-    #[test] fn test_total_supply() {
+    #[test] fn test_supply() {
         let s = UtxoSet::genesis(100_000_000_000, &[0;32]);
         assert_eq!(s.total_supply(), 100_000_000_000);
     }
