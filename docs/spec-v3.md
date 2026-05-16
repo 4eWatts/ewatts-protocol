@@ -370,16 +370,17 @@ c'_i = f(η_i) × c_i    // see §3.5 for f(η)
 ### 6.2 Reward Distribution
 
 ```
-reward_i = (c'_i / Σ c'_j) × (W_i / W_t) × R
+reward_i = (c'_i / Σ c'_j) × R
 ```
 
-Miners with higher effective commitments and more work earn proportionally larger rewards.
+Reward is proportional to effective bandwidth commitment share. The efficiency penalty (§3.5) already adjusts declared bandwidth for over/under-declaration, making additional work-weighting unnecessary. Σ(c'_i / Σ c'_j) = 1, so all emission is distributed.
 
 ### 6.3 Reward Properties
 
-- **Efficiency preference**: Lower effective commitment (efficient miners) → higher weight
+- **Proportional to effective bandwidth**: Higher effective commitment = higher reward. Single weight, no residual.
 - **Zero-sum within round**: Σ reward_i = R
 - **Deterministic**: Identical computation on any node
+- **Incentive-compatible**: Under-declaration (η > 1.3) caps at 1.3× gain, providing negligible benefit. Over-declaration (η < 0.7) reduces effective commitment proportionally, reducing reward.
 
 ---
 
