@@ -58,7 +58,7 @@ fn cmd_mine() {
     println!("DAG generated ({} elements). Mining...", dag.len());
 
     let header = [0xbbu8; 32];
-    match crate::proof::mine(&header, 1, &dag, 500) {
+    match crate::proof::mine(&header, 1000, &dag, 5000) {
         Some(sol) => {
             println!("Block mined! Nonce: {}, elapsed: {}ms", sol.nonce, sol.elapsed_ms);
             let report = crate::proof::WorkReport::from_solution(&sol);
