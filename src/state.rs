@@ -1,17 +1,18 @@
+use serde::{Serialize, Deserialize};
 use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey, SecretKey};
 use std::collections::{HashMap, HashSet};
 use rand::RngCore;
 use crate::block::{Transaction, TxInput, TxOutput, Block};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
     pub amount: u64, pub public_key: Vec<u8>, pub block_height: u64,
     pub tx_index: u32, pub output_index: u32,
 }
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct UtxoKey { pub tx_hash: [u8; 32], pub output_index: u32 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UtxoSet {
     utxos: HashMap<UtxoKey, UtxoEntry>,
     spent_key_images: HashSet<[u8; 32]>,
