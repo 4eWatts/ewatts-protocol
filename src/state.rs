@@ -64,6 +64,10 @@ impl UtxoSet {
         Ok(())
     }
         pub fn total_supply(&self) -> u64 { self.total_supply }
+    pub fn get_balance(&self, pk: &[u8]) -> u64 {
+        self.utxos.values().filter(|u| u.public_key == pk).map(|u| u.amount).sum()
+    }
+    pub fn utxo_count(&self) -> usize { self.utxos.len() }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
         let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
