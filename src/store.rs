@@ -1,8 +1,8 @@
+use crate::block::Block;
+use crate::state::UtxoSet;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use crate::state::UtxoSet;
-use crate::block::Block;
 
 const DATA_DIR: &str = "ewatts_data";
 
@@ -18,15 +18,19 @@ pub fn save_utxo_set(state: &UtxoSet) -> Result<(), String> {
 }
 
 pub fn load_utxo_set() -> Result<UtxoSet, String> {
-    let data = fs::read_to_string(format!("{}/utxo.json", DATA_DIR)).map_err(|e| format!("ler: {}", e))?;
+    let data =
+        fs::read_to_string(format!("{}/utxo.json", DATA_DIR)).map_err(|e| format!("ler: {}", e))?;
     serde_json::from_str(&data).map_err(|e| format!("parse: {}", e))
 }
 
 pub fn save_block(block: &Block) -> Result<(), String> {
     ensure_dir().map_err(|e| format!("dir: {}", e))?;
     let json = serde_json::to_string(block).map_err(|e| format!("serializar: {}", e))?;
-    let mut file = fs::OpenOptions::new().create(true).append(true)
-        .open(format!("{}/blocks.jsonl", DATA_DIR)).map_err(|e| format!("abrir: {}", e))?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(format!("{}/blocks.jsonl", DATA_DIR))
+        .map_err(|e| format!("abrir: {}", e))?;
     writeln!(file, "{}", json).map_err(|e| format!("escrever: {}", e))?;
     file.flush().map_err(|e| format!("flush: {}", e))?;
     file.sync_all().map_err(|e| format!("sync: {}", e))?;
@@ -35,7 +39,9 @@ pub fn save_block(block: &Block) -> Result<(), String> {
 
 pub fn load_blocks() -> Result<Vec<Block>, String> {
     let path = format!("{}/blocks.jsonl", DATA_DIR);
-    if !Path::new(&path).exists() { return Ok(vec![]); }
+    if !Path::new(&path).exists() {
+        return Ok(vec![]);
+    }
     let data = fs::read_to_string(&path).map_err(|e| format!("ler: {}", e))?;
     let mut blocks = Vec::new();
     for line in data.lines() {

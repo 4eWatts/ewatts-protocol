@@ -1,6 +1,6 @@
+use rand::RngCore;
 use std::fs;
 use std::path::Path;
-use rand::RngCore;
 
 const WALLET_FILE: &str = "ewatts_data/wallet.json";
 
@@ -21,7 +21,9 @@ pub fn save_key(secret: &[u8; 32], pubkey: &[u8]) {
 }
 
 pub fn load_keys() -> Vec<([u8; 32], Vec<u8>)> {
-    if !Path::new(WALLET_FILE).exists() { return vec![]; }
+    if !Path::new(WALLET_FILE).exists() {
+        return vec![];
+    }
     let data = fs::read_to_string(WALLET_FILE).unwrap_or_default();
     serde_json::from_str(&data).unwrap_or_default()
 }

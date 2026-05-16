@@ -1,8 +1,8 @@
-use sha3::{Digest, Keccak256};
-use sha2::Sha512;
-use rand::Rng;
-use crate::dag::Dag;
 use crate::constants;
+use crate::dag::Dag;
+use rand::Rng;
+use sha2::Sha512;
+use sha3::{Digest, Keccak256};
 
 pub struct AccessSample {
     pub position: u64,
@@ -49,9 +49,17 @@ fn initial_mix(header_hash: &[u8; 32], nonce: u64) -> [u8; 64] {
     mix
 }
 
-pub fn mine(header_hash: &[u8; 32], difficulty: u64, dag: &Dag, nonce_limit: u64) -> Option<Solution> {
+pub fn mine(
+    header_hash: &[u8; 32],
+    difficulty: u64,
+    dag: &Dag,
+    nonce_limit: u64,
+) -> Option<Solution> {
     let walk_length = difficulty_to_accesses(difficulty);
-    let sample_interval = std::cmp::max(1, (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64);
+    let sample_interval = std::cmp::max(
+        1,
+        (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64,
+    );
     let mut rng = rand::thread_rng();
     for _attempt in 0..nonce_limit {
         let nonce: u64 = rng.gen();
@@ -61,58 +69,106 @@ pub fn mine(header_hash: &[u8; 32], difficulty: u64, dag: &Dag, nonce_limit: u64
         for i in 0..walk_length {
             let index = read_u64_le(&mix[..8]) % dag.len() as u64;
             let element = dag.get(index as usize);
-            for k in 0..64 { mix[k] ^= element[k]; }
-            let mut h = Sha512::new(); h.update(&mix);
+            for k in 0..64 {
+                mix[k] ^= element[k];
+            }
+            let mut h = Sha512::new();
+            h.update(&mix);
             mix.copy_from_slice(&h.finalize());
             if i % sample_interval == 0 {
-                trace.push(AccessSample { position: i, dag_index: index, mix_hash: mix, elapsed_offset_us: start.elapsed().as_micros() as u64 });
+                trace.push(AccessSample {
+                    position: i,
+                    dag_index: index,
+                    mix_hash: mix,
+                    elapsed_offset_us: start.elapsed().as_micros() as u64,
+                });
             }
         }
         let elapsed_ms = start.elapsed().as_millis() as u64;
         let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
         if meets_difficulty(&final_hash, difficulty) {
-            return Some(Solution { nonce, proof_trace: trace, elapsed_ms, walk_length });
+            return Some(Solution {
+                nonce,
+                proof_trace: trace,
+                elapsed_ms,
+                walk_length,
+            });
         }
     }
     None
 }
 
-pub fn verify(header_hash: &[u8; 32], solution: &Solution, difficulty: u64, dag: &Dag) -> Result<(), String> {
+pub fn verify(
+    header_hash: &[u8; 32],
+    solution: &Solution,
+    difficulty: u64,
+    dag: &Dag,
+) -> Result<(), String> {
     let walk_length = difficulty_to_accesses(difficulty);
     if solution.walk_length != walk_length {
-        return Err(format!("Walk length mismatch: {} vs {}", walk_length, solution.walk_length));
+        return Err(format!(
+            "Walk length mismatch: {} vs {}",
+            walk_length, solution.walk_length
+        ));
     }
-    let sample_interval = std::cmp::max(1, (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64);
+    let sample_interval = std::cmp::max(
+        1,
+        (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64,
+    );
     let mut mix = initial_mix(header_hash, solution.nonce);
     for i in 0..walk_length {
         let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
-        for k in 0..64 { mix[k] ^= element[k]; }
-        let mut h = Sha512::new(); h.update(&mix);
+        for k in 0..64 {
+            mix[k] ^= element[k];
+        }
+        let mut h = Sha512::new();
+        h.update(&mix);
         mix.copy_from_slice(&h.finalize());
         if i % sample_interval == 0 {
             let idx = i / sample_interval;
-            if idx >= solution.proof_trace.len() as u64 { return Err("Missing sample".to_string()); }
+            if idx >= solution.proof_trace.len() as u64 {
+                return Err("Missing sample".to_string());
+            }
             let s = &solution.proof_trace[idx as usize];
-            if s.position != i { return Err("Position mismatch".to_string()); }
-            if s.mix_hash != mix { return Err("Mix hash mismatch".to_string()); }
+            if s.position != i {
+                return Err("Position mismatch".to_string());
+            }
+            if s.mix_hash != mix {
+                return Err("Mix hash mismatch".to_string());
+            }
         }
     }
     let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
-    if !meets_difficulty(&final_hash, difficulty) { return Err("Difficulty not met".to_string()); }
+    if !meets_difficulty(&final_hash, difficulty) {
+        return Err("Difficulty not met".to_string());
+    }
     Ok(())
 }
 
 pub struct WorkReport {
-    pub nonce: u64, pub walk_length: u64, pub elapsed_ms: u64,
-    pub gb_processed: f64, pub gbps: f64,
+    pub nonce: u64,
+    pub walk_length: u64,
+    pub elapsed_ms: u64,
+    pub gb_processed: f64,
+    pub gbps: f64,
 }
 
 impl WorkReport {
     pub fn from_solution(s: &Solution) -> Self {
         let bytes = s.walk_length * constants::DAG_ELEMENT_SIZE as u64;
         let gb = bytes as f64 / (1073741824.0);
-        let gbps = if s.elapsed_ms > 0 { gb / (s.elapsed_ms as f64 / 1000.0) } else { 0.0 };
-        WorkReport { nonce: s.nonce, walk_length: s.walk_length, elapsed_ms: s.elapsed_ms, gb_processed: gb, gbps }
+        let gbps = if s.elapsed_ms > 0 {
+            gb / (s.elapsed_ms as f64 / 1000.0)
+        } else {
+            0.0
+        };
+        WorkReport {
+            nonce: s.nonce,
+            walk_length: s.walk_length,
+            elapsed_ms: s.elapsed_ms,
+            gb_processed: gb,
+            gbps,
+        }
     }
 }
 
@@ -120,18 +176,24 @@ impl WorkReport {
 mod tests {
     use super::*;
     use crate::dag::Dag;
-    #[test] fn test_initial_mix_deterministic() { assert_eq!(initial_mix(&[0u8;32], 42), initial_mix(&[0u8;32], 42)); }
-    #[test] fn test_mine_and_verify() {
+    #[test]
+    fn test_initial_mix_deterministic() {
+        assert_eq!(initial_mix(&[0u8; 32], 42), initial_mix(&[0u8; 32], 42));
+    }
+    #[test]
+    fn test_mine_and_verify() {
         let dag = Dag::generate(0, false);
         let h = [0xabu8; 32];
         let s = mine(&h, 1, &dag, 100).unwrap();
         assert!(verify(&h, &s, 1, &dag).is_ok());
     }
-    #[test] fn test_walk_length() {
+    #[test]
+    fn test_walk_length() {
         let accesses = difficulty_to_accesses(1);
         assert!(accesses > 0);
     }
-    #[test] fn test_meets_difficulty_basic() {
+    #[test]
+    fn test_meets_difficulty_basic() {
         let max_hash = [0xffu8; 32];
         assert!(meets_difficulty(&max_hash, 1));
         let zero_hash = [0x00u8; 32];
