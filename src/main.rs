@@ -54,7 +54,7 @@ fn cmd_mine() {
         return;
     }
     println!("Generating DAG (256MB testnet size)...");
-    let dag = crate::dag::Dag::generate_with_size(0, 256 * 1024 * 1024);
+    let dag = crate::dag::Dag::generate_with_size(0, 4 * 1024 * 1024);
     println!("DAG generated ({} elements). Mining...", dag.len());
 
     let header = [0xbbu8; 32];
