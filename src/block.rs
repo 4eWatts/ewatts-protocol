@@ -1,0 +1,45 @@
+use sha3::{Digest, Keccak256};
+use serde::{Serialize, Deserialize};
+use crate::constants;
+use crate::commitment::Commitment;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockHeader {
+    pub version: u32, pub previous_hash: [u8; 32], pub merkle_root: [u8; 32],
+    pub timestamp: u64, pub epoch: u64, pub difficulty_target: u64,
+    pub total_effective_commit: f64, pub emission_rate: f64,
+    pub miner_effective_commit: f64, pub vr_block: f64, pub nonce: u64, pub elapsed_ms: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockBody { pub transactions: Vec<Transaction>, pub commitments: Vec<Commitment> }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Block { pub header: BlockHeader, pub body: BlockBody }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transaction { pub version: u16, pub inputs: Vec<TxInput>, pub outputs: Vec<TxOutput>, pub ring_size: u16 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxInput { pub previous_tx_hash: [u8; 32], pub output_index: u32, pub key_image: [u8; 32] }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxOutput { pub amount: u64, pub public_key: Vec<u8> }
+
+impl BlockHeader {
+    pub fn hash(&self) -> [u8; 32] {
+        let mut h = Keccak256::new();
+        h.update(self.version.to_le_bytes()); h.update(self.previous_hash);
+        h.update(self.merkle_root); h.update(self.timestamp.to_le_bytes());
+        h.update(self.epoch.to_le_bytes()); h.update(self.difficulty_target.to_le_bytes());
+        h.update(self.total_effective_commit.to_le_bytes()); h.update(self.emission_rate.to_le_bytes());
+        h.update(self.miner_effective_commit.to_le_bytes()); h.update(self.vr_block.to_le_bytes());
+        h.update(self.nonce.to_le_bytes()); h.update(self.elapsed_ms.to_le_bytes());
+        h.finalize().into()
+    }
+}
+impl Transaction {
+    pub fn hash(&self) -> [u8; 32] {
+        let mut h = Keccak256::new();
+        h.update(self.version.to_le_bytes());
+        for i in &self.inputs { h.update(i.previous_tx_hash); h.update(i.output_index.to_le_bytes()); h.update(i.key_image); }
+        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.public_key); }
+        h.update(self.ring_size.to_le_bytes()); h.finalize().into()
+    }
+}

@@ -1,0 +1,63 @@
+use crate::constants;
+use crate::commitment::{self, Commitment};
+
+pub fn compute_emission_rate(total: f64, avg: f64) -> f64 {
+    if avg <= 0.0 { return constants::BASE_EMISSION; }
+    (constants::BASE_EMISSION * total / avg)
+        .clamp(constants::BASE_EMISSION * 0.1, constants::BASE_EMISSION * 10.0)
+}
+
+pub struct RewardSummary {
+    pub miner_rewards: Vec<(Vec<u8>, f64)>,
+    pub total_emission: f64,
+    pub emission_rate_used: f64,
+}
+
+pub fn compute_block_rewards(commits: &[Commitment], prev: &[f64], avg: f64) -> RewardSummary {
+    let mut eff = Vec::new();
+    let mut total_work = 0.0;
+    for c in commits {
+        if commitment::validate_commitment(c, prev).is_err() { continue; }
+        let e = commitment::compute_efficiency(c.work_gb, c.bandwidth_gbps, c.time_seconds);
+        let ce = commitment::effective_commitment(c.bandwidth_gbps, e);
+        eff.push((ce, c.work_gb, c.miner_id));
+        total_work += c.work_gb;
+    }
+    let total_eff: f64 = eff.iter().map(|(c,_,_)| c).sum();
+    let em = compute_emission_rate(total_eff, avg);
+    let mut rw = Vec::new();
+    let mut total_emission = 0.0;
+    for (ce, w, mid) in &eff {
+        let share = if total_eff > 0.0 && total_work > 0.0 {
+            (*ce / total_eff) * (*w / total_work) * em
+        } else { 0.0 };
+        total_emission += share;
+        rw.push((mid.to_vec(), share));
+    }
+    RewardSummary { miner_rewards: rw, total_emission, emission_rate_used: em }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commitment::Commitment;
+    #[test] fn test_emission_stable() { assert!((compute_emission_rate(100.,100.) - 100.).abs() < 1e-6); }
+    #[test] fn test_emission_double() { assert!((compute_emission_rate(200.,100.) - 200.).abs() < 1e-6); }
+    #[test] fn test_emission_floor() { assert!((compute_emission_rate(1.,100.) - 10.).abs() < 1e-6); }
+    #[test] fn test_emission_ceiling() { assert!((compute_emission_rate(2000.,100.) - 1000.).abs() < 1e-6); }
+    #[test] fn test_rewards_basic() {
+        let c = vec![Commitment { miner_id: [1;32], bandwidth_gbps: 100.0, block_number: 1,
+            work_gb: 100.0, time_seconds: 1.0, signature: vec![] }];
+        let r = compute_block_rewards(&c, &[], 100.0);
+        assert!(r.total_emission > 0.0);
+        assert!(r.emission_rate_used > 0.0);
+    }
+    #[test] fn test_two_equal() {
+        let c = vec![
+            Commitment { miner_id: [1;32], bandwidth_gbps: 100.0, block_number: 1, work_gb: 100.0, time_seconds: 1.0, signature: vec![] },
+            Commitment { miner_id: [2;32], bandwidth_gbps: 100.0, block_number: 1, work_gb: 100.0, time_seconds: 1.0, signature: vec![] },
+        ];
+        let r = compute_block_rewards(&c, &[], 100.0);
+        assert_eq!(r.miner_rewards.len(), 2);
+    }
+}
