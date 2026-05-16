@@ -15,7 +15,7 @@ pub struct UtxoKey { pub tx_hash: [u8; 32], pub output_index: u32 }
 
 impl serde::Serialize for UtxoKey {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let hex_str = format!("{:02x}", self.tx_hash.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(""));
+        let hex_str: String = self.tx_hash.iter().map(|b| format!("{:02x}", b)).collect();
         s.serialize_str(&format!("{}_{}", hex_str, self.output_index))
     }
 }
