@@ -144,9 +144,8 @@ fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSe
         miner_id: miner_pk,
         bandwidth_gbps: declared_gbps,
         block_number: height,
-        work_gb: wr.gb_processed,
-        time_seconds: (sol.elapsed_ms.max(1) as f64) / 1000.0, // min 1ms for testnet
-        work_gb: wr.gb_processed.max(0.0001), // min work for testnet
+        work_gb: wr.gb_processed.max(0.0001), // min work for fast testnet
+        time_seconds: (sol.elapsed_ms.max(1) as f64) / 1000.0,
         signature: vec![],
     };
     let msg = commitment::commit_msg(&commit);
