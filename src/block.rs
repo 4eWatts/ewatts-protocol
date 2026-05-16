@@ -16,7 +16,10 @@ pub struct BlockBody { pub transactions: Vec<Transaction>, pub commitments: Vec<
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block { pub header: BlockHeader, pub body: BlockBody }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Transaction { pub version: u16, pub inputs: Vec<TxInput>, pub outputs: Vec<TxOutput>, pub ring_size: u16 }
+pub struct Transaction {
+    pub version: u16, pub inputs: Vec<TxInput>, pub outputs: Vec<TxOutput>,
+    pub ring_size: u16, pub signatures: Vec<Vec<u8>>,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxInput { pub previous_tx_hash: [u8; 32], pub output_index: u32, pub key_image: [u8; 32] }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,12 +37,25 @@ impl BlockHeader {
         h.finalize().into()
     }
 }
+
 impl Transaction {
     pub fn hash(&self) -> [u8; 32] {
         let mut h = Keccak256::new();
         h.update(self.version.to_le_bytes());
         for i in &self.inputs { h.update(i.previous_tx_hash); h.update(i.output_index.to_le_bytes()); h.update(i.key_image); }
         for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.public_key); }
-        h.update(self.ring_size.to_le_bytes()); h.finalize().into()
+        h.update(self.ring_size.to_le_bytes());
+        h.finalize().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn test_header_hash() {
+        let h = BlockHeader { version: 3, previous_hash: [0;32], merkle_root: [0;32],
+            timestamp: 1000, epoch: 0, difficulty_target: 1, total_effective_commit: 100.,
+            emission_rate: 100., miner_effective_commit: 50., vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
+        assert_eq!(h.hash(), h.hash());
     }
 }
