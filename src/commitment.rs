@@ -32,7 +32,7 @@ pub fn min_commitment(r: &[f64]) -> f64 {
     if r.is_empty() { 1.0 } else { 1.0f64.max(0.1 * median(r)) }
 }
 
-fn commit_msg(commit: &Commitment) -> Vec<u8> {
+pub fn commit_msg(commit: &Commitment) -> Vec<u8> {
     let mut msg = Vec::new();
     msg.extend_from_slice(&commit.miner_id);
     msg.extend_from_slice(&commit.bandwidth_gbps.to_le_bytes());
