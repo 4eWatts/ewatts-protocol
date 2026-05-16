@@ -1,25 +1,27 @@
-pub mod block;
-pub mod commitment;
 pub mod constants;
 pub mod dag;
-pub mod difficulty;
 pub mod proof;
+pub mod commitment;
+pub mod vr;
+pub mod block;
 pub mod reward;
+pub mod difficulty;
 pub mod state;
 pub mod store;
-pub mod vr;
 pub mod wallet;
 
-use ed25519_dalek::Signer;
-use rand::RngCore;
 use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
+use rand::RngCore;
+use ed25519_dalek::Signer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let cmd = args.get(1).map(|s| s.as_str()).unwrap_or("help");
     match cmd {
         "init" => cmd_init(),
-        "mine" => cmd_mine(&args),
+        "mine" => cmd_mine(),
+        "simulate" => cmd_simulate(&args),
         "balance" => cmd_balance(&args),
         "send" => cmd_send(&args),
         "keygen" => cmd_keygen(),
@@ -29,41 +31,388 @@ fn main() {
     }
 }
 
+fn now_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+}
+
+fn genesis_keypair() -> ed25519_dalek::SigningKey {
+    ed25519_dalek::SigningKey::from_bytes(&[0u8; 32])
+}
+
 fn cmd_help() {
     println!("Ewatts Protocol v{}", crate::constants::PROTOCOL_VERSION);
     println!();
     println!("Commands:");
-    println!("  init                    Create genesis state");
-    println!("  mine [pubkey_hex]       Mine a block (testnet DAG)");
-    println!("  balance <pubkey_hex>    Show balance");
-    println!("  send <to_pk> <amount>   Send from genesis key");
-    println!("  keygen                  Generate a keypair");
-    println!("  wallet new              Create a new wallet key");
-    println!("  wallet list             List wallet keys and balances");
+    println!("  init                     Create genesis state");
+    println!("  mine                     Mine one block (testnet DAG)");
+    println!("  simulate <blocks>        Mine N blocks in sequence");
+    println!("  balance <pubkey_hex>     Show balance");
+    println!("  send <to_pubkey> <amt>   Send from genesis key");
+    println!("  keygen                   Generate a new keypair");
+    println!("  wallet new               Create a new wallet key");
+    println!("  wallet list              List wallet keys and balances");
     println!("  wallet send <idx> <to_pk> <amt>  Send from wallet key");
-    println!("  info                    Show node status");
-    println!("  help                    Show this help");
+    println!("  info                     Show node status");
+    println!("  help                     Show this help");
 }
 
 fn cmd_init() {
     if crate::store::has_data() {
-        println!("Already initialized.");
+        println!("Already initialized. Delete ewatts_data/ to reset.");
         return;
     }
-    let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
+    let sk = genesis_keypair();
     let pubkey = sk.verifying_key().to_bytes();
     let utxo_set = crate::state::UtxoSet::genesis(100_000_000_000_000, &pubkey);
     if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
         println!("Error: {}", e);
-    } else {
-        println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
+        return;
     }
+    // Also save genesis key in wallet
+    let seed = [0u8; 32];
+    crate::wallet::save_key(&seed, &pubkey);
+    println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
 }
 
 fn cmd_keygen() {
-    let (secret, pubkey) = crate::wallet::generate_key();
-    println!("Secret: {}", hex::encode(secret));
-    println!("Public: {}", hex::encode(pubkey));
+    let mut seed = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut seed);
+    let sk = ed25519_dalek::SigningKey::from_bytes(&seed);
+    let pk = sk.verifying_key().to_bytes();
+    println!("Secret key: {}", hex::encode(seed));
+    println!("Public key: {}", hex::encode(pk));
+}
+
+fn miner_keypair() -> ed25519_dalek::SigningKey {
+    // Use a deterministic miner key for now (different from genesis)
+    let mut seed = [0u8; 32];
+    seed[0] = 0x01;
+    ed25519_dalek::SigningKey::from_bytes(&seed)
+}
+
+fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
+    -> Result<block::Block, String>
+{
+    use crate::block::*;
+    use crate::commitment;
+
+    let epoch = height / constants::DAG_EPOCH_BLOCKS;
+    let difficulty: u64 = 100; // testnet fixed
+
+    // Generate testnet DAG (4MB)
+    println!("  DAG generation...");
+    let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
+
+    // Miner setup
+    let sk = miner_keypair();
+    let miner_pk = sk.verifying_key().to_bytes();
+
+    // Build header to mine
+    let mut header = BlockHeader {
+        version: constants::PROTOCOL_VERSION,
+        previous_hash: prev_hash,
+        merkle_root: [0u8; 32], // TODO: real merkle
+        timestamp: now_secs(),
+        epoch,
+        difficulty_target: difficulty,
+        total_effective_commit: 0.0,    // filled after mining
+        emission_rate: 0.0,             // filled after mining
+        miner_effective_commit: 0.0,
+        vr_block: 0.0,
+        nonce: 0,
+        elapsed_ms: 0,
+    };
+    let header_hash = header.hash();
+
+    // Mine
+    println!("  Mining (difficulty={})...", difficulty);
+    let sol = crate::proof::mine(&header_hash, difficulty, &dag, 50000)
+        .ok_or("No solution found")?;
+
+    // Work report
+    let wr = crate::proof::WorkReport::from_solution(&sol);
+    println!("  Solved! Nonce={}, {:.2} GB at {:.2} GB/s in {}ms",
+        sol.nonce, wr.gb_processed, wr.gbps, sol.elapsed_ms);
+
+    // Fill header with solution data
+    header.nonce = sol.nonce;
+    header.elapsed_ms = sol.elapsed_ms as u32;
+
+    // Create commitment
+    let declared_gbps = wr.gbps; // what the miner actually delivered
+    let mut commit = commitment::Commitment {
+        miner_id: miner_pk,
+        bandwidth_gbps: declared_gbps,
+        block_number: height,
+        work_gb: wr.gb_processed,
+        time_seconds: sol.elapsed_ms as f64 / 1000.0,
+        signature: vec![],
+    };
+    let msg = commitment::commit_msg(&commit);
+    commit.signature = sk.sign(&msg).to_bytes().to_vec();
+
+    // Validate commitment
+    let recent = &[]; // first block — no history
+    commitment::validate_commitment(&commit, recent)
+        .map_err(|e| format!("Commitment invalid: {}", e))?;
+
+    // Compute effective commitment
+    let eff = commitment::compute_efficiency(commit.work_gb, commit.bandwidth_gbps, commit.time_seconds);
+    let ce = commitment::effective_commitment(commit.bandwidth_gbps, eff);
+    header.miner_effective_commit = ce;
+
+    // Emission rate: single miner, avg_hist = BASE_EMISSION for first block
+    let avg_hist = if height == 0 { constants::BASE_EMISSION } else { constants::BASE_EMISSION };
+    let total_eff = ce;
+    let em = crate::reward::compute_emission_rate(total_eff, avg_hist);
+    header.total_effective_commit = total_eff;
+    header.emission_rate = em;
+
+    // Reward for this miner (100% of emission since solo)
+    let miner_reward = ce / total_eff * em; // = em for solo miner
+
+    // VR
+    let vr_result = crate::vr::compute_vr(ce, miner_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
+    header.vr_block = vr_result.vr_kwh_per_ewatt;
+
+    // Coinbase transaction: miner reward to miner
+    let reward_base_units = (miner_reward * 100_000_000.0) as u64; // 1 Ewatt = 10^8 base
+    let coinbase = Transaction {
+        version: 1,
+        inputs: vec![],
+        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec() }],
+        ring_size: 1,
+        signatures: vec![],
+    };
+
+    // Assemble block
+    let block = Block {
+        header,
+        body: BlockBody {
+            transactions: vec![coinbase],
+            commitments: vec![commit],
+        },
+    };
+
+    // Apply to UTXO set
+    state.apply_block(&block, height)?;
+
+    Ok(block)
+}
+
+fn cmd_mine() {
+    if !crate::store::has_data() {
+        println!("No data. Run init first.");
+        return;
+    }
+
+    let mut state = match crate::store::load_utxo_set() {
+        Ok(s) => s,
+        Err(e) => { println!("Error loading state: {}", e); return; }
+    };
+
+    // Get last block hash (or genesis zero hash)
+    let blocks = crate::store::load_blocks().unwrap_or_default();
+    let height = blocks.len() as u64;
+    let prev_hash = if height == 0 {
+        [0u8; 32]
+    } else {
+        blocks.last().unwrap().header.hash()
+    };
+
+    println!("Mining block #{}...", height);
+
+    match mine_block(prev_hash, height, &mut state) {
+        Ok(block) => {
+            let block_hash = block.header.hash();
+
+            // Save
+            if let Err(e) = crate::store::save_block(&block) {
+                println!("Error saving block: {}", e);
+                return;
+            }
+            if let Err(e) = crate::store::save_utxo_set(&state) {
+                println!("Error saving state: {}", e);
+                return;
+            }
+
+            let reward_ewatt = block.body.transactions[0].outputs.iter()
+                .map(|o| o.amount).sum::<u64>() as f64 / 100_000_000.0;
+
+            println!();
+            println!("Block #{} mined!", height);
+            println!("  Hash:   {}", hex::encode(&block_hash[..8]));
+            println!("  Reward: {:.2} Ewatt", reward_ewatt);
+            println!("  VR:     {}",
+                crate::vr::format_vr(block.header.vr_block));
+            println!("  UTXOs:  {}", state.utxo_count());
+            println!("  Supply: {} base units", state.total_supply());
+
+            // Check genesis miner balance
+            let genesis_pk = genesis_keypair().verifying_key().to_bytes().to_vec();
+            let miner_pk = miner_keypair().verifying_key().to_bytes().to_vec();
+            println!("  Genesis balance: {}", state.get_balance(&genesis_pk));
+            println!("  Miner balance:   {}", state.get_balance(&miner_pk));
+        }
+        Err(e) => println!("Mining failed: {}", e),
+    }
+}
+
+fn cmd_simulate(args: &[String]) {
+    if args.len() < 3 {
+        println!("Usage: ewatts simulate <num_blocks>");
+        return;
+    }
+    let n: u64 = match args[2].parse() {
+        Ok(v) => v,
+        _ => { println!("Invalid number"); return; }
+    };
+
+    if !crate::store::has_data() {
+        println!("No data. Run init first.");
+        return;
+    }
+
+    let mut state = match crate::store::load_utxo_set() {
+        Ok(s) => s,
+        Err(e) => { println!("Error loading state: {}", e); return; }
+    };
+
+    let blocks = crate::store::load_blocks().unwrap_or_default();
+    let mut height = blocks.len() as u64;
+    let mut prev_hash = if height == 0 {
+        [0u8; 32]
+    } else {
+        blocks.last().unwrap().header.hash()
+    };
+
+    println!("Simulating {} blocks starting from #{}...", n, height);
+
+    for i in 0..n {
+        let current_height = height + i;
+        println!("\n--- Block #{} ---", current_height);
+
+        match mine_block(prev_hash, current_height, &mut state) {
+            Ok(block) => {
+                let hash = block.header.hash();
+
+                if let Err(e) = crate::store::save_block(&block) {
+                    println!("Error saving block: {}", e); return;
+                }
+
+                prev_hash = hash;
+                print!("  ✓ VR: {}", crate::vr::format_vr(block.header.vr_block));
+                println!(" | UTXOs: {} | Supply: {}",
+                    state.utxo_count(), state.total_supply());
+            }
+            Err(e) => {
+                println!("  ✗ Failed at block {}: {}", current_height, e);
+                break;
+            }
+        }
+    }
+
+    // Final save
+    if let Err(e) = crate::store::save_utxo_set(&state) {
+        println!("Error saving final state: {}", e);
+    }
+
+    height += n;
+    println!("\n--- Simulation complete ---");
+    println!("Total blocks: {}", height);
+    println!("UTXOs: {} | Supply: {}", state.utxo_count(), state.total_supply());
+
+    let genesis_pk = genesis_keypair().verifying_key().to_bytes().to_vec();
+    let miner_pk = miner_keypair().verifying_key().to_bytes().to_vec();
+    println!("Genesis balance: {}", state.get_balance(&genesis_pk));
+    println!("Miner balance:   {}", state.get_balance(&miner_pk));
+}
+
+fn cmd_send(args: &[String]) {
+    if args.len() < 4 {
+        println!("Usage: ewatts send <to_pubkey_hex> <amount>");
+        return;
+    }
+    let to_hex = &args[2];
+    let amount: u64 = match args[3].parse() {
+        Ok(a) => a,
+        _ => { println!("Invalid amount"); return; }
+    };
+    let to_pk = match hex::decode(to_hex) {
+        Ok(b) if b.len() == 32 => { let mut pk = [0u8; 32]; pk.copy_from_slice(&b); pk.to_vec() }
+        _ => { println!("Invalid pubkey. 64 hex chars."); return; }
+    };
+
+    let mut state = match crate::store::load_utxo_set() {
+        Ok(s) => s,
+        Err(e) => { println!("Error loading: {}", e); return; }
+    };
+
+    let sk = genesis_keypair();
+    let from_pk = sk.verifying_key().to_bytes().to_vec();
+    let balance = state.get_balance(&from_pk);
+    if balance < amount {
+        println!("Insufficient balance. Have: {}", balance);
+        return;
+    }
+
+    let utxo_keys: Vec<crate::state::UtxoKey> = state.utxo_keys_for(&from_pk);
+    if utxo_keys.is_empty() {
+        println!("No UTXOs to spend");
+        return;
+    }
+
+    let mut total_input = 0u64;
+    let mut inputs = Vec::new();
+    for key in &utxo_keys {
+        let entry = state.get_utxo(key).unwrap();
+        total_input += entry.amount;
+        let mut ki = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut ki);
+        inputs.push(crate::block::TxInput {
+            previous_tx_hash: key.tx_hash,
+            output_index: key.output_index,
+            key_image: ki,
+        });
+        if total_input >= amount { break; }
+    }
+
+    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk }];
+    if total_input > amount {
+        outputs.push(crate::block::TxOutput {
+            amount: total_input - amount,
+            public_key: from_pk,
+        });
+    }
+
+    let mut tx = crate::block::Transaction {
+        version: 1,
+        inputs,
+        outputs,
+        ring_size: 1,
+        signatures: vec![],
+    };
+    let msg = crate::state::tx_msg(&tx);
+    let sig = sk.sign(&msg);
+    tx.signatures = vec![sig.to_bytes().to_vec()];
+
+    if let Err(e) = state.validate_transaction(&tx) {
+        println!("Validation failed: {}", e);
+        return;
+    }
+    if let Err(e) = state.spend_transaction_inputs(&tx) {
+        println!("Spend failed: {}", e);
+        return;
+    }
+    let tx_hash = tx.hash();
+    state.add_transaction_outputs(&tx_hash, &tx, 0, 0);
+
+    if let Err(e) = crate::store::save_utxo_set(&state) {
+        println!("Save failed: {}", e);
+    } else {
+        println!("Sent {} to {}", amount, hex::encode(&args[2]));
+        println!("Tx hash: {}", hex::encode(&tx_hash[..8]));
+    }
 }
 
 fn cmd_wallet(args: &[String]) {
@@ -72,359 +421,136 @@ fn cmd_wallet(args: &[String]) {
         "new" => {
             let (secret, pubkey) = crate::wallet::generate_key();
             crate::wallet::save_key(&secret, &pubkey);
-            println!("Key saved to wallet. Public: {}", hex::encode(pubkey));
+            println!("New wallet key: {}", hex::encode(&pubkey));
         }
         "list" => {
             let keys = crate::wallet::load_keys();
+            let state = crate::store::load_utxo_set().ok();
             if keys.is_empty() {
-                println!("Wallet is empty.");
+                println!("No wallet keys.");
                 return;
             }
-            let state = crate::store::load_utxo_set().ok();
-            for (i, (_sec, pk)) in keys.iter().enumerate() {
+            for (i, (_, pk)) in keys.iter().enumerate() {
                 let bal = state.as_ref().map(|s| s.get_balance(pk)).unwrap_or(0);
-                println!("[{}] {}  Balance: {}", i, hex::encode(pk), bal);
+                println!("  [{}] {}  (balance: {})", i, hex::encode(pk), bal);
             }
         }
         "send" => {
-            if args.len() < 6 {
-                println!("Usage: wallet send <idx> <to_pk> <amount>");
+            if args.len() < 5 {
+                println!("Usage: ewatts wallet send <idx> <to_pk_hex> <amount>");
                 return;
             }
             let idx: usize = match args[3].parse() {
                 Ok(i) => i,
-                _ => {
-                    println!("Invalid index");
-                    return;
-                }
+                _ => { println!("Invalid index"); return; }
             };
             let to_hex = &args[4];
-            let amount: u64 = match args[5].parse() {
-                Ok(a) => a,
-                _ => {
-                    println!("Invalid amount");
-                    return;
-                }
+            let amount: u64 = match args.get(5).and_then(|a| a.parse().ok()) {
+                Some(a) => a,
+                None => { println!("Invalid amount"); return; }
             };
             let to_pk = match hex::decode(to_hex) {
-                Ok(b) if b.len() == 32 => b,
-                _ => {
-                    println!("Invalid pubkey");
-                    return;
-                }
+                Ok(b) if b.len() == 32 => { let mut pk = [0u8; 32]; pk.copy_from_slice(&b); pk.to_vec() }
+                _ => { println!("Invalid pubkey"); return; }
             };
             let keys = crate::wallet::load_keys();
-            if idx >= keys.len() {
-                println!("Invalid index");
-                return;
-            }
-            let (secret, from_pk) = &keys[idx];
+            let (secret, from_pk) = match keys.get(idx) {
+                Some(k) => (k.0, k.1.clone()),
+                None => { println!("Key index {} not found", idx); return; }
+            };
+            let sk = ed25519_dalek::SigningKey::from_bytes(&secret);
             let mut state = match crate::store::load_utxo_set() {
                 Ok(s) => s,
-                Err(e) => {
-                    println!("Error: {}", e);
-                    return;
-                }
+                Err(e) => { println!("Error: {}", e); return; }
             };
-            let balance = state.get_balance(from_pk);
+            let balance = state.get_balance(&from_pk);
             if balance < amount {
-                println!("Insufficient. Have: {}", balance);
+                println!("Insufficient balance. Have: {}", balance);
                 return;
             }
-            let keys_to_spend: Vec<crate::state::UtxoKey> = state.utxo_keys_for(from_pk);
-            if keys_to_spend.is_empty() {
-                println!("No UTXOs");
+            let utxo_keys = state.utxo_keys_for(&from_pk);
+            if utxo_keys.is_empty() {
+                println!("No UTXOs to spend");
                 return;
             }
             let mut total_input = 0u64;
             let mut inputs = Vec::new();
-            for k in &keys_to_spend {
-                let entry = state.get_utxo(k).unwrap();
+            for key in &utxo_keys {
+                let entry = state.get_utxo(key).unwrap();
                 total_input += entry.amount;
                 let mut ki = [0u8; 32];
                 rand::thread_rng().fill_bytes(&mut ki);
                 inputs.push(crate::block::TxInput {
-                    previous_tx_hash: k.tx_hash,
-                    output_index: k.output_index,
+                    previous_tx_hash: key.tx_hash,
+                    output_index: key.output_index,
                     key_image: ki,
                 });
-                if total_input >= amount {
-                    break;
-                }
+                if total_input >= amount { break; }
             }
-            let mut outputs = vec![crate::block::TxOutput {
-                amount,
-                public_key: to_pk,
-            }];
+            let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk }];
             if total_input > amount {
                 outputs.push(crate::block::TxOutput {
                     amount: total_input - amount,
-                    public_key: from_pk.clone(),
+                    public_key: from_pk,
                 });
             }
-            let sk = ed25519_dalek::SigningKey::from_bytes(secret);
             let mut tx = crate::block::Transaction {
-                version: 1,
-                inputs,
-                outputs,
-                ring_size: 1,
-                signatures: vec![],
+                version: 1, inputs, outputs, ring_size: 1, signatures: vec![],
             };
-            let sig = sk.sign(&crate::state::tx_msg(&tx));
-            tx.signatures = vec![sig.to_bytes().to_vec()];
-            if let Err(e) = state.spend_transaction_inputs(&tx) {
-                println!("Spend failed: {}", e);
-                return;
+            let msg = crate::state::tx_msg(&tx);
+            tx.signatures = vec![sk.sign(&msg).to_bytes().to_vec()];
+            if let Err(e) = state.validate_transaction(&tx) {
+                println!("Validation: {}", e); return;
             }
-            let h = tx.hash();
-            state.add_transaction_outputs(&h, &tx, 0, 0);
+            if let Err(e) = state.spend_transaction_inputs(&tx) {
+                println!("Spend: {}", e); return;
+            }
+            let tx_hash = tx.hash();
+            state.add_transaction_outputs(&tx_hash, &tx, 0, 0);
             if let Err(e) = crate::store::save_utxo_set(&state) {
                 println!("Save: {}", e);
             } else {
-                println!(
-                    "Sent {} to {}. Tx: {}",
-                    amount,
-                    &args[4][..16],
-                    hex::encode(&h[..8])
-                );
+                println!("Sent {} from wallet[{}]", amount, idx);
+                println!("  Tx: {}", hex::encode(&tx_hash[..8]));
             }
         }
-        _ => println!("wallet new | list | send <idx> <to> <amt>"),
-    }
-}
-
-fn cmd_send(args: &[String]) {
-    if args.len() < 4 {
-        println!("Usage: send <to_pk> <amount>");
-        return;
-    }
-    let to_pk = match hex::decode(&args[2]) {
-        Ok(b) if b.len() == 32 => b,
         _ => {
-            println!("Invalid key");
-            return;
+            println!("Wallet commands: new, list, send <idx> <to> <amt>");
         }
-    };
-    let amount: u64 = match args[3].parse() {
-        Ok(a) => a,
-        _ => {
-            println!("Invalid amount");
-            return;
-        }
-    };
-    let mut state = match crate::store::load_utxo_set() {
-        Ok(s) => s,
-        Err(e) => {
-            println!("Error: {}", e);
-            return;
-        }
-    };
-    let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
-    let from_pk = sk.verifying_key().to_bytes().to_vec();
-    let balance = state.get_balance(&from_pk);
-    if balance < amount {
-        println!("Insufficient. Have: {}", balance);
-        return;
-    }
-    let keys = state.utxo_keys_for(&from_pk);
-    let mut total_input = 0u64;
-    let mut inputs = Vec::new();
-    for k in &keys {
-        let e = state.get_utxo(k).unwrap();
-        total_input += e.amount;
-        let mut ki = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut ki);
-        inputs.push(crate::block::TxInput {
-            previous_tx_hash: k.tx_hash,
-            output_index: k.output_index,
-            key_image: ki,
-        });
-        if total_input >= amount {
-            break;
-        }
-    }
-    let mut outputs = vec![crate::block::TxOutput {
-        amount,
-        public_key: to_pk,
-    }];
-    if total_input > amount {
-        outputs.push(crate::block::TxOutput {
-            amount: total_input - amount,
-            public_key: from_pk,
-        });
-    }
-    let mut tx = crate::block::Transaction {
-        version: 1,
-        inputs,
-        outputs,
-        ring_size: 1,
-        signatures: vec![],
-    };
-    let sig = sk.sign(&crate::state::tx_msg(&tx));
-    tx.signatures = vec![sig.to_bytes().to_vec()];
-    if let Err(e) = state.spend_transaction_inputs(&tx) {
-        println!("Spend failed: {}", e);
-        return;
-    }
-    let h = tx.hash();
-    state.add_transaction_outputs(&h, &tx, 0, 0);
-    if let Err(e) = crate::store::save_utxo_set(&state) {
-        println!("Save: {}", e);
-    } else {
-        println!("Sent {}. Tx: {}", amount, hex::encode(&h[..8]));
-    }
-}
-
-fn cmd_mine(args: &[String]) {
-    if !crate::store::has_data() {
-        println!("No data.");
-        return;
-    }
-    let miner_pk = if args.len() >= 3 {
-        match hex::decode(&args[2]) {
-            Ok(b) if b.len() == 32 => {
-                let mut pk = [0u8; 32];
-                pk.copy_from_slice(&b);
-                pk
-            }
-            _ => {
-                println!("Invalid pubkey hex");
-                return;
-            }
-        }
-    } else {
-        let keys = crate::wallet::load_keys();
-        if keys.is_empty() {
-            println!("No wallet keys. Use 'wallet new' first.");
-            return;
-        }
-        let (_sec, pk) = &keys[0];
-        let mut pkb = [0u8; 32];
-        pkb.copy_from_slice(pk);
-        pkb
-    };
-    let mut utxo_set = match crate::store::load_utxo_set() {
-        Ok(s) => s,
-        Err(e) => {
-            println!("Error loading state: {}", e);
-            return;
-        }
-    };
-    let prev_blocks = crate::store::load_blocks().unwrap_or_default();
-    let block_height = prev_blocks.len() as u64;
-    let prev_hash = if let Some(last) = prev_blocks.last() {
-        last.header.hash()
-    } else {
-        [0u8; 32]
-    };
-    let reward = crate::reward::compute_emission_rate(100.0, 100.0) as u64;
-    let coinbase = crate::block::Transaction {
-        version: 1,
-        inputs: vec![],
-        outputs: vec![crate::block::TxOutput {
-            amount: reward,
-            public_key: miner_pk.to_vec(),
-        }],
-        ring_size: 1,
-        signatures: vec![],
-    };
-    let merkle_root = crate::block::merkle_root(&[coinbase.clone()]);
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    let epoch = 0;
-    let difficulty = 1000;
-    let header = crate::block::BlockHeader {
-        version: crate::constants::PROTOCOL_VERSION,
-        previous_hash: prev_hash,
-        merkle_root,
-        timestamp,
-        epoch,
-        difficulty_target: difficulty,
-        total_effective_commit: 0.0,
-        emission_rate: reward as f64,
-        miner_effective_commit: 0.0,
-        vr_block: 0.0,
-        nonce: 0,
-        elapsed_ms: 0,
-    };
-    let header_hash = header.hash();
-    println!("Generating DAG (4MB)...");
-    let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
-    println!(
-        "DAG: {} elements. Mining height {}...",
-        dag.len(),
-        block_height
-    );
-    match crate::proof::mine(&header_hash, difficulty, &dag, 5000) {
-        Some(sol) => {
-            let mut mined_header = header.clone();
-            mined_header.nonce = sol.nonce;
-            mined_header.elapsed_ms = sol.elapsed_ms as u32;
-            let block = crate::block::Block {
-                header: mined_header,
-                body: crate::block::BlockBody {
-                    transactions: vec![coinbase],
-                    commitments: vec![],
-                },
-            };
-            if let Err(e) = crate::store::save_block(&block) {
-                println!("Error saving block: {}", e);
-                return;
-            }
-            let h = block.body.transactions[0].hash();
-            utxo_set.add_transaction_outputs(&h, &block.body.transactions[0], block_height, 0);
-            utxo_set.add_coinbase_supply(reward);
-            if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
-                println!("Error saving state: {}", e);
-                return;
-            }
-            println!(
-                "Block mined! Height: {} | Nonce: {} | {}ms | Reward: {} Ewatt",
-                block_height, sol.nonce, sol.elapsed_ms, reward
-            );
-            println!("Block hash: {}", hex::encode(mined_header.hash()));
-        }
-        None => println!("No solution found."),
     }
 }
 
 fn cmd_balance(args: &[String]) {
     if args.len() < 3 {
-        println!("Usage: balance <pubkey_hex>");
+        println!("Usage: ewatts balance <pubkey_hex>");
         return;
     }
-    let pk = match hex::decode(&args[2]) {
-        Ok(b) if b.len() == 32 => b,
-        _ => {
-            println!("Invalid key");
-            return;
-        }
+    let pk_hex = &args[2];
+    let pk_bytes = match hex::decode(pk_hex) {
+        Ok(b) if b.len() == 32 => { let mut pk = [0u8; 32]; pk.copy_from_slice(&b); pk.to_vec() }
+        _ => { println!("Invalid key. 64 hex chars."); return; }
     };
     match crate::store::load_utxo_set() {
-        Ok(s) => println!("Balance: {}", s.get_balance(&pk)),
+        Ok(state) => println!("Balance: {}", state.get_balance(&pk_bytes)),
         Err(e) => println!("Error: {}", e),
     }
 }
 
 fn cmd_info() {
     if !crate::store::has_data() {
-        println!("No data.");
+        println!("No data. Run init first.");
         return;
     }
     match crate::store::load_utxo_set() {
-        Ok(s) => {
+        Ok(state) => {
             let blocks = crate::store::load_blocks().unwrap_or_default();
-            let height = blocks.len();
             println!("Ewatts Node");
-            println!("  Height: {}", height);
-            println!("  Supply: {}", s.total_supply());
-            println!("  UTXOs:  {}", s.utxo_count());
+            println!("  Blocks: {}", blocks.len());
+            println!("  UTXOs:  {}", state.utxo_count());
+            println!("  Supply: {}", state.total_supply());
+            // Show recent VR if blocks exist
             if let Some(last) = blocks.last() {
-                println!("  Last block: {}", hex::encode(last.header.hash()));
-                println!("  Last nonce: {}", last.header.nonce);
-                println!("  Last time:  {}", last.header.timestamp);
+                println!("  VR:     {}", crate::vr::format_vr(last.header.vr_block));
             }
         }
         Err(e) => println!("Error: {}", e),
