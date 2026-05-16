@@ -12,6 +12,7 @@ pub mod wallet;
 
 use std::env;
 use ed25519_dalek::Signer;
+use rand::RngCore;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -105,7 +106,7 @@ fn cmd_wallet(args: &[String]) {
             if total_input > amount {
                 outputs.push(crate::block::TxOutput { amount: total_input - amount, public_key: from_pk.clone() });
             }
-            let sk = ed25519_dalek::SigningKey::from_bytes(&secret.try_into().unwrap());
+            let sk = ed25519_dalek::SigningKey::from_bytes(secret);
             let mut tx = crate::block::Transaction { version: 1, inputs, outputs, ring_size: 1, signatures: vec![] };
             let sig = sk.sign(&crate::state::tx_msg(&tx));
             tx.signatures = vec![sig.to_bytes().to_vec()];
