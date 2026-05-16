@@ -76,7 +76,7 @@ fn cmd_send(args: &[String]) {
     };
     // Genesis key (all zeros) signs the transaction
     let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
-    let from_pk = sk.verifying_key().to_bytes().to_vec();
+    let from_pk = vec![0u8; 32]; // genesis pubkey
     let balance = state.get_balance(&from_pk);
     if balance < amount { println!("Insufficient balance. Have: {}", balance); return; }
     // Create transaction: spend all genesis UTXOs, send amount to recipient
