@@ -13,6 +13,7 @@ use std::time::Duration;
 use std::collections::HashSet;
 
 use crate::block::{Block, Transaction};
+use crate::mine_block;
 
 const GOSSIP_TOPIC: &str = "ewatts-blocks";
 
@@ -114,7 +115,7 @@ impl P2pNode {
     }
 
     pub async fn run(&mut self, mine: bool, state: &mut crate::state::UtxoSet) {
-        let mut last_mine = std::time::Instant::now();
+        let _last_mine = std::time::Instant::now();
 
         loop {
             tokio::select! {
