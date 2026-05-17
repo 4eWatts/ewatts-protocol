@@ -138,7 +138,7 @@ impl P2pNode {
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Gossipsub(gossipsub::Event::Message {
-                            propagation_source, message, id: _, .. }
+                            propagation_source, message, ..
                         })) => {
                             if let Ok(msg) = serde_json::from_slice::<P2pMessage>(&message.data) {
                                 match msg {
