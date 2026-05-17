@@ -89,8 +89,9 @@ footer a:hover { color:#c8c8cc; }
     <span style="color:#2a2a3a;">|</span>
     <span>0 warnings</span>
   </div>
-  <h1>A digital currency secured by DRAM bandwidth.</h1>
-  <p>eWatts replaces hash-based mining with memory-bound proof of work. Mining throughput is determined by DRAM bandwidth , not by clock speed or ASIC design. Any computer can compete.</p>
+  <h1>Mining should be fair. <span style="color:#5a5a72;">Not faster chips, just faster RAM.</span></h1>
+  <p>eWatts is a digital currency where anyone with a computer can mine. Not ASICs, not GPUs, not staking — just the DRAM already inside your machine. Mining speed is determined by memory bandwidth, the most democratized resource in computing.</p>
+  <p style="margin-top:12px; font-size:14px; color:#6b6b8a;">The name comes from <strong style="color:#8b8baa;">Watt</strong> — the unit of power. Each eWatt is referenced to the energy cost of mining it. Not speculation. Not arbitrary halving. Physics.</p>
   <div class="links">
     <a href="MINING.md" class="btn btn-primary">Mine a block</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">Source code</a>
@@ -102,7 +103,7 @@ footer a:hover { color:#c8c8cc; }
 <section class="section" id="protocol">
   <div class="section-label">Protocol</div>
   <h2>Architecture</h2>
-  <p class="intro">eWatts is a single-chain, dual-hash protocol. Mining blocks are produced by memory-bound proof of work. Between blocks, a fast transaction hash verifies ring signatures. Both hashes commit to the same chain state.</p>
+  <p class="intro">eWatts uses memory-bound proof of work: the mining algorithm is bottlenecked by RAM speed, not by clock speed or ASIC design. A fast transaction layer validates ring signatures between mining blocks, enabling private, near-instant confirmations.</p>
 
   <div class="cards">
     <div class="card">
