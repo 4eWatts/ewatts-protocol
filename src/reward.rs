@@ -95,8 +95,19 @@ mod tests {
     #[test] fn test_reward_proportional() {
         // Two miners with same effective commitment should get equal rewards
         use crate::commitment::Commitment;
-        let c1 = Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
-        let c2 = Commitment { miner_id: [2;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        use ed25519_dalek::Signer;
+        fn signed_commit(pk: [u8;32], bw: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
+            let mut c = Commitment { miner_id: pk, bandwidth_gbps: bw, block_number: 0, work_gb: bw, time_seconds: 1., signature: vec![] };
+            let msg = crate::commitment::commit_msg(&c);
+            c.signature = sk.sign(&msg).to_bytes().to_vec();
+            c
+        }
+        let sk1 = ed25519_dalek::SigningKey::from_bytes(&[1u8;32]);
+        let pk1 = sk1.verifying_key().to_bytes();
+        let sk2 = ed25519_dalek::SigningKey::from_bytes(&[2u8;32]);
+        let pk2 = sk2.verifying_key().to_bytes();
+        let c1 = signed_commit(pk1, 100., &sk1);
+        let c2 = signed_commit(pk2, 100., &sk2);
         let prev = vec![50., 100., 100., 100.];
         let r = compute_block_rewards(0, &[c1, c2], &prev, 100.);
         assert!((r.miner_rewards[0].1 - r.miner_rewards[1].1).abs() < 1e-6);
@@ -105,8 +116,19 @@ mod tests {
     #[test] fn test_reward_honest_more() {
         // Honest miner (eff=1.0) should get more than under-declarer (eff=0.5 after cap)
         use crate::commitment::Commitment;
-        let honest = Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
-        let under = Commitment { miner_id: [2;32], bandwidth_gbps: 10., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        use ed25519_dalek::Signer;
+        fn signed_commit(pk: [u8;32], bw: f64, w: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
+            let mut c = Commitment { miner_id: pk, bandwidth_gbps: bw, block_number: 0, work_gb: w, time_seconds: 1., signature: vec![] };
+            let msg = crate::commitment::commit_msg(&c);
+            c.signature = sk.sign(&msg).to_bytes().to_vec();
+            c
+        }
+        let sk1 = ed25519_dalek::SigningKey::from_bytes(&[1u8;32]);
+        let pk1 = sk1.verifying_key().to_bytes();
+        let sk2 = ed25519_dalek::SigningKey::from_bytes(&[2u8;32]);
+        let pk2 = sk2.verifying_key().to_bytes();
+        let honest = signed_commit(pk1, 100., 100., &sk1);
+        let under = signed_commit(pk2, 10., 100., &sk2);
         let prev = vec![50., 100., 100., 100.];
         let r = compute_block_rewards(0, &[honest, under], &prev, 100.);
         // honest c_eff=100, under c_eff=13 (capped at 1.3×): honest should get ~88.5%
