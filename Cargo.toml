@@ -13,7 +13,35 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.8"
 ed25519-dalek = "2"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+[dependencies.libp2p]
+version = "0.54"
+features = [
+    "full",
+    "gossipsub",
+    "mdns",
+    "noise",
+    "yamux",
+    "request-response",
+    "tokio",
+]
 
 [profile.release]
 lto = true
 codegen-units = 1
+
+[dependencies.libp2p]
+version = "0.54"
+features = [
+    "full",
+    "gossipsub",
+    "mdns",
+    "noise",
+    "yamux",
+    "request-response",
+    "tokio",
+]

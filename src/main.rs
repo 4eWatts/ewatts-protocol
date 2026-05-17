@@ -9,6 +9,7 @@ pub mod difficulty;
 pub mod state;
 pub mod store;
 pub mod wallet;
+pub mod p2p;
 
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -27,6 +28,7 @@ fn main() {
         "keygen" => cmd_keygen(),
         "wallet" => cmd_wallet(&args),
         "info" => cmd_info(),
+        "p2p" => cmd_p2p(&args),
         _ => cmd_help(),
     }
 }
@@ -53,6 +55,7 @@ fn cmd_help() {
     println!("  wallet list              List wallet keys and balances");
     println!("  wallet send <idx> <to_pk> <amt>  Send from wallet key");
     println!("  info                     Show node status");
+    println!("  p2p                      Start P2P node");
     println!("  help                     Show this help");
 }
 
@@ -539,6 +542,19 @@ fn cmd_balance(args: &[String]) {
     match crate::store::load_utxo_set() {
         Ok(state) => println!("Balance: {}", state.get_balance(&pk_bytes)),
         Err(e) => println!("Error: {}", e),
+    }
+}
+
+#[tokio::main]
+async fn cmd_p2p(args: &[String]) {
+    let addr = args.get(2).map(|s| s.as_str()).unwrap_or("/ip4/0.0.0.0/tcp/0");
+    println!("Starting P2P node on {}...", addr);
+    match crate::p2p::P2pNode::new(addr).await {
+        Ok(mut node) => {
+            println!("P2P Node ID: {}", node.peer_id);
+            node.run().await;
+        }
+        Err(e) => println!("P2P error: {}", e),
     }
 }
 
