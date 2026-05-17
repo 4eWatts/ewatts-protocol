@@ -168,15 +168,21 @@ fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSe
     header.total_effective_commit = total_eff;
     header.emission_rate = em;
 
-    // Reward for this miner (100% of emission since solo)
+    // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
     let miner_reward = ce / total_eff * em; // = em for solo miner
+    let mut reward_list = vec![(miner_pk.to_vec(), miner_reward)];
+    let burned = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
+    let post_burn_reward = reward_list[0].1;
+    let post_burn_emission = post_burn_reward;
+    header.emission_rate = post_burn_emission;
 
-    // VR
-    let vr_result = crate::vr::compute_vr(ce, miner_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
+    // VR (use post-burn reward for accuracy)
+    let vr_result = crate::vr::compute_vr(ce, post_burn_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
     header.vr_block = vr_result.vr_kwh_per_ewatt;
 
-    // Coinbase transaction: miner reward to miner
-    let reward_base_units = (miner_reward * 100_000_000.0) as u64; // 1 Ewatt = 10^8 base
+    // Coinbase transaction: miner reward (post-burn) to miner
+    // During ramp-up, up to 20% may be burned (coinbase_burn)
+    let reward_base_units = (post_burn_reward * 100_000_000.0) as u64; // 1 Ewatt = 10^8 base
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
