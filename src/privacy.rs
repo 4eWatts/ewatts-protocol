@@ -8,6 +8,7 @@ use curve25519_dalek::traits::Identity;
 use digest::{ExtendableOutput, Update, XofReader};
 use sha3::Shake256;
 use rand::rngs::ThreadRng;
+use serde::{Serialize, Deserialize};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ fn mlsag_challenge(msg: &[u8], l: &RistrettoPoint, r: &RistrettoPoint) -> Scalar
 // ─── Stealth Address ────────────────────────────────────────────────────────
 
 /// A stealth address: public spend key + public view key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StealthAddress {
     pub spend_key: RistrettoPoint,
     pub view_key: RistrettoPoint,
@@ -96,7 +97,7 @@ pub struct OneTimeAddress {
 }
 
 /// Full private key for a stealth address.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct OneTimeKey {
     pub spend: Scalar,
     pub view: Scalar,
@@ -136,7 +137,7 @@ pub fn recover_one_time_key(
 
 // ─── Pedersen Commitment ────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Commitment(pub RistrettoPoint);
 
 impl Commitment {
@@ -163,7 +164,7 @@ impl Commitment {
 // ─── MLSAG Ring Signature ──────────────────────────────────────────────────
 
 /// A multi-layered ring signature (MLSAG).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLSAGSignature {
     pub ring_size: usize,
     pub n_layers: usize,
@@ -278,7 +279,7 @@ impl MLSAGSignature {
 
 /// A range proof using bit decomposition: C = sum(2^i * C_i), each C_i ∈ {0, 1}.
 /// Each bit is proven with a 1-out-of-2 MLSAG ring signature.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RangeProof {
     pub bits: usize,
     pub commitments: Vec<Commitment>,

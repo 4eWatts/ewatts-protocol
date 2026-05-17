@@ -21,7 +21,6 @@ use curve25519_dalek::traits::Identity;
 use crate::block::*;
 use crate::privacy::*;
 use crate::state::{UtxoKey, UtxoEntry, UtxoSet};
-use crate::mempool;
 
 const WALLET_DIR: &str = "ewatts_data/wallets";
 
