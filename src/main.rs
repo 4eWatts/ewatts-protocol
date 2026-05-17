@@ -473,106 +473,86 @@ fn cmd_send(args: &[String]) {
 
 fn cmd_wallet(args: &[String]) {
     let sub = args.get(2).map(|s| s.as_str()).unwrap_or("help");
+    let mut wallet = crate::wallet::Wallet::load();
+
     match sub {
         "new" => {
-            let (secret, pubkey) = crate::wallet::generate_key();
-            crate::wallet::save_key(&secret, &pubkey);
-            println!("New wallet key: {}", hex::encode(&pubkey));
+            let label = args.get(3).map(|s| s.as_str()).unwrap_or("default");
+            wallet.new_key(label);
         }
         "list" => {
-            let keys = crate::wallet::load_keys();
-            let state = crate::store::load_utxo_set().ok();
-            if keys.is_empty() {
-                println!("No wallet keys.");
-                return;
+            wallet.list();
+        }
+        "balance" => {
+            let state = match crate::store::load_utxo_set() {
+                Ok(s) => s,
+                Err(e) => { println!("Error loading state: {}", e); return; }
+            };
+            let owned = wallet.scan_utxos(&state);
+            let mut total = 0u64;
+            for o in &owned {
+                println!("  UTXO: {:x}..{}  amount={}", o.key.tx_hash[0], o.key.output_index, o.entry.amount);
+                total += o.entry.amount;
             }
-            for (i, (_, pk)) in keys.iter().enumerate() {
-                let bal = state.as_ref().map(|s| s.get_balance(pk)).unwrap_or(0);
-                println!("  [{}] {}  (balance: {})", i, hex::encode(pk), bal);
-            }
+            println!("  Total balance: {} ({:.4} Ewatt)", total, total as f64 / 100_000_000.0);
+            println!("  Wallet keys: {}", wallet.keys.len());
         }
         "send" => {
             if args.len() < 5 {
-                println!("Usage: ewatts wallet send <idx> <to_pk_hex> <amount>");
+                println!("Usage: ewatts wallet send <idx> <to_addr_hex> <amount>");
                 return;
             }
             let idx: usize = match args[3].parse() {
                 Ok(i) => i,
-                _ => { println!("Invalid index"); return; }
+                _ => { println!("Invalid key index"); return; }
             };
             let to_hex = &args[4];
             let amount: u64 = match args.get(5).and_then(|a| a.parse().ok()) {
                 Some(a) => a,
                 None => { println!("Invalid amount"); return; }
             };
-            let to_pk = match hex::decode(to_hex) {
-                Ok(b) if b.len() == 32 => { let mut pk = [0u8; 32]; pk.copy_from_slice(&b); pk.to_vec() }
-                _ => { println!("Invalid pubkey"); return; }
+            if idx >= wallet.keys.len() {
+                println!("Key index {} not found (have {})", idx, wallet.keys.len());
+                return;
+            }
+            let to_bytes = match hex::decode(to_hex) {
+                Ok(b) if b.len() == 32 => { let mut pk = [0u8; 32]; pk.copy_from_slice(&b); pk }
+                _ => { println!("Invalid address hex (need 64 hex chars)"); return; }
             };
-            let keys = crate::wallet::load_keys();
-            let (secret, from_pk) = match keys.get(idx) {
-                Some(k) => (k.0, k.1.clone()),
-                None => { println!("Key index {} not found", idx); return; }
+            let state = match crate::store::load_utxo_set() {
+                Ok(s) => s,
+                Err(e) => { println!("Error loading state: {}", e); return; }
             };
-            let sk = ed25519_dalek::SigningKey::from_bytes(&secret);
-            let mut state = match crate::store::load_utxo_set() {
+            let mut rng = rand::thread_rng();
+            match crate::wallet::create_private_tx(&wallet, &to_bytes, amount, &state, &mut rng) {
+                Ok(tx) => {
+                    println!("  Transaction created: {} inputs, {} outputs", tx.inputs.len(), tx.outputs.len());
+                    println!("  Hash: {}", hex::encode(tx.hash()));
+                    match crate::mempool::submit(tx, &state) {
+                        Ok(()) => println!("  Submitted to mempool. Mine next block to confirm."),
+                        Err(e) => println!("  Mempool rejected: {}", e),
+                    }
+                }
+                Err(e) => println!("  Transaction failed: {}", e),
+            }
+        }
+        "scan" => {
+            let state = match crate::store::load_utxo_set() {
                 Ok(s) => s,
                 Err(e) => { println!("Error: {}", e); return; }
             };
-            let balance = state.get_balance(&from_pk);
-            if balance < amount {
-                println!("Insufficient balance. Have: {}", balance);
-                return;
-            }
-            let utxo_keys = state.utxo_keys_for(&from_pk);
-            if utxo_keys.is_empty() {
-                println!("No UTXOs to spend");
-                return;
-            }
-            let mut total_input = 0u64;
-            let mut inputs = Vec::new();
-            for key in &utxo_keys {
-                let entry = state.get_utxo(key).unwrap();
-                total_input += entry.amount;
-                let mut ki = [0u8; 32];
-                rand::thread_rng().fill_bytes(&mut ki);
-                inputs.push(crate::block::TxInput {
-                    previous_tx_hash: key.tx_hash,
-                    output_index: key.output_index,
-                    key_image: ki,
-                });
-                if total_input >= amount { break; }
-            }
-            let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }];
-            if total_input > amount {
-                outputs.push(crate::block::TxOutput {
-                    amount: total_input - amount,
-                    public_key: from_pk, spendable_after: 0,
-                    stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
-                });
-            }
-            let mut tx = crate::block::Transaction {
-                version: 1, inputs, outputs, ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
-            };
-            let msg = crate::state::tx_msg(&tx);
-            tx.signatures = vec![sk.sign(&msg).to_bytes().to_vec()];
-            if let Err(e) = state.validate_transaction(&tx) {
-                println!("Validation: {}", e); return;
-            }
-            if let Err(e) = state.spend_transaction_inputs(&tx, 0) {
-                println!("Spend: {}", e); return;
-            }
-            let tx_hash = tx.hash();
-            state.add_transaction_outputs(&tx_hash, &tx, 0, 0);
-            if let Err(e) = crate::store::save_utxo_set(&state) {
-                println!("Save: {}", e);
-            } else {
-                println!("Sent {} from wallet[{}]", amount, idx);
-                println!("  Tx: {}", hex::encode(&tx_hash[..8]));
-            }
+            let owned = wallet.scan_utxos(&state);
+            println!("  Found {} owned UTXOs", owned.len());
+            let total: u64 = owned.iter().map(|o| o.entry.amount).sum();
+            println!("  Total: {}", total);
         }
         _ => {
-            println!("Wallet commands: new, list, send <idx> <to> <amt>");
+            println!("Wallet commands:");
+            println!("  wallet new [label]           Generate stealth keypair");
+            println!("  wallet list                  List wallet keys");
+            println!("  wallet balance               Show balance");
+            println!("  wallet send <idx> <addr> <amt>  Send private tx");
+            println!("  wallet scan                  Scan for owned UTXOs");
         }
     }
 }
