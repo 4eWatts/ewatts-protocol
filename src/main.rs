@@ -726,6 +726,60 @@ fn cmd_dashboard() {
             });
             json_response(200, &serde_json::to_string(&json).unwrap())
 
+        } else if request.starts_with("GET /api/balance/") {
+            let parts: Vec<&str> = request.split_whitespace().collect();
+            let addr_hex = parts.get(1).and_then(|p| p.split('/').nth(3)).unwrap_or("");
+            if addr_hex.len() != 64 {
+                json_response(400, "{\"error\":\"Invalid address\"}")
+            } else {
+                let addr_bytes = hex::decode(addr_hex).unwrap_or_default();
+                if addr_bytes.len() != 32 {
+                    json_response(400, "{\"error\":\"Invalid hex\"}")
+                } else {
+                    let state = crate::store::load_utxo_set().ok();
+                    let balance = state.as_ref().map(|s| s.get_balance(&addr_bytes)).unwrap_or(0);
+                    json_response(200, &serde_json::to_string(&serde_json::json!({
+                        "address": addr_hex,
+                        "balance": balance,
+                        "ewatt": balance as f64 / 100_000_000.0,
+                    })).unwrap())
+                }
+            }
+
+        } else if request.starts_with("GET /api/blocks") {
+            let blocks = crate::store::load_blocks().unwrap_or_default();
+            let json = serde_json::json!({
+                "count": blocks.len(),
+                "blocks": blocks.iter().map(|b| serde_json::json!({
+                    "height": b.header.height,
+                    "hash": hex::encode(b.header.hash()),
+                    "vr": b.header.vr_block,
+                    "reward": b.header.emission_rate,
+                    "time": b.header.timestamp,
+                    "txs": b.body.transactions.len(),
+                })).collect::<Vec<_>>(),
+            });
+            json_response(200, &serde_json::to_string(&json).unwrap())
+
+        } else if request.starts_with("GET /api/ring/pool") {
+            let state = crate::store::load_utxo_set().ok();
+            let pool: Vec<serde_json::Value> = state.map(|s| {
+                let map = s.utxos_map();
+                let mut entries: Vec<_> = map.iter().collect();
+                // Shuffle and take up to 100
+                let count = std::cmp::min(entries.len(), 100);
+                entries[..count].iter().map(|(k, v)| serde_json::json!({
+                    "tx_hash": hex::encode(k.tx_hash),
+                    "output_index": k.output_index,
+                    "amount": v.amount,
+                    "stealth": v.stealth_dest.map(|s| hex::encode(s)),
+                })).collect()
+            }).unwrap_or_default();
+            json_response(200, &serde_json::to_string(&serde_json::json!({
+                "count": pool.len(),
+                "utxos": pool,
+            })).unwrap())
+
         } else if request.starts_with("GET /api/status") {
             let blocks = crate::store::load_blocks().unwrap_or_default();
             let height = blocks.len();
