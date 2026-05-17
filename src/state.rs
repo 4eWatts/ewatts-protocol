@@ -52,6 +52,7 @@ pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     msg
 }
 
+#[allow(dead_code)]
 fn make_signing_key() -> SigningKey {
     let mut b = [0u8; 32]; rand::thread_rng().fill_bytes(&mut b);
     SigningKey::from_bytes(&b)
