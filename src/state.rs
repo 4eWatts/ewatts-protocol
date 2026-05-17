@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use curve25519_dalek::ristretto::CompressedRistretto;
 
 use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey};
 use std::collections::{HashMap, HashSet};
@@ -99,7 +100,7 @@ fn verify_mlsag(
     ring_pubkeys: &[Vec<curve25519_dalek::ristretto::RistrettoPoint>],
     msg: &[u8],
 ) -> bool {
-    use curve25519_dalek::ristretto::CompressedRistretto;
+    
     let sig = mlsag.to_sig();
     sig.verify(ring_pubkeys, msg)
 }
@@ -109,8 +110,8 @@ fn build_ring(
     utxo_set: &HashMap<UtxoKey, UtxoEntry>,
     members: &[UtxoRef],
 ) -> Result<Vec<Vec<curve25519_dalek::ristretto::RistrettoPoint>>, String> {
-    use curve25519_dalek::ristretto::CompressedRistretto;
-    use curve25519_dalek::traits::Identity;
+    
+    
 
     let mut ring = Vec::with_capacity(members.len());
     for m in members {
@@ -177,7 +178,7 @@ impl UtxoSet {
             // For single-input txs: one ring of size ring_size
             // For multi-input txs: n_layers = inputs.len()
             let mut all_rings = Vec::new();
-            for (input_idx, members_for_input) in ring_members.iter().enumerate() {
+            for (_input_idx, members_for_input) in ring_members.iter().enumerate() {
                 let ring = build_ring(&self.utxos, members_for_input)?;
                 // Take only the first layer from each ring member (n_layers=1 per input)
                 let layer_ring: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring.iter().map(|r| r[0]).collect();

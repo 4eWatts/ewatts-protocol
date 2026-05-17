@@ -44,7 +44,7 @@ pub struct MlsagData {
     pub ring_size: usize,
     pub n_layers: usize,
     pub key_images: Vec<[u8; 32]>,           // compressed RistrettoPoints
-    pub c0: [u8; 64],                         // Scalar (64 bytes wide → reduced mod order)
+    pub c0: Vec<u8>,                         // Scalar (64 bytes wide → reduced mod order)
     pub responses: Vec<Vec<[u8; 32]>>,       // [ring_size][n_layers] scalars
 }
 
@@ -261,7 +261,7 @@ mod tests {
             mlsag: Some(MlsagData {
                 ring_size: 11, n_layers: 1,
                 key_images: vec![[5u8;32]],
-                c0: [6u8;64],
+                c0: [6u8;64].to_vec(),
                 responses: vec![vec![[7u8;32]; 11]],
             }),
             ring_members: Some(vec![
@@ -276,7 +276,7 @@ mod tests {
                 range_proof_bytes: Some(vec![4u8; 64]) }],
             ring_size: 11, signatures: vec![],
             mlsag: Some(MlsagData { ring_size: 11, n_layers: 1, key_images: vec![[5u8;32]],
-                c0: [6u8;64], responses: vec![vec![[7u8;32]; 11]] }),
+                c0: [6u8;64].to_vec(), responses: vec![vec![[7u8;32]; 11]] }),
             ring_members: Some(vec![
                 (0..11).map(|i| UtxoRef { tx_hash: [i as u8; 32], output_index: i }).collect()
             ]),
