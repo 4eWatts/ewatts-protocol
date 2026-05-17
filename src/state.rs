@@ -7,8 +7,9 @@ use crate::block::{Transaction, TxInput, TxOutput, Block};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
-    pub amount: u64, pub public_key: Vec<u8>, pub block_height: u64,
+    pub amount: u64, pub public_key: Vec<u8>, pub spendable_after: u64, pub block_height: u64,
     pub tx_index: u32, pub output_index: u32,
+    pub fn is_spendable(&self, current_block: u64) -> bool { current_block >= self.spendable_after }
 }
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct UtxoKey { pub tx_hash: [u8; 32], pub output_index: u32 }
@@ -66,15 +67,16 @@ impl UtxoSet {
     pub fn add_transaction_outputs(&mut self, h: &[u8;32], tx: &Transaction, bh: u64, ti: u32) {
         for (i,o) in tx.outputs.iter().enumerate() {
             self.utxos.insert(UtxoKey{tx_hash:*h,output_index:i as u32},
-                UtxoEntry{amount:o.amount,public_key:o.public_key.to_vec(),block_height:bh,tx_index:ti,output_index:i as u32});
+                UtxoEntry{amount:o.amount,public_key:o.public_key.to_vec(),spendable_after:o.spendable_after,block_height:bh,tx_index:ti,output_index:i as u32});
         }
     }
     pub fn add_coinbase_supply(&mut self, a: u64) { self.total_supply = self.total_supply.checked_add(a).unwrap_or(self.total_supply); }
-    pub fn spend_transaction_inputs(&mut self, tx: &Transaction) -> Result<(), String> {
+    pub fn spend_transaction_inputs(&mut self, tx: &Transaction, current_block: u64) -> Result<(), String> {
         for input in &tx.inputs {
             if self.spent_key_images.contains(&input.key_image) { return Err("Double-spend".into()); }
             let key = UtxoKey{tx_hash:input.previous_tx_hash,output_index:input.output_index};
             let utxo = self.utxos.get(&key).ok_or("UTXO not found")?;
+            if !utxo.is_spendable(current_block) { return Err("UTXO time-locked".into()); }
             verify_tx_signature(tx, &utxo.public_key)?;
         }
         for input in &tx.inputs {
@@ -105,7 +107,7 @@ impl UtxoSet {
                 let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
                 self.add_coinbase_supply(coinbase_amount);
             } else {
-                self.spend_transaction_inputs(tx)?;
+                self.spend_transaction_inputs(tx, block_height)?;
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
             }
         }
@@ -144,7 +146,7 @@ mod tests {
         let sk = make_signing_key(); let pk = sk.verifying_key().to_bytes().to_vec();
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
-        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk)).is_ok());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk), 1000).is_ok());
     }
     #[test] fn test_wrong_sig() {
         let mut s = UtxoSet::new();
@@ -152,15 +154,15 @@ mod tests {
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
         let wrong = make_signing_key();
-        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&wrong)).is_err());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&wrong), 1000).is_err());
     }
     #[test] fn test_double_spend() {
         let mut s = UtxoSet::new();
         let sk = make_signing_key(); let pk = sk.verifying_key().to_bytes().to_vec();
         let tx = Transaction{version:1,inputs:vec![],outputs:out(&[5000],&pk),ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0);
-        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk)).is_ok());
-        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&sk)).is_err());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xab;32]}],out(&[3000],&pk),&sk), 1000).is_ok());
+        assert!(s.spend_transaction_inputs(&mk_tx(vec![TxInput{previous_tx_hash:h,output_index:0,key_image:[0xcd;32]}],out(&[3000],&pk),&sk), 1000).is_err());
     }
     #[test] fn test_supply() {
         let s = UtxoSet::genesis(100_000_000_000, &[0;32]);
