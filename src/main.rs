@@ -180,7 +180,7 @@ fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSe
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, pubkey_hash: miner_pk[..20].try_into().unwrap(), spendable_after: crate::reward::founder_lock_block(block_height) }],
+        outputs: vec![TxOutput { amount: reward_base_units, pubkey_hash: miner_pk[..20].try_into().unwrap(), spendable_after: crate::reward::founder_lock_block(height) }],
         ring_size: 1,
         signatures: vec![],
     };

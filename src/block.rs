@@ -119,7 +119,7 @@ mod tests {
     }
     #[test] fn test_tx_hash() {
         let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
-            outputs: vec![TxOutput { amount: 1000, pubkey_hash: [0u8;20] }], ring_size: 11 };
+            outputs: vec![TxOutput { amount: 1000, pubkey_hash: [0u8;20], spendable_after: 0 }], ring_size: 11, signatures: vec![] };
         assert_eq!(tx.hash(), tx.hash());
     }
 }
