@@ -83,7 +83,7 @@ fn cmd_init() {
         return;
     }
     // Also save genesis key in wallet
-    let seed = [0u8; 32];
+    let _seed = [0u8; 32];
     let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
     println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
 }

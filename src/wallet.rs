@@ -175,7 +175,7 @@ pub fn create_private_tx(
     }
     let key = &wallet.keys[0];
     let addr = key.stealth_address();
-    let (view_sec, spend_sec) = key.secrets();
+    let (_view_sec, _spend_sec) = key.secrets();
 
     // Scan for own UTXOs
     let owned = wallet.scan_utxos(utxo_set);
