@@ -260,7 +260,7 @@ pub fn create_private_tx(
         dest.dest.compress().to_bytes(),
         comm_to.0.compress().to_bytes(),
         serde_json::to_vec(&range_to).unwrap_or_default(),
-    );
+    ));
     if let Some(o) = outputs.last_mut() {
         o.ephemeral = Some(dest.ephemeral.compress().to_bytes());
     }
@@ -281,6 +281,9 @@ pub fn create_private_tx(
             comm_ch.0.compress().to_bytes(),
             serde_json::to_vec(&range_ch).unwrap_or_default(),
         ));
+        if let Some(o) = outputs.last_mut() {
+            o.ephemeral = Some(c_dest.ephemeral.compress().to_bytes());
+        }
     }
 
     // Build the transaction (without MLSAG sig first)
