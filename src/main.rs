@@ -582,7 +582,7 @@ async fn cmd_p2p(args: &[String]) {
 
 fn cmd_dashboard() {
     use std::net::TcpListener;
-    use std::thread;
+    
 
     let addr = "0.0.0.0:8080";
     let listener = TcpListener::bind(addr).unwrap();

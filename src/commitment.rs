@@ -1,5 +1,5 @@
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey, SigningKey};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey}; #[cfg(test)] use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
