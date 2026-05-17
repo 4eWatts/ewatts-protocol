@@ -425,7 +425,7 @@ impl BitProof {
 
     /// Verify the ring signature.
     fn verify(&self, ring: &[RistrettoPoint]) -> bool {
-        let mut c = self.c0;
+        let c = self.c0;
         let mut hasher = Shake256::default();
         hasher.update(b"Borromean:");
         for pt in ring {
