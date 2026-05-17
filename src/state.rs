@@ -10,8 +10,9 @@ pub struct UtxoEntry {
     pub amount: u64, pub public_key: Vec<u8>, pub spendable_after: u64, pub block_height: u64,
     pub tx_index: u32, pub output_index: u32,
 }
-impl UtxoEntry {
-    pub fn is_spendable(&self, current_block: u64) -> bool { current_block >= self.spendable_after }
+
+fn utxo_is_spendable(utxo: &UtxoEntry, current_block: u64) -> bool {
+    current_block >= utxo.spendable_after
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -79,7 +80,7 @@ impl UtxoSet {
             if self.spent_key_images.contains(&input.key_image) { return Err("Double-spend".into()); }
             let key = UtxoKey{tx_hash:input.previous_tx_hash,output_index:input.output_index};
             let utxo = self.utxos.get(&key).ok_or("UTXO not found")?;
-            if !utxo.is_spendable(current_block) { return Err("UTXO time-locked".into()); }
+            if !utxo_is_spendable(utxo, current_block) { return Err("UTXO time-locked".into()); }
             verify_tx_signature(tx, &utxo.public_key)?;
         }
         for input in &tx.inputs {
