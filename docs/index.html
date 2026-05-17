@@ -121,7 +121,7 @@ footer a:hover { color:#c8c8cc; }
         Gold has a cost floor (expensive to mine), does not degrade, and has served as money for millennia. 
         But gold is difficult to divide, heavy to transport, and requires physical vaults for storage. 
         eWatts preserves the cost floor — energy, the only commodity available in every country — and 
-        removes the physical limitations: perfectly divisible down to 10<sup>-8</sup> units, transmissible 
+        removes the physical limitations: perfectly divisible down to fractions of a cent, transmissible 
         at the speed of light, storable as a 32-byte private key. And unlike gold, mining runs on standard 
         memory, with no specialized hardware required.
       </p>
@@ -175,12 +175,12 @@ footer a:hover { color:#c8c8cc; }
       <p>No ASICs, no GPUs required. Mining speed is determined by how fast your computer can read its own memory. Every computer has RAM. Every computer can mine. The algorithm performs random memory accesses that scale with bandwidth, not clock speed.</p>
     </div>
     <div class="card">
-      <h3>Your identity is hidden</h3>
+      <h3>Your identity is protected</h3>
       <p>Each transaction is signed with a ring of 11 possible keys. An observer cannot tell which key produced the signature. The same key can be used multiple times without linking the transactions together.</p>
     </div>
     <div class="card">
-      <h3>Transaction amounts are hidden</h3>
-      <p>The value of each transaction is encrypted inside a cryptographic commitment. Range proofs prove the amount is positive without revealing it. The total supply remains auditable by summing commitments on-chain.</p>
+      <h3>Transaction amounts are private</h3>
+      <p>The value of each transaction is committed cryptographically, visible only to the parties involved. Range proofs prove the amount is positive without revealing it. The total supply remains auditable by summing commitments on-chain.</p>
     </div>
     <div class="card">
       <h3>Every payment gets a unique address</h3>
@@ -188,7 +188,7 @@ footer a:hover { color:#c8c8cc; }
     </div>
     <div class="card">
       <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The ratio (kWh per coin) is visible on every block. No fixed halving schedule. Just physics.</p>
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The target is approximately 5 USD per eWatt at energy cost — a practical unit for everyday trade. The ratio (kWh per coin) is visible on every block. No fixed halving schedule. Just physics.</p>
     </div>
     <div class="card">
       <h3>No one controls the network</h3>
