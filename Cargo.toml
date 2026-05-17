@@ -14,7 +14,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.8"
 ed25519-dalek = "2"
-curve25519-dalek = { version = "4", features = ["ristretto"] }
+curve25519-dalek = { version = "4", features = ["group", "digest"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 
