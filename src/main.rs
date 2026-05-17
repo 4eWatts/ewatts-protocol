@@ -639,7 +639,7 @@ Content-Length: {}
                 body.len(), body
             )
         } else {
-            let body = "{"status":"ok"}";
+            let body = "{\"status\":\"ok\"}";
             format!(
                 "HTTP/1.1 200 OK
 Content-Type: application/json
