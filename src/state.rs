@@ -107,7 +107,7 @@ fn verify_mlsag(
 }
 
 /// Look up ring member public keys from the UTXO set.
-fn build_ring(
+pub fn build_ring_inline(
     utxo_set: &HashMap<UtxoKey, UtxoEntry>,
     members: &[UtxoRef],
 ) -> Result<Vec<Vec<curve25519_dalek::ristretto::RistrettoPoint>>, String> {
@@ -180,7 +180,7 @@ impl UtxoSet {
             // For multi-input txs: n_layers = inputs.len()
             let mut all_rings = Vec::new();
             for (_input_idx, members_for_input) in ring_members.iter().enumerate() {
-                let ring = build_ring(&self.utxos, members_for_input)?;
+                let ring = build_ring_inline(&self.utxos, members_for_input)?;
                 // Take only the first layer from each ring member (n_layers=1 per input)
                 let layer_ring: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring.iter().map(|r| r[0]).collect();
                 all_rings.push(layer_ring);

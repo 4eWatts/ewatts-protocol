@@ -11,6 +11,7 @@ pub mod state;
 pub mod store;
 pub mod wallet;
 pub mod p2p;
+pub mod mempool;
 
 #[cfg(test)]
 pub mod tests;
@@ -19,6 +20,7 @@ pub mod tests;
  
 
 use std::env;
+use sha3::{Digest, Keccak256};
 use std::time::{SystemTime, UNIX_EPOCH};
 use rand::RngCore;
 use ed25519_dalek::Signer;
@@ -205,11 +207,43 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
         mlsag: None, ring_members: None,
     };
 
+    // Drain mempool and validate pending transactions
+    let pending = crate::mempool::drain();
+    let mut block_txs = vec![coinbase];
+    for tx in pending {
+        if let Err(e) = state.spend_transaction_inputs(&tx, height) {
+            eprintln!("  Mempool tx rejected: {}", e);
+            continue;
+        }
+        block_txs.push(tx);
+    }
+
+    // Compute merkle root from transaction hashes
+    let mut tx_hashes: Vec<[u8; 32]> = block_txs.iter().map(|tx| tx.hash()).collect();
+    if !tx_hashes.is_empty() {
+        // Simple binary merkle tree
+        while tx_hashes.len() > 1 {
+            let mut next = Vec::with_capacity((tx_hashes.len() + 1) / 2);
+            for i in (0..tx_hashes.len()).step_by(2) {
+                let mut h = Keccak256::new();
+                h.update(tx_hashes[i]);
+                if i + 1 < tx_hashes.len() {
+                    h.update(tx_hashes[i + 1]);
+                } else {
+                    h.update(tx_hashes[i]); // duplicate odd leaf
+                }
+                next.push(h.finalize().into());
+            }
+            tx_hashes = next;
+        }
+        header.merkle_root = tx_hashes[0];
+    }
+
     // Assemble block
     let block = Block {
         header,
         body: BlockBody {
-            transactions: vec![coinbase],
+            transactions: block_txs,
             commitments: vec![commit],
         },
     };
@@ -587,75 +621,96 @@ async fn cmd_p2p(args: &[String]) {
 
 fn cmd_dashboard() {
     use std::net::TcpListener;
-    
+    use std::io::{Read, Write};
+    use std::fs;
 
     let addr = "0.0.0.0:8080";
     let listener = TcpListener::bind(addr).unwrap();
     println!("Dashboard: http://{addr}");
+    println!("  POST /api/submit_tx   Submit raw transaction JSON");
+    println!("  GET  /api/mempool     Pending transactions");
+    println!("  GET  /api/status      Node status");
+
+    let html = fs::read_to_string("ewatts_dashboard.html").ok();
 
     for stream in listener.incoming() {
         let mut stream = stream.unwrap();
-        use std::io::{Read, Write};
+        let mut buf = [0u8; 8192];
+        let n = stream.read(&mut buf).unwrap_or(0);
+        if n == 0 { continue; }
+        let request = String::from_utf8_lossy(&buf[..n]);
 
-        let mut buf = [0u8; 4096];
-        let _ = stream.read(&mut buf);
-        let request = String::from_utf8_lossy(&buf);
+        let response = if request.starts_with("POST /api/submit_tx") {
+            // Extract body from HTTP POST
+            let body = if let Some(pos) = request.find("\r\n\r\n") {
+                &request[pos+4..]
+            } else if let Some(pos) = request.find("\n\n") {
+                &request[pos+2..]
+            } else { "" };
 
-        let response = if request.starts_with("GET /api/status") {
+            match serde_json::from_str::<crate::block::Transaction>(body) {
+                Ok(tx) => {
+                    match crate::store::load_utxo_set() {
+                        Ok(state) => {
+                            match crate::mempool::submit(tx, &state) {
+                                Ok(()) => json_response(200, "{\"status\":\"accepted\"}"),
+                                Err(e) => json_response(400, &format!("{{\"error\":\"{}\"}}", e)),
+                            }
+                        }
+                        Err(e) => json_response(500, &format!("{{\"error\":\"{}\"}}", e)),
+                    }
+                }
+                Err(e) => json_response(400, &format!("{{\"error\":\"Invalid JSON: {}\"}}", e)),
+            }
+
+        } else if request.starts_with("GET /api/mempool") {
+            let pool = crate::mempool::peek();
+            let json = serde_json::json!({
+                "pending": pool.len(),
+                "transactions": pool.iter().map(|tx| {
+                    serde_json::json!({
+                        "hash": hex::encode(tx.hash()),
+                        "inputs": tx.inputs.len(),
+                        "outputs": tx.outputs.len(),
+                        "private": tx.mlsag.is_some(),
+                    })
+                }).collect::<Vec<_>>(),
+            });
+            json_response(200, &serde_json::to_string(&json).unwrap())
+
+        } else if request.starts_with("GET /api/status") {
             let blocks = crate::store::load_blocks().unwrap_or_default();
             let height = blocks.len();
             let state = crate::store::load_utxo_set().ok();
             let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
             let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
-
-            let last_block = blocks.last();
-            let vr = last_block.map(|b| b.header.vr_block).unwrap_or(0.0);
-            let emission = last_block.map(|b| b.header.emission_rate).unwrap_or(0.0);
-
-            let blocks_json: Vec<serde_json::Value> = blocks.iter().map(|b| {
-                serde_json::json!({
-                    "height": b.header.height,
-                    "hash": hex::encode(b.header.hash()),
-                    "vr": b.header.vr_block,
-                    "reward": b.header.emission_rate,
-                    "time": b.header.timestamp,
-                })
-            }).collect();
-
+            let mempool = crate::mempool::pending_count();
+            let last = blocks.last();
+            let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+            let emission = last.map(|b| b.header.emission_rate).unwrap_or(0.0);
+            let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
+                "height": b.header.height, "hash": hex::encode(b.header.hash()),
+                "vr": b.header.vr_block, "reward": b.header.emission_rate,
+                "time": b.header.timestamp,
+            })).collect();
             let status = serde_json::json!({
-                "height": height,
-                "supply": supply,
-                "utxos": utxos,
-                "vr": vr,
-                "emission": emission,
-                "peers": 0,
-                "peers_list": [],
-                "blocks": blocks_json,
+                "height": height, "supply": supply, "utxos": utxos,
+                "vr": vr, "emission": emission, "mempool": mempool, "blocks": blk,
             });
+            json_response(200, &serde_json::to_string(&status).unwrap())
 
-            let body = serde_json::to_string(&status).unwrap();
-            format!(
-                "HTTP/1.1 200 OK
-Content-Type: application/json
-Access-Control-Allow-Origin: *
-Content-Length: {}
-
-{}",
-                body.len(), body
-            )
+        } else if let Some(ref html) = html {
+            format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", html.len(), html)
         } else {
-            let body = "{\"status\":\"ok\"}";
-            format!(
-                "HTTP/1.1 200 OK
-Content-Type: application/json
-Content-Length: {}
-
-{}",
-                body.len(), body
-            )
+            json_response(200, "{\"status\":\"ewatts node\"}")
         };
         stream.write_all(response.as_bytes()).ok();
     }
+}
+
+fn json_response(code: u16, body: &str) -> String {
+    format!("HTTP/1.1 {} {}\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
+        code, if code == 200 { "OK" } else { "Error" }, body.len(), body)
 }
 
 fn cmd_info() {
