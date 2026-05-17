@@ -228,6 +228,21 @@ impl UtxoSet {
             // This requires range proof verification on each output
         }
 
+        // P0-D: verify range proofs on all private outputs
+        for o in &tx.outputs {
+            if let Some(ref rp_bytes) = o.range_proof_bytes {
+                if let Some(ref cb) = o.commitment_bytes {
+                    if let Ok(proof) = serde_json::from_slice::<crate::privacy::RangeProof>(rp_bytes) {
+                        let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
+                            .decompress().unwrap_or(curve25519_dalek::traits::Identity::identity());
+                        if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
+                            return Err("Range proof verification failed on output".into());
+                        }
+                    }
+                }
+            }
+        }
+
         // Apply spends
         for input in &tx.inputs {
             let key = UtxoKey { tx_hash: input.previous_tx_hash, output_index: input.output_index };
@@ -282,11 +297,21 @@ impl UtxoSet {
         for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
             let tx_hash = tx.hash();
             if tx_idx == 0 {
-                // Coinbase
-                self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
+                // P0-B: coinbase must not have inputs (no spending, only creation)
+                if !tx.inputs.is_empty() {
+                    return Err("Coinbase must have empty inputs".into());
+                }
+                // P0-C: cap coinbase to maximum reasonable emission
                 let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
+                let max_emission = (crate::constants::BASE_EMISSION as u64) * 100_000_000u64 * 20;
+                if coinbase_amount > max_emission {
+                    return Err("Coinbase amount exceeds emission cap".into());
+                }
+                self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
                 self.add_coinbase_supply(coinbase_amount);
             } else {
+                // P0-A: validate inputs >= outputs before spending
+                self.validate_transaction(tx)?;
                 self.spend_transaction_inputs(tx, block_height)?;
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
             }
