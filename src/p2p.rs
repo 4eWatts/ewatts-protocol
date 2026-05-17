@@ -5,12 +5,12 @@ use libp2p::{
     swarm::{SwarmEvent, NetworkBehaviour, Config as SwarmConfig},
     request_response::{self, ProtocolSupport},
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
-    mdns,
-    Transport,
+    Transport, StreamProtocol,
 };
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::time::Duration;
+use std::collections::HashSet;
 
 use crate::block::{Block, Transaction};
 
@@ -24,29 +24,23 @@ pub enum P2pMessage {
     NewBlock(Block),
 }
 
-// Use JSON codec for request-response (requires Serialize + Deserialize)
 type SyncBehaviour = request_response::json::Behaviour<P2pMessage, P2pMessage>;
 
 #[derive(NetworkBehaviour)]
 #[behaviour(to_swarm = "P2pEvent")]
 pub struct EwattsBehaviour {
     pub gossipsub: gossipsub::Behaviour,
-    pub mdns: mdns::Behaviour<PeerId>,
     pub block_sync: SyncBehaviour,
 }
 
 #[derive(Debug)]
 pub enum P2pEvent {
     Gossipsub(gossipsub::Event),
-    Mdns(mdns::Event),
     BlockSync(request_response::Event<P2pMessage, P2pMessage>),
 }
 
 impl From<gossipsub::Event> for P2pEvent {
     fn from(e: gossipsub::Event) -> Self { P2pEvent::Gossipsub(e) }
-}
-impl From<mdns::Event> for P2pEvent {
-    fn from(e: mdns::Event) -> Self { P2pEvent::Mdns(e) }
 }
 impl From<request_response::Event<P2pMessage, P2pMessage>> for P2pEvent {
     fn from(e: request_response::Event<P2pMessage, P2pMessage>) -> Self { P2pEvent::BlockSync(e) }
@@ -55,11 +49,11 @@ impl From<request_response::Event<P2pMessage, P2pMessage>> for P2pEvent {
 pub struct P2pNode {
     pub peer_id: PeerId,
     swarm: Swarm<EwattsBehaviour>,
-    peers: Vec<PeerId>,
+    peers: HashSet<PeerId>,
 }
 
 impl P2pNode {
-    pub async fn new(listen_addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(listen_addr: &str, bootstrap: Option<Multiaddr>) -> Result<Self, Box<dyn std::error::Error>> {
         let local_key = identity::Keypair::generate_ed25519();
         let peer_id = PeerId::from(local_key.public());
 
@@ -81,19 +75,26 @@ impl P2pNode {
         let mut gossipsub = gossipsub::Behaviour::new(MessageAuthenticity::Signed(local_key.clone()), gs_config)?;
         gossipsub.subscribe(&Topic::new(GOSSIP_TOPIC))?;
 
-        let m = mdns::Behaviour::new(mdns::Config::default(), peer_id)?;
-
-        let mut block_sync = SyncBehaviour::new(
+        let block_sync = SyncBehaviour::new(
             [(StreamProtocol::new("/ewatts/block-sync/1"), ProtocolSupport::Full)],
             request_response::Config::default().with_request_timeout(Duration::from_secs(30)),
         );
 
-        let behaviour = EwattsBehaviour { gossipsub, mdns: m, block_sync };
+        let behaviour = EwattsBehaviour { gossipsub, block_sync };
         let config = SwarmConfig::with_tokio_executor();
         let mut swarm = Swarm::new(transport, behaviour, peer_id, config);
         swarm.listen_on(listen_addr.parse()?)?;
 
-        Ok(P2pNode { peer_id, swarm, peers: vec![] })
+        // Connect to bootstrap peer if provided
+        if let Some(addr) = bootstrap {
+            swarm.dial(addr).ok();
+        }
+
+        Ok(P2pNode { peer_id, swarm, peers: HashSet::new() })
+    }
+
+    pub fn add_known_peer(&mut self, addr: Multiaddr) {
+        self.swarm.dial(addr).ok();
     }
 
     pub async fn run(&mut self) {
@@ -104,19 +105,12 @@ impl P2pNode {
                         SwarmEvent::NewListenAddr { address, .. } => {
                             println!("P2P: Listening on {address}");
                         }
-                        SwarmEvent::Behaviour(P2pEvent::Mdns(mdns::Event::Discovered(list))) => {
-                            for (peer_id, addr) in list {
-                                if peer_id != *self.swarm.local_peer_id() {
-                                    println!("P2P: Discovered {peer_id} at {addr}");
-                                    self.swarm.dial(addr).ok();
-                                    self.peers.push(peer_id);
-                                }
-                            }
+                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                            println!("P2P: Connected to {peer_id}");
+                            self.peers.insert(peer_id);
                         }
-                        SwarmEvent::Behaviour(P2pEvent::Mdns(mdns::Event::Expired(list))) => {
-                            for (peer_id, _) in list {
-                                self.peers.retain(|p| p != &peer_id);
-                            }
+                        SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                            self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Gossipsub(gossipsub::Event::Message {
                             propagation_source, message, ..
@@ -162,6 +156,11 @@ impl P2pNode {
         }
     }
 
-    pub fn dial_peer(&mut self, addr: Multiaddr) { self.swarm.dial(addr).ok(); }
+    pub fn gossip_block(&mut self, block: &Block) {
+        if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block.clone())) {
+            self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
+        }
+    }
+
     pub fn peer_count(&self) -> usize { self.peers.len() }
 }

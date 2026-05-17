@@ -55,7 +55,7 @@ fn cmd_help() {
     println!("  wallet list              List wallet keys and balances");
     println!("  wallet send <idx> <to_pk> <amt>  Send from wallet key");
     println!("  info                     Show node status");
-    println!("  p2p                      Start P2P node");
+    println!("  p2p [addr] [bootstrap]     Start P2P node");
     println!("  help                     Show this help");
 }
 
@@ -548,8 +548,10 @@ fn cmd_balance(args: &[String]) {
 #[tokio::main]
 async fn cmd_p2p(args: &[String]) {
     let addr = args.get(2).map(|s| s.as_str()).unwrap_or("/ip4/0.0.0.0/tcp/0");
+    let bootstrap = args.get(3).and_then(|s| s.parse::<libp2p::Multiaddr>().ok());
     println!("Starting P2P node on {}...", addr);
-    match crate::p2p::P2pNode::new(addr).await {
+    if let Some(ref b) = bootstrap { println!("Bootstrap peer: {}", b); }
+    match crate::p2p::P2pNode::new(addr, bootstrap).await {
         Ok(mut node) => {
             println!("P2P Node ID: {}", node.peer_id);
             node.run().await;
