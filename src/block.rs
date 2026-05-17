@@ -1,6 +1,7 @@
-use crate::commitment::Commitment;
-use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use serde::{Serialize, Deserialize};
+use crate::constants;
+use crate::commitment::Commitment;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
@@ -23,50 +24,50 @@ pub struct BlockBody {
     pub transactions: Vec<Transaction>,
     pub commitments: Vec<Commitment>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Block {
-    pub header: BlockHeader,
-    pub body: BlockBody,
-}
+pub struct Block { pub header: BlockHeader, pub body: BlockBody }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     pub version: u16,
     pub inputs: Vec<TxInput>,
     pub outputs: Vec<TxOutput>,
     pub ring_size: u16,
-    pub signatures: Vec<Vec<u8>>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxInput {
     pub previous_tx_hash: [u8; 32],
     pub output_index: u32,
     pub key_image: [u8; 32],
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxOutput {
     pub amount: u64,
-    pub public_key: Vec<u8>,
+    pub pubkey_hash: [u8; 20],    // P2PKH: H(public_key) instead of public key
+    pub spendable_after: u64,      // Founder time-lock: 0 = immediate
 }
 
-pub fn merkle_root(txns: &[Transaction]) -> [u8; 32] {
-    if txns.is_empty() {
-        return Keccak256::digest(&[]).into();
+impl TxOutput {
+    /// Create a new P2PKH output with optional time-lock
+    pub fn new(amount: u64, pubkey_hash: [u8; 20]) -> Self {
+        TxOutput { amount, pubkey_hash, spendable_after: 0 }
     }
-    let mut hashes: Vec<[u8; 32]> = txns.iter().map(|t| t.hash()).collect();
-    while hashes.len() > 1 {
-        if hashes.len() % 2 == 1 {
-            hashes.push(hashes.last().unwrap().clone());
-        }
-        let mut next = Vec::with_capacity(hashes.len() / 2);
-        for chunk in hashes.chunks(2) {
-            let mut h = Keccak256::new();
-            h.update(&chunk[0]);
-            h.update(&chunk[1]);
-            next.push(h.finalize().into());
-        }
-        hashes = next;
+
+    /// Create a founder time-locked output (only for coinbase during ramp-up)
+    pub fn new_locked(amount: u64, pubkey_hash: [u8; 20], block_number: u64) -> Self {
+        let lock = if block_number < constants::RAMP_UP_BLOCKS {
+            std::cmp::max(constants::FOUNDER_LOCK_BLOCKS, block_number + constants::FOUNDER_LOCK_ADDITIONAL)
+        } else { 0 };
+        TxOutput { amount, pubkey_hash, spendable_after: lock }
     }
-    hashes[0]
+
+    /// Check if this output is spendable at the current block
+    pub fn is_spendable(&self, current_block: u64) -> bool {
+        current_block >= self.spendable_after
+    }
 }
 
 impl BlockHeader {
@@ -92,15 +93,8 @@ impl Transaction {
     pub fn hash(&self) -> [u8; 32] {
         let mut h = Keccak256::new();
         h.update(self.version.to_le_bytes());
-        for i in &self.inputs {
-            h.update(i.previous_tx_hash);
-            h.update(i.output_index.to_le_bytes());
-            h.update(i.key_image);
-        }
-        for o in &self.outputs {
-            h.update(o.amount.to_le_bytes());
-            h.update(&o.public_key);
-        }
+        for i in &self.inputs { h.update(i.previous_tx_hash); h.update(i.output_index.to_le_bytes()); h.update(i.key_image); }
+        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.public_key); }
         h.update(self.ring_size.to_le_bytes());
         h.finalize().into()
     }
@@ -109,22 +103,22 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_header_hash() {
-        let h = BlockHeader {
-            version: 3,
-            previous_hash: [0; 32],
-            merkle_root: [0; 32],
-            timestamp: 1000,
-            epoch: 0,
-            difficulty_target: 1,
-            total_effective_commit: 100.,
-            emission_rate: 100.,
-            miner_effective_commit: 50.,
-            vr_block: 0.001,
-            nonce: 42,
-            elapsed_ms: 5000,
-        };
+    #[test] fn test_header_hash() {
+        let h = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
+            epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
+            vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
         assert_eq!(h.hash(), h.hash());
+    }
+    #[test] fn test_different_nonce() {
+        let mut a = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
+            epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
+            vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
+        let mut b = a.clone(); b.nonce = 43;
+        assert_ne!(a.hash(), b.hash());
+    }
+    #[test] fn test_tx_hash() {
+        let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
+            outputs: vec![TxOutput { amount: 1000, public_key: vec![0;33] }], ring_size: 11 };
+        assert_eq!(tx.hash(), tx.hash());
     }
 }
