@@ -142,6 +142,12 @@ function updateDashboard(data) {
   document.getElementById('emission').textContent = data.emission ? data.emission.toFixed(2) : '0';
   document.getElementById('utxos').textContent = data.utxos || 0;
   document.getElementById('burned').textContent = data.burned ? data.burned.toFixed(4) : '0';
+
+  // Fetch tx hash
+  fetch('/api/txhash').then(r=>r.json()).then(tx => {
+    document.getElementById('txHash').textContent = tx.tx_hash ? tx.tx_hash.slice(0,16)+'...' : '—';
+    document.getElementById('txCount').textContent = (tx.pending || 0) + ' pending';
+  }).catch(()=>{});
   document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
 
   if (data.blocks && data.blocks.length > 0) {

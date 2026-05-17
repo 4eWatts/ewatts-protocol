@@ -38,6 +38,7 @@ fn main() {
         "wallet" => cmd_wallet(&args),
         "info" => cmd_info(),
         "dash" => cmd_dashboard(),
+        "txhash" => cmd_txhash(),
         "p2p" => cmd_p2p(&args),
         _ => cmd_help(),
     }
@@ -553,6 +554,43 @@ fn cmd_wallet(args: &[String]) {
     }
 }
 
+fn cmd_txhash() {
+    let pool = crate::mempool::peek();
+    if pool.is_empty() {
+        println!("No pending transactions.");
+        return;
+    }
+    let mut hashes: Vec<[u8; 32]> = pool.iter().map(|tx| tx.hash()).collect();
+    if hashes.is_empty() {
+        println!("No pending transactions.");
+        return;
+    }
+    // Compute merkle root (same algorithm as mining)
+    while hashes.len() > 1 {
+        let mut next = Vec::with_capacity((hashes.len() + 1) / 2);
+        for i in (0..hashes.len()).step_by(2) {
+            let mut h = Keccak256::new();
+            h.update(hashes[i]);
+            if i + 1 < hashes.len() {
+                h.update(hashes[i + 1]);
+            } else {
+                h.update(hashes[i]);
+            }
+            next.push(h.finalize().into());
+        }
+        hashes = next;
+    }
+    let tx_hash = hex::encode(hashes[0]);
+    println!("Transaction Hash (merkle root of {} pending txs):", pool.len());
+    println!("  TxHash: {}", tx_hash);
+    println!("  Txs:    {}", pool.len());
+    for tx in &pool {
+        let is_priv = if tx.mlsag.is_some() { "private" } else { "public" };
+        println!("    {}  ({} inputs, {} outputs, {})",
+            hex::encode(&tx.hash()[..8]), tx.inputs.len(), tx.outputs.len(), is_priv);
+    }
+}
+
 fn cmd_balance(args: &[String]) {
     if args.len() < 3 {
         println!("Usage: ewatts balance <pubkey_hex>");
@@ -651,6 +689,40 @@ fn cmd_dashboard() {
                         "private": tx.mlsag.is_some(),
                     })
                 }).collect::<Vec<_>>(),
+            });
+            json_response(200, &serde_json::to_string(&json).unwrap())
+
+        } else if request.starts_with("GET /api/txhash") {
+            let pool = crate::mempool::peek();
+            let mut hashes: Vec<[u8; 32]> = pool.iter().map(|tx| tx.hash()).collect();
+            let tx_hash = if hashes.is_empty() {
+                [0u8; 32]
+            } else {
+                while hashes.len() > 1 {
+                    let mut next = Vec::with_capacity((hashes.len() + 1) / 2);
+                    for i in (0..hashes.len()).step_by(2) {
+                        let mut h = Keccak256::new();
+                        h.update(hashes[i]);
+                        if i + 1 < hashes.len() {
+                            h.update(hashes[i + 1]);
+                        } else {
+                            h.update(hashes[i]);
+                        }
+                        next.push(h.finalize().into());
+                    }
+                    hashes = next;
+                }
+                hashes[0]
+            };
+            let json = serde_json::json!({
+                "tx_hash": hex::encode(tx_hash),
+                "pending": pool.len(),
+                "transactions": pool.iter().map(|tx| serde_json::json!({
+                    "hash": hex::encode(&tx.hash()[..8]),
+                    "inputs": tx.inputs.len(),
+                    "outputs": tx.outputs.len(),
+                    "private": tx.mlsag.is_some(),
+                })).collect::<Vec<_>>(),
             });
             json_response(200, &serde_json::to_string(&json).unwrap())
 
