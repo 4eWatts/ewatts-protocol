@@ -254,10 +254,16 @@ impl MLSAGSignature {
     /// Verify MLSAG signature.
     /// Walk ring from 0..m-1, each position: c_{i+1} = H(msg, r_i*G + c_i*K_i, r_i*H_p(K_i) + c_i*I)
     /// Check final c == stored c0.
+    const MIN_RING_SIZE: usize = 2;
+
     pub fn verify(&self, ring: &[Vec<RistrettoPoint>], msg: &[u8]) -> bool {
         if ring.len() != self.ring_size { return false; }
-        if self.ring_size == 0 || self.n_layers == 0 { return false; }
-        if ring[0].len() != self.n_layers { return false; }
+        if self.ring_size < Self::MIN_RING_SIZE || self.n_layers == 0 { return false; }
+        if ring.is_empty() || ring[0].len() != self.n_layers { return false; }
+        if self.responses.len() != self.ring_size { return false; }
+        if self.key_images.len() != self.n_layers { return false; }
+        for r in &self.responses { if r.len() != self.n_layers { return false; } }
+        for r in ring { if r.len() != self.n_layers { return false; } }
 
         let mut c = self.c0;
 
@@ -289,6 +295,13 @@ pub struct RangeProof {
 impl RangeProof {
     /// Prove that a commitment opens to v ∈ [0, 2^bits).
     pub fn prove(v: u64, _blinding: Scalar, bits: usize, rng: &mut ThreadRng) -> Self {
+        Self::prove_with_blinding(v, bits, rng).0
+    }
+
+    /// Prove that v ∈ [0, 2^bits) and return the total blinding factor Σ 2^i · a_i.
+    pub fn prove_with_blinding(v: u64, bits: usize, rng: &mut ThreadRng) -> (Self, Scalar) {
+        let bits = bits.min(64);
+        let mut total_blinding = Scalar::from(0u64);
         let mut commitments = Vec::with_capacity(bits);
         let mut proofs = Vec::with_capacity(bits);
 
@@ -308,7 +321,10 @@ impl RangeProof {
             proofs.push(sig);
         }
 
-        RangeProof { bits, commitments, proofs }
+            total_blinding = total_blinding + a_i * Scalar::from(1u64 << i);
+        }
+
+        (RangeProof { bits, commitments, proofs }, total_blinding)
     }
 
     /// Verify the range proof against a commitment.
@@ -425,13 +441,82 @@ mod tests {
         let mut rng = thread_rng();
         let v = 7u64;
         let bits = 8;
-        let (_comm, blinding) = Commitment::new(v, &mut rng);
-        let proof = RangeProof::prove(v, blinding, bits, &mut rng);
+        let (proof, total_blinding) = RangeProof::prove_with_blinding(v, bits, &mut rng);
         let mut sum = RistrettoPoint::identity();
         for (i, c_i) in proof.commitments.iter().enumerate() {
             sum = sum + Scalar::from(1u64 << i) * c_i.0;
         }
         assert!(proof.verify(&Commitment(sum)));
+        // The commitment opens to v with total_blinding
+        assert!(Commitment(sum).verify(v, total_blinding));
+    }
+
+    #[test]
+    fn test_range_proof_large_bits_clamped() {
+        let mut rng = thread_rng();
+        let v = 42u64;
+        let (proof, _) = RangeProof::prove_with_blinding(v, 999, &mut rng);
+        assert!(proof.bits <= 64, "bits should be clamped to 64");
+        let mut sum = RistrettoPoint::identity();
+        for (i, c_i) in proof.commitments.iter().enumerate() {
+            sum = sum + Scalar::from(1u64 << i) * c_i.0;
+        }
+        assert!(proof.verify(&Commitment(sum)));
+    }
+
+    #[test]
+    fn test_mlsag_min_ring_size() {
+        let mut rng = thread_rng();
+        // ring of 1 should be rejected
+        let ring = vec![vec![Scalar::random(&mut rng) * ring_g()]];
+        let sig = MLSAGSignature::sign(&ring, &[Scalar::random(&mut rng)], 0, b"test", &mut rng);
+        assert!(!sig.verify(&ring, b"test"), "ring size 1 should be rejected");
+    }
+
+    #[test]
+    fn test_mlsag_tampered_c0() {
+        let mut rng = thread_rng();
+        let ring: Vec<Vec<RistrettoPoint>> = (0..11).map(|_| {
+            vec![Scalar::random(&mut rng) * ring_g()]
+        }).collect();
+        let secrets: Vec<Scalar> = (0..11).map(|_| Scalar::random(&mut rng)).collect();
+        let mut sig = MLSAGSignature::sign(&ring, &[secrets[3]], 3, b"test", &mut rng);
+        sig.c0 = sig.c0 + Scalar::from(1u64); // tamper
+        assert!(!sig.verify(&ring, b"test"), "tampered c0 should fail");
+    }
+
+    #[test]
+    fn test_mlsag_tampered_response() {
+        let mut rng = thread_rng();
+        let ring: Vec<Vec<RistrettoPoint>> = (0..11).map(|_| {
+            vec![Scalar::random(&mut rng) * ring_g()]
+        }).collect();
+        let secrets: Vec<Scalar> = (0..11).map(|_| Scalar::random(&mut rng)).collect();
+        let mut sig = MLSAGSignature::sign(&ring, &[secrets[3]], 3, b"test", &mut rng);
+        if !sig.responses.is_empty() && !sig.responses[0].is_empty() {
+            sig.responses[0][0] = sig.responses[0][0] + Scalar::from(1u64); // tamper
+        }
+        assert!(!sig.verify(&ring, b"test"), "tampered response should fail");
+    }
+
+    #[test]
+    fn test_mlsag_malformed_sizes() {
+        let mut rng = thread_rng();
+        let ring: Vec<Vec<RistrettoPoint>> = (0..11).map(|_| {
+            vec![Scalar::random(&mut rng) * ring_g()]
+        }).collect();
+        let secrets: Vec<Scalar> = (0..11).map(|_| Scalar::random(&mut rng)).collect();
+        let sig = MLSAGSignature::sign(&ring, &[secrets[3]], 3, b"test", &mut rng);
+        // Wrong ring size should be rejected
+        let short_ring: Vec<Vec<RistrettoPoint>> = (0..5).map(|_| {
+            vec![Scalar::random(&mut rng) * ring_g()]
+        }).collect();
+        assert!(!sig.verify(&short_ring, b"test"), "short ring should fail");
+        // Wrong layer count should be rejected
+        let wrong_layers: Vec<Vec<RistrettoPoint>> = (0..11).map(|_| {
+            vec![Scalar::random(&mut rng) * ring_g(), Scalar::random(&mut rng) * ring_g()]
+        }).collect();
+        assert!(!sig.verify(&wrong_layers, b"test"), "wrong layers should fail");
     }
 
     #[test]
