@@ -1,4 +1,5 @@
 use crate::reward::compute_emission_rate;
+use crate::commitment::Commitment;
 use crate::constants;
 use crate::block::BlockHeader;
 use crate::vr;
