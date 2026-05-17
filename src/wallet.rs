@@ -204,7 +204,6 @@ pub fn create_private_tx(
         .iter().map(|(k, v)| (k.clone(), v.clone())).collect();
 
     let mut ring_members = Vec::new();
-    let mut ring_keys = Vec::new();
 
     for utxo in &selected_utxos {
         let input = TxInput {
@@ -345,8 +344,7 @@ pub fn create_private_tx(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::thread_rng;
-
+    
     #[test]
     fn test_wallet_keygen() {
         let mut w = Wallet { keys: vec![] };

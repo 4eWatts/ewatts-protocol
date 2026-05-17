@@ -84,17 +84,13 @@ fn cmd_init() {
     }
     // Also save genesis key in wallet
     let seed = [0u8; 32];
-    crate::wallet::save_key(&seed, &pubkey);
+    let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
     println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
 }
 
 fn cmd_keygen() {
-    let mut seed = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut seed);
-    let sk = ed25519_dalek::SigningKey::from_bytes(&seed);
-    let pk = sk.verifying_key().to_bytes();
-    println!("Secret key: {}", hex::encode(seed));
-    println!("Public key: {}", hex::encode(pk));
+    let mut w = crate::wallet::Wallet::load();
+    w.new_key("keygen");
 }
 
 fn miner_keypair() -> ed25519_dalek::SigningKey {
