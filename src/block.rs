@@ -62,7 +62,7 @@ impl TxOutput {
         let lock = if block_number < constants::RAMP_UP_BLOCKS {
             std::cmp::max(constants::FOUNDER_LOCK_BLOCKS, block_number + constants::FOUNDER_LOCK_ADDITIONAL)
         } else { 0 };
-        TxOutput { amount, pubkey_hash, spendable_after: lock }
+        TxOutput { amount, public_key, spendable_after: lock }
     }
 
     /// Check if this output is spendable at the current block
