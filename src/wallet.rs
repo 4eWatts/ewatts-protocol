@@ -116,21 +116,24 @@ impl Wallet {
         let map = utxo_set.utxos_map();
         for (key, entry) in map.iter() {
             if let Some(sd) = &entry.stealth_dest {
-                let ephem_pt = curve25519_dalek::ristretto::CompressedRistretto(*sd)
-                    .decompress();
-                if let Some(_ephem) = ephem_pt {
-                    // Try to recover with each wallet key
-                    for k in &self.keys {
-                        let (view, spend) = k.secrets();
-                        // We need the ephemeral key (R) to recover
-                        // Actually for scanning, we need to check if we can derive a key
-                        // For now, try all known keys and see if the pubkey matches
-                        let addr = k.stealth_address();
-                        // Derive the expected dest: P = Hs(k_v * R) * G + K_s
-                        // But we don't have R here (it's not stored in the UTXO entry)
-                        // R needs to be stored somewhere for recovery
-                        // For now, we use a simplified check
-                        let _ = (view, spend, addr);
+                if let Some(eph) = &entry.ephemeral {
+                    if let Some(ephem_point) = curve25519_dalek::ristretto::CompressedRistretto(*eph).decompress() {
+                        for k in &self.keys {
+                            let (view, spend) = k.secrets();
+                            let derived = crate::privacy::recover_one_time_key(&view, &spend, &ephem_point);
+                            let expected_dest = derived * ring_g();
+                            if let Some(actual_dest) = curve25519_dalek::ristretto::CompressedRistretto(*sd).decompress() {
+                                if expected_dest == actual_dest {
+                                    owned.push(OwnedUtxo {
+                                        key: key.clone(),
+                                        entry: entry.clone(),
+                                        one_time_key: derived,
+                                        commitment_val: entry.amount,
+                                    });
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -257,7 +260,10 @@ pub fn create_private_tx(
         dest.dest.compress().to_bytes(),
         comm_to.0.compress().to_bytes(),
         serde_json::to_vec(&range_to).unwrap_or_default(),
-    ));
+    );
+    if let Some(o) = outputs.last_mut() {
+        o.ephemeral = Some(dest.ephemeral.compress().to_bytes());
+    }
 
     // Change output to self (if any)
     if total > amount {

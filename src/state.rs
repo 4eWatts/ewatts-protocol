@@ -18,6 +18,8 @@ pub struct UtxoEntry {
     pub output_index: u32,
     /// Private mode: stealth destination bytes.
     pub stealth_dest: Option<[u8; 32]>,
+    /// Private mode: ephemeral key R (for one-time key recovery).
+    pub ephemeral: Option<[u8; 32]>,
     /// Private mode: commitment bytes.
     pub commitment_bytes: Option<[u8; 32]>,
 }
@@ -157,6 +159,7 @@ impl UtxoSet {
                     tx_index: ti,
                     output_index: i as u32,
                     stealth_dest: o.stealth_dest,
+                    ephemeral: o.ephemeral,
                     commitment_bytes: o.commitment_bytes,
                 }
             );
@@ -315,7 +318,7 @@ impl UtxoSet {
         let tx = Transaction {
             version: 1, inputs: vec![], outputs: vec![TxOutput {
                 amount: a, public_key: pk.try_into().unwrap(), spendable_after: 0,
-                stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
+                stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
             }], ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
         };
         let h = tx.hash();
@@ -334,7 +337,7 @@ mod tests {
     fn out(v: &[u64], pk: &[u8]) -> Vec<TxOutput> {
         v.iter().map(|&a| TxOutput {
             amount: a, public_key: pk.try_into().unwrap(), spendable_after: 0,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
+            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
         }).collect()
     }
 

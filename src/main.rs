@@ -198,7 +198,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }],
+        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
         ring_size: 1,
         signatures: vec![],
         mlsag: None, ring_members: None,
@@ -428,12 +428,12 @@ fn cmd_send(args: &[String]) {
         if total_input >= amount { break; }
     }
 
-    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }];
+    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }];
     if total_input > amount {
         outputs.push(crate::block::TxOutput {
             amount: total_input - amount,
             public_key: from_pk, spendable_after: 0,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
+            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
         });
     }
 

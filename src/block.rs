@@ -133,6 +133,8 @@ pub struct TxOutput {
     pub commitment_bytes: Option<[u8; 32]>,
     /// Private mode: serialized RangeProof.
     pub range_proof_bytes: Option<Vec<u8>>,
+    /// Private mode: ephemeral public key R = r*G (for one-time key recovery).
+    pub ephemeral: Option<[u8; 32]>,
 }
 
 impl TxOutput {
@@ -140,7 +142,7 @@ impl TxOutput {
     pub fn new(amount: u64, public_key: Vec<u8>) -> Self {
         TxOutput {
             amount, public_key, spendable_after: 0,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
+            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
         }
     }
 
@@ -158,6 +160,7 @@ impl TxOutput {
             stealth_dest: Some(dest),
             commitment_bytes: Some(commitment),
             range_proof_bytes: Some(range_proof),
+            ephemeral: None,
         }
     }
 
@@ -168,7 +171,7 @@ impl TxOutput {
         } else { 0 };
         TxOutput {
             amount, public_key, spendable_after: lock,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
+            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
         }
     }
 
@@ -247,7 +250,7 @@ mod tests {
     #[test] fn test_tx_hash() {
         let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
             outputs: vec![TxOutput { amount: 1000, public_key: vec![0u8;32], spendable_after: 0,
-                stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }],
+                stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
             ring_size: 11, signatures: vec![], mlsag: None, ring_members: None };
         assert_eq!(tx.hash(), tx.hash());
     }
@@ -258,6 +261,7 @@ mod tests {
                 amount: 0, public_key: vec![], spendable_after: 0,
                 stealth_dest: Some([2u8;32]), commitment_bytes: Some([3u8;32]),
                 range_proof_bytes: Some(vec![4u8; 64]),
+                ephemeral: None,
             }],
             ring_size: 11, signatures: vec![],
             mlsag: Some(MlsagData {
