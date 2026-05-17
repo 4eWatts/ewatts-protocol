@@ -180,7 +180,7 @@ fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSe
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec() }],
+        outputs: vec![TxOutput { amount: reward_base_units, pubkey_hash: miner_pk[..20].try_into().unwrap(), spendable_after: crate::reward::founder_lock_block(block_height) }],
         ring_size: 1,
         signatures: vec![],
     };
@@ -377,11 +377,11 @@ fn cmd_send(args: &[String]) {
         if total_input >= amount { break; }
     }
 
-    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk }];
+    let mut outputs = vec![crate::block::TxOutput { amount, pubkey_hash: to_pk[..20].try_into().unwrap(), spendable_after: 0 }];
     if total_input > amount {
         outputs.push(crate::block::TxOutput {
             amount: total_input - amount,
-            public_key: from_pk,
+            pubkey_hash: from_pk[..20].try_into().unwrap(), spendable_after: 0,
         });
     }
 
@@ -487,11 +487,11 @@ fn cmd_wallet(args: &[String]) {
                 });
                 if total_input >= amount { break; }
             }
-            let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk }];
+            let mut outputs = vec![crate::block::TxOutput { amount, pubkey_hash: to_pk[..20].try_into().unwrap(), spendable_after: 0 }];
             if total_input > amount {
                 outputs.push(crate::block::TxOutput {
                     amount: total_input - amount,
-                    public_key: from_pk,
+                    pubkey_hash: from_pk[..20].try_into().unwrap(), spendable_after: 0,
                 });
             }
             let mut tx = crate::block::Transaction {
