@@ -6,7 +6,6 @@ use std::collections::{HashMap, HashSet};
 use rand::RngCore;
 use crate::block::{Transaction, TxOutput, Block, UtxoRef};
 #[cfg(test)] use crate::block::TxInput;
-#[cfg(test)] 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
