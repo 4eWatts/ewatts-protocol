@@ -42,7 +42,7 @@ pub struct UtxoSet {
 pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     let mut msg = Vec::new();
     for i in &tx.inputs { msg.extend_from_slice(&i.previous_tx_hash); msg.extend_from_slice(&i.output_index.to_le_bytes()); }
-    for o in &tx.outputs { msg.extend_from_slice(&o.amount.to_le_bytes()); msg.extend_from_slice(&o.public_key); }
+    for o in &tx.outputs { msg.extend_from_slice(&o.amount.to_le_bytes()); msg.extend_from_slice(&o.pubkey_hash); }
     msg.extend_from_slice(&tx.ring_size.to_le_bytes());
     msg
 }
@@ -66,7 +66,7 @@ impl UtxoSet {
     pub fn add_transaction_outputs(&mut self, h: &[u8;32], tx: &Transaction, bh: u64, ti: u32) {
         for (i,o) in tx.outputs.iter().enumerate() {
             self.utxos.insert(UtxoKey{tx_hash:*h,output_index:i as u32},
-                UtxoEntry{amount:o.amount,public_key:o.public_key.clone(),block_height:bh,tx_index:ti,output_index:i as u32});
+                UtxoEntry{amount:o.amount,public_key:o.pubkey_hash.to_vec(),block_height:bh,tx_index:ti,output_index:i as u32});
         }
     }
     pub fn add_coinbase_supply(&mut self, a: u64) { self.total_supply = self.total_supply.checked_add(a).unwrap_or(self.total_supply); }
@@ -126,7 +126,7 @@ impl UtxoSet {
     }
     pub fn genesis(a: u64, pk: &[u8]) -> Self {
         let mut s = UtxoSet::new();
-        let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,public_key:pk.to_vec()}],ring_size:1,signatures:vec![]};
+        let tx = Transaction{version:1,inputs:vec![],outputs:vec![TxOutput{amount:a,pubkey_hash:pk[..20].try_into().unwrap(),spendable_after:0}],ring_size:1,signatures:vec![]};
         let h = tx.hash(); s.add_transaction_outputs(&h, &tx, 0, 0); s.add_coinbase_supply(a); s
     }
 }
@@ -134,7 +134,7 @@ impl UtxoSet {
 #[cfg(test)]
 mod tests {
     use super::*; use ed25519_dalek::Signer;
-    fn out(v:&[u64],pk:&[u8])->Vec<TxOutput>{v.iter().map(|&a|TxOutput{amount:a,public_key:pk.to_vec()}).collect()}
+    fn out(v:&[u64],pk:&[u8])->Vec<TxOutput>{v.iter().map(|&a|TxOutput{amount:a,pubkey_hash:pk[..20].try_into().unwrap(),spendable_after:0}).collect()}
     fn mk_tx(inp:Vec<TxInput>,out:Vec<TxOutput>,sk:&SigningKey)->Transaction {
         let mut tx = Transaction{version:1,inputs:inp,outputs:out,ring_size:1,signatures:vec![]};
         let sig = sk.sign(&tx_msg(&tx)); tx.signatures = vec![sig.to_bytes().to_vec()]; tx

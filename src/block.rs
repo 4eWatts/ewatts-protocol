@@ -34,6 +34,7 @@ pub struct Transaction {
     pub inputs: Vec<TxInput>,
     pub outputs: Vec<TxOutput>,
     pub ring_size: u16,
+    pub signatures: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,7 +95,7 @@ impl Transaction {
         let mut h = Keccak256::new();
         h.update(self.version.to_le_bytes());
         for i in &self.inputs { h.update(i.previous_tx_hash); h.update(i.output_index.to_le_bytes()); h.update(i.key_image); }
-        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.public_key); }
+        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.pubkey_hash); }
         h.update(self.ring_size.to_le_bytes());
         h.finalize().into()
     }
@@ -118,7 +119,7 @@ mod tests {
     }
     #[test] fn test_tx_hash() {
         let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
-            outputs: vec![TxOutput { amount: 1000, public_key: vec![0;33] }], ring_size: 11 };
+            outputs: vec![TxOutput { amount: 1000, pubkey_hash: [0u8;20] }], ring_size: 11 };
         assert_eq!(tx.hash(), tx.hash());
     }
 }

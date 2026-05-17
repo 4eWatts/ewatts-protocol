@@ -60,7 +60,7 @@ pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], prev
     let emission = compute_emission_rate(total_eff, historical_avg_gbps);
     let mut rewards = Vec::new();
     for (c_eff, work, mid) in &effective {
-        let r = if c_eff > 0.0 && total_inv > 0.0 && total_work > 0.0 {
+        let r = if *c_eff > 0.0 && total_inv > 0.0 && total_work > 0.0 {
             let ew = 1.0 / c_eff;
             (ew / total_inv) * (*work / total_work) * emission
         } else { 0.0 };
