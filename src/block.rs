@@ -47,18 +47,18 @@ pub struct TxInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxOutput {
     pub amount: u64,
-    pub pubkey_hash: [u8; 20],    // P2PKH: H(public_key) instead of public key
+    pub public_key: Vec<u8>,    // P2PKH: H(public_key) instead of public key
     pub spendable_after: u64,      // Founder time-lock: 0 = immediate
 }
 
 impl TxOutput {
     /// Create a new P2PKH output with optional time-lock
-    pub fn new(amount: u64, pubkey_hash: [u8; 20]) -> Self {
-        TxOutput { amount, pubkey_hash, spendable_after: 0 }
+    pub fn new(amount: u64, public_key: Vec<u8>) -> Self {
+        TxOutput { amount, public_key, spendable_after: 0 }
     }
 
     /// Create a founder time-locked output (only for coinbase during ramp-up)
-    pub fn new_locked(amount: u64, pubkey_hash: [u8; 20], block_number: u64) -> Self {
+    pub fn new_locked(amount: u64, public_key: Vec<u8>, block_number: u64) -> Self {
         let lock = if block_number < constants::RAMP_UP_BLOCKS {
             std::cmp::max(constants::FOUNDER_LOCK_BLOCKS, block_number + constants::FOUNDER_LOCK_ADDITIONAL)
         } else { 0 };
@@ -95,7 +95,7 @@ impl Transaction {
         let mut h = Keccak256::new();
         h.update(self.version.to_le_bytes());
         for i in &self.inputs { h.update(i.previous_tx_hash); h.update(i.output_index.to_le_bytes()); h.update(i.key_image); }
-        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.pubkey_hash); }
+        for o in &self.outputs { h.update(o.amount.to_le_bytes()); h.update(&o.public_key); }
         h.update(self.ring_size.to_le_bytes());
         h.finalize().into()
     }
@@ -119,7 +119,7 @@ mod tests {
     }
     #[test] fn test_tx_hash() {
         let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
-            outputs: vec![TxOutput { amount: 1000, pubkey_hash: [0u8;20], spendable_after: 0 }], ring_size: 11, signatures: vec![] };
+            outputs: vec![TxOutput { amount: 1000, public_key: vec![0u8;32], spendable_after: 0 }], ring_size: 11, signatures: vec![] };
         assert_eq!(tx.hash(), tx.hash());
     }
 }

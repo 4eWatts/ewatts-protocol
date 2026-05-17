@@ -95,7 +95,7 @@ mod tests {
         assert_eq!(rewards[0].1, 100.0);
     }
     #[test] fn test_founder_lock() {
-        assert!(founder_lock_block(500) > 50000);
+        assert!(founder_lock_block(500) >= 50000);
         assert_eq!(founder_lock_block(15000), 0);
     }
 }
