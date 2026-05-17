@@ -46,24 +46,18 @@ pub struct RewardSummary {
 
 pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], previous_commitments: &[f64], historical_avg_gbps: f64) -> RewardSummary {
     let mut effective = Vec::new();
-    let mut total_work = 0.0;
-    let mut total_inv = 0.0;
+    let mut total_eff = 0.0;
     for c in commitments {
         if commitment::validate_commitment(c, previous_commitments).is_err() { continue; }
         let eff = commitment::compute_efficiency(c.work_gb, c.bandwidth_gbps, c.time_seconds);
         let c_eff = commitment::effective_commitment(c.bandwidth_gbps, eff);
-        effective.push((c_eff, c.work_gb, c.miner_id));
-        total_work += c.work_gb;
-        if c_eff > 0.0 { total_inv += 1.0 / c_eff; }
+        effective.push((c_eff, c.miner_id));
+        total_eff += c_eff;
     }
-    let total_eff: f64 = effective.iter().map(|(c,_,_)| c).sum();
     let emission = compute_emission_rate(total_eff, historical_avg_gbps);
     let mut rewards = Vec::new();
-    for (c_eff, work, mid) in &effective {
-        let r = if *c_eff > 0.0 && total_inv > 0.0 && total_work > 0.0 {
-            let ew = 1.0 / c_eff;
-            (ew / total_inv) * (*work / total_work) * emission
-        } else { 0.0 };
+    for (c_eff, mid) in &effective {
+        let r = if total_eff > 0.0 { (*c_eff / total_eff) * emission } else { 0.0 };
         rewards.push((mid.to_vec(), r));
     }
     let burned = apply_ramp_up_cap(block_number, &mut rewards);
@@ -97,5 +91,26 @@ mod tests {
     #[test] fn test_founder_lock() {
         assert!(founder_lock_block(500) >= 50000);
         assert_eq!(founder_lock_block(15000), 0);
+    }
+    #[test] fn test_reward_proportional() {
+        // Two miners with same effective commitment should get equal rewards
+        use crate::commitment::Commitment;
+        let c1 = Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        let c2 = Commitment { miner_id: [2;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        let prev = vec![50., 100., 100., 100.];
+        let r = compute_block_rewards(0, &[c1, c2], &prev, 100.);
+        assert!((r.miner_rewards[0].1 - r.miner_rewards[1].1).abs() < 1e-6);
+        assert!(r.miner_rewards[0].1 > 0.);
+    }
+    #[test] fn test_reward_honest_more() {
+        // Honest miner (eff=1.0) should get more than under-declarer (eff=0.5 after cap)
+        use crate::commitment::Commitment;
+        let honest = Commitment { miner_id: [1;32], bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        let under = Commitment { miner_id: [2;32], bandwidth_gbps: 10., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
+        let prev = vec![50., 100., 100., 100.];
+        let r = compute_block_rewards(0, &[honest, under], &prev, 100.);
+        // honest c_eff=100, under c_eff=13 (capped at 1.3×): honest should get ~88.5%
+        assert!(r.miner_rewards[0].1 > r.miner_rewards[1].1);
+        assert!((r.miner_rewards[0].1 / (r.miner_rewards[0].1 + r.miner_rewards[1].1) - 0.885).abs() < 0.01);
     }
 }
