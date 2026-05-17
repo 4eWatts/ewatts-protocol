@@ -3,69 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ewatts — Memory-Bound Proof of Work</title>
-<meta name="description" content="Ewatts is a digital currency protocol secured by DRAM bandwidth. Memory-bound proof of work, privacy by default, no governance.">
+<title>eWatts — Memory-Bound Proof of Work</title>
+<meta name="description" content="eWatts is a digital currency protocol secured by DRAM bandwidth. Memory-bound proof of work. Privacy by default. No governance.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root { --bg: #030305; --surface: #0a0a0f; --border: #1a1a2e; --text: #c8c8cc; --text-dim: #6b6b80; --accent: #4a9eff; --accent-dim: rgba(74,158,255,0.1); }
 * { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; font-size:15px; -webkit-font-smoothing:antialiased; }
-.container { max-width:720px; margin:0 auto; padding:0 20px; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#07070a; color:#c8c8cc; line-height:1.7; font-size:14px; -webkit-font-smoothing:antialiased; }
+.container { max-width:680px; margin:0 auto; padding:0 20px; }
 
-/* Nav */
-nav { display:flex; justify-content:space-between; align-items:center; padding:16px 0; margin-bottom:80px; }
-.logo { font-size:18px; font-weight:700; color:#fff; letter-spacing:-0.3px; }
-.logo span { color:var(--text-dim); font-weight:400; }
-nav a { color:var(--text-dim); text-decoration:none; font-size:13px; margin-left:20px; transition:color .15s; }
-nav a:hover { color:var(--text); }
+nav { display:flex; justify-content:space-between; align-items:center; padding:20px 0; margin-bottom:80px; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
 
-/* Hero */
-.hero { padding:60px 0 80px; }
-.hero h1 { font-size:40px; font-weight:800; line-height:1.15; color:#fff; letter-spacing:-1px; margin-bottom:16px; }
-.hero p { color:var(--text-dim); max-width:560px; margin-bottom:28px; }
-.hero-links { display:flex; gap:12px; flex-wrap:wrap; }
-.btn { display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:all .15s; cursor:pointer; border:none; }
-.btn-primary { background:var(--accent); color:#030305; }
-.btn-primary:hover { background:#5cabff; }
-.btn-secondary { background:var(--surface); color:var(--text); border:1px solid var(--border); }
-.btn-secondary:hover { border-color:var(--accent); }
+.hero { padding:40px 0 60px; }
+.hero h1 { font-size:36px; font-weight:700; line-height:1.2; color:#fff; letter-spacing:-0.8px; margin-bottom:16px; max-width:600px; }
+.hero p { color:#5a5a72; max-width:520px; margin-bottom:24px; }
+.links { display:flex; gap:10px; flex-wrap:wrap; }
+.btn { display:inline-block; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; transition:all .12s; }
+.btn-primary { background:#3b82f6; color:#fff; }
+.btn-primary:hover { background:#5a94f8; }
+.btn-outline { border:1px solid #2a2a3a; color:#c8c8cc; }
+.btn-outline:hover { border-color:#3b82f6; color:#fff; }
 
-/* Sections */
-.section { padding:60px 0; }
-.section-title { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; }
-.section h2 { font-size:22px; font-weight:700; color:#fff; margin-bottom:12px; }
-.section > p { color:var(--text-dim); max-width:560px; }
-.section-divider { height:1px; background:var(--border); margin:0; border:none; }
+.section { padding:48px 0; }
+.section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5a5a72; margin-bottom:6px; }
+.section h2 { font-size:20px; font-weight:600; color:#fff; margin-bottom:8px; }
+.section p.intro { color:#5a5a72; max-width:520px; }
+hr { border:none; height:1px; background:#1a1a2a; margin:0; }
 
-/* Cards */
-.features { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:28px; }
-@media (max-width:600px){ .features { grid-template-columns:1fr; } }
-.feature { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px; }
-.feature h3 { font-size:14px; font-weight:600; color:#fff; margin-bottom:4px; }
-.feature p { font-size:13px; color:var(--text-dim); }
+.cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:24px; }
+@media (max-width:600px){ .cards { grid-template-columns:1fr; } }
+.card { background:#0c0c14; border:1px solid #1a1a2a; border-radius:6px; padding:20px; }
+.card h3 { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
+.card p { font-size:13px; color:#5a5a72; line-height:1.6; }
 
-/* Specs */
-.specs { margin-top:24px; }
-.spec-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; }
-.spec-row:last-child { border:none; }
-.spec-key { color:var(--text-dim); }
-.spec-value { color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px; }
+table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:13px; }
+table.specs tr { border-bottom:1px solid #1a1a2a; }
+table.specs tr:last-child { border:none; }
+table.specs td { padding:10px 0; vertical-align:top; }
+table.specs td:first-child { color:#5a5a72; width:140px; }
+table.specs td:last-child { color:#c8c8cc; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
 
-/* Code */
-.code { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; overflow-x:auto; margin-top:16px; }
-.code .comment { color:var(--text-dim); }
-.code .cmd { color:var(--accent); }
+pre.code-block { background:#0c0c14; border:1px solid #1a1a2a; border-radius:6px; padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.9; overflow-x:auto; margin-top:16px; color:#b0b0c0; }
+pre.code-block .cm { color:#5a5a72; }
+pre.code-block .fn { color:#3b82f6; }
 
-/* Footer */
-footer { padding:40px 0; border-top:1px solid var(--border); margin-top:40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--text-dim); }
-footer a { color:var(--text-dim); text-decoration:none; }
-footer a:hover { color:var(--text); }
-
-/* Status */
-.status { display:inline-flex; align-items:center; gap:6px; background:rgba(63,185,80,0.1); border:1px solid rgba(63,185,80,0.2); border-radius:20px; padding:4px 14px 4px 8px; font-size:12px; color:#3fb950; }
-.status-dot { width:6px; height:6px; border-radius:50%; background:#3fb950; }
+footer { padding:40px 0; border-top:1px solid #1a1a2a; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:#5a5a72; }
+footer a { color:#5a5a72; text-decoration:none; }
+footer a:hover { color:#c8c8cc; }
 </style>
 </head>
 <body>
@@ -73,116 +64,139 @@ footer a:hover { color:var(--text); }
 <div class="container">
 
 <nav>
-  <div class="logo">ewatts<span>.org</span></div>
-  <div>
+  <div class="logo">eWatts<span>.org</span></div>
+  <div class="nav-links">
     <a href="#protocol">Protocol</a>
     <a href="#mine">Mine</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
 
-<section class="hero">
-  <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;">
-    <span class="status"><span class="status-dot"></span> Testnet — 52 tests passing</span>
+<div class="hero">
+  <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
+    <span style="color:#5a5a72;">testnet</span>
+    <span style="color:#2a2a3a;">|</span>
+    <span>52 tests passing</span>
+    <span style="color:#2a2a3a;">|</span>
+    <span>0 warnings</span>
   </div>
-  <h1>A digital currency<br>secured by DRAM bandwidth.</h1>
-  <p>Ewatts replaces hash-based mining with memory-bound proof of work. Mining speed is determined by RAM bandwidth — the most commoditized resource in computing. No ASICs. No staking. No governance.</p>
-  <div class="hero-links">
-    <a href="MINING.md" class="btn btn-primary">⛏ Mine a block</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-secondary">GitHub →</a>
+  <h1>A digital currency secured by DRAM bandwidth.</h1>
+  <p>eWatts replaces hash-based mining with memory-bound proof of work. Mining throughput is determined by DRAM bandwidth — not by clock speed or ASIC design. Any computer can compete.</p>
+  <div class="links">
+    <a href="MINING.md" class="btn btn-primary">Mine a block</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">Source code</a>
   </div>
-</section>
+</div>
 
-<hr class="section-divider">
+<hr>
 
 <section class="section" id="protocol">
-  <div class="section-title">Protocol</div>
-  <h2>How Ewatts works</h2>
-  <p>Ewatts is a single-chain, dual-hash protocol. Mining blocks require memory-bound proof of work (DRAM bandwidth, ~600s/block). Between blocks, a fast transaction hash verifies ring signatures in under 3 milliseconds.</p>
+  <div class="section-label">Protocol</div>
+  <h2>Architecture</h2>
+  <p class="intro">eWatts is a single-chain, dual-hash protocol. Mining blocks are produced by memory-bound proof of work. Between blocks, a fast transaction hash verifies ring signatures. Both hashes commit to the same chain state.</p>
 
-  <div class="features">
-    <div class="feature">
-      <h3>Memory-Bound PoW</h3>
-      <p>Mining is bottlenecked by DRAM bandwidth, not computation. DDR5, HBM, GDDR — all compete on equal footing.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>Memory-bound PoW</h3>
+      <p>The mining bottleneck is DRAM bandwidth, not computation. The DAG walk performs 10,000 random memory accesses per hash. Time to mine scales linearly with bandwidth, not with GHz.</p>
     </div>
-    <div class="feature">
-      <h3>Privacy by Default</h3>
-      <p>Stealth addresses, MLSAG ring signatures, and Pedersen commitments. Sender, recipient, and amount are hidden from the network.</p>
+    <div class="card">
+      <h3>MLSAG ring signatures</h3>
+      <p>Each transaction is signed with a ring of 11 keys. An observer cannot tell which key in the ring produced the signature. Key images prevent double-spending without linking transactions.</p>
     </div>
-    <div class="feature">
-      <h3>Value of Resource</h3>
-      <p>Each block's emission is proportional to total network DRAM. No fixed schedule, no halving — just physics. VR = kWh per Ewatt.</p>
+    <div class="card">
+      <h3>Confidential amounts</h3>
+      <p>Transaction values are hidden inside Pedersen commitments. Range proofs (bit decomposition with MLSAG) prove non-negativity without revealing the amount. Supply is auditable by summing commitments.</p>
     </div>
-    <div class="feature">
-      <h3>Immutable Core</h3>
-      <p>No dev fund. No admin keys. No governance. Protocol changes require 95% miner + 95% node consensus via hard fork.</p>
+    <div class="card">
+      <h3>Stealth addresses</h3>
+      <p>Every payment goes to a one-time destination derived from the recipient's stealth address. Only the recipient can compute the corresponding private key. No two payments to the same person are linkable.</p>
     </div>
-  </div>
-
-  <div class="section-title" style="margin-top:32px;">Specifications</div>
-  <div class="specs">
-    <div class="spec-row"><span class="spec-key">Consensus</span><span class="spec-value">MBPoW (Memory-Bound Proof of Work)</span></div>
-    <div class="spec-row"><span class="spec-key">Block time</span><span class="spec-value">600 seconds (target)</span></div>
-    <div class="spec-row"><span class="spec-key">Tx confirmation</span><span class="spec-value">&lt;3 ms (ring signature verification)</span></div>
-    <div class="spec-row"><span class="spec-key">Privacy</span><span class="spec-value">MLSAG ring sigs · Stealth addresses · Pedersen commitments · Range proofs</span></div>
-    <div class="spec-row"><span class="spec-key">Emission</span><span class="spec-value">Dynamic, proportional to total effective DRAM bandwidth</span></div>
-    <div class="spec-row"><span class="spec-key">Supply cap</span><span class="spec-value">None (emission adjusts to energy cost)</span></div>
-    <div class="spec-row"><span class="spec-key">Currency unit</span><span class="spec-value">1 Ewatt = 10⁸ base units</span></div>
-    <div class="spec-row"><span class="spec-key">Implementation</span><span class="spec-value">Rust · 3,300 LOC · 52 tests · 0 warnings</span></div>
+    <div class="card">
+      <h3>VR-based emission</h3>
+      <p>Block emission is proportional to total network effective commit — a measure of aggregate DRAM bandwidth. Emission = BASE_EMISSION x (total_eff / historical_avg). Clamped between 5% and 20x.</p>
+    </div>
+    <div class="card">
+      <h3>No governance</h3>
+      <p>No dev fund. No admin keys. No foundation. Protocol changes require 95% of miners and 95% of nodes to signal via hard fork. The genesis parameters are immutable unless the network chooses otherwise.</p>
+    </div>
   </div>
 </section>
 
-<hr class="section-divider">
-
-<section class="section" id="mine">
-  <div class="section-title">Get Started</div>
-  <h2>Mine Ewatts in 5 minutes</h2>
-  <p>You need a computer with Rust and at least 4 GB of RAM. No GPU required. No ASIC. Just memory.</p>
-
-  <div class="code">
-    <span class="comment"># Install Rust (if you don't have it)</span><br>
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh<br><br>
-    <span class="comment"># Clone and build</span><br>
-    git clone https://github.com/4Ewatts/ewatts-protocol.git<br>
-    <span class="cmd">cd</span> ewatts-protocol<br>
-    cargo build --release<br><br>
-    <span class="comment"># Initialize and mine</span><br>
-    ./target/release/ewatts-protocol init<br>
-    ./target/release/ewatts-protocol mine<br><br>
-    <span class="comment"># Start the dashboard</span><br>
-    ./target/release/ewatts-protocol dash
-  </div>
-
-  <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-    <a href="MINING.md" class="btn btn-primary">Full mining guide →</a>
-  </div>
-</section>
-
-<hr class="section-divider">
+<hr>
 
 <section class="section">
-  <div class="section-title">Architecture</div>
-  <h2>Source tree</h2>
+  <div class="section-label">Specifications</div>
+  <h2>Parameters</h2>
+  <table class="specs">
+    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
+    <tr><td>Target block time</td><td>600 seconds</td></tr>
+    <tr><td>Fast tx verification</td><td>&lt;3 ms (ring signature ceremony)</td></tr>
+    <tr><td>Ring size</td><td>11</td></tr>
+    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
+    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
+    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
+    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
+    <tr><td>Ramp-up</td><td>80% cap per miner, first 10k blocks, excess burned</td></tr>
+    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
+    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
+    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
+    <tr><td>Unit</td><td>1 eWatt = 10^8 base units</td></tr>
+    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
+  </table>
+</section>
 
-  <div class="code" style="font-size:12px;">
-<span class="comment">src/</span>
-├── <span class="cmd">main.rs</span>         CLI · Dashboard HTTP · Mining orchestrator
-├── <span class="cmd">privacy.rs</span>      Stealth addresses · MLSAG ring sigs · Pedersen commitments
-├── <span class="cmd">block.rs</span>        Block structure · Merkle tree · MlsagData
-├── <span class="cmd">state.rs</span>        UTXO set · MLSAG verification · Supply tracking
-├── <span class="cmd">mempool.rs</span>      Transaction pool · Broadcast endpoint · Range proof validation
-├── <span class="cmd">wallet.rs</span>       Stealth key generation · UTXO scanning · Private tx creation
-├── <span class="cmd">reward.rs</span>       Emission formula · VR computation · Ramp-up cap
-├── <span class="cmd">proof.rs</span>        MBPoW DAG mining algorithm
-├── <span class="cmd">p2p.rs</span>          libp2p gossip · Block sync
-├── <span class="cmd">commitment.rs</span>   Bandwidth commitment · Efficiency computation
-└── <span class="cmd">store.rs</span>        Disk persistence
+<hr>
+
+<section class="section" id="mine">
+  <div class="section-label">Get started</div>
+  <h2>Mine in 5 minutes</h2>
+  <p class="intro">You need a computer with Rust installed. Minimum 4 GB of free DRAM. No GPU, no ASIC, no token purchase.</p>
+
+  <pre class="code-block"><span class="cm"># Install Rust</span>
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+<span class="cm"># Clone</span>
+$ git clone https://github.com/4Ewatts/ewatts-protocol.git
+$ cd ewatts-protocol
+$ cargo build --release
+
+<span class="cm"># Initialize state and mine</span>
+$ ./target/release/ewatts-protocol init
+$ ./target/release/ewatts-protocol mine
+
+<span class="cm"># Start dashboard on port 8080</span>
+$ ./target/release/ewatts-protocol dash</pre>
+
+  <div style="margin-top:16px;">
+    <a href="MINING.md" class="btn btn-primary">Mining guide</a>
   </div>
+</section>
+
+<hr>
+
+<section class="section">
+  <div class="section-label">Source</div>
+  <h2>Code structure</h2>
+  <pre class="code-block"><span class="cm">src/</span>
+  <span class="fn">privacy.rs</span>      Stealth addresses, MLSAG, Pedersen commitments, range proofs
+  <span class="fn">block.rs</span>        Block, transaction, merkle root, MlsagData serialization
+  <span class="fn">state.rs</span>        UTXO set, supply tracking, MLSAG verification
+  <span class="fn">mempool.rs</span>      Transaction pool, validation, broadcast
+  <span class="fn">wallet.rs</span>       Key generation, UTXO scanning, private transaction construction
+  <span class="fn">reward.rs</span>       Emission formula, VR computation, ramp-up cap
+  <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
+  <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
+  <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
 </section>
 
 <footer>
   <div>
-    <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a> · <a href="https://ewatts.org">ewatts.org</a> · MIT License
+    <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="https://ewatts.org">ewatts.org</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    MIT License
   </div>
   <div>Energy from memory, not machines.</div>
 </footer>
