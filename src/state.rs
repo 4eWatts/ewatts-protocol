@@ -5,7 +5,7 @@ use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey};
 use std::collections::{HashMap, HashSet};
 use rand::RngCore;
 use crate::block::{Transaction, TxOutput, Block, UtxoRef};
-#[cfg(test)] use crate::block::TxInput;
+#[cfg(test)] 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
@@ -323,7 +323,7 @@ impl UtxoSet {
 mod tests {
     use super::*;
     use ed25519_dalek::Signer;
-    use crate::block::TxInput;
+    
 
     fn out(v: &[u64], pk: &[u8]) -> Vec<TxOutput> {
         v.iter().map(|&a| TxOutput {

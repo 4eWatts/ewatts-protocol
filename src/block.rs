@@ -238,7 +238,7 @@ mod tests {
         assert_eq!(h.hash(), h.hash());
     }
     #[test] fn test_different_nonce() {
-        let mut a = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
+        let a = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
             height: 0, epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
             vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
         let mut b = a.clone(); b.nonce = 43;
