@@ -1,4 +1,4 @@
-# Ewatts Mining Guide
+# eWatts Mining Guide
 
 Mine a moeda que prova trabalho com **DRAM**, não com ASICs.
 
@@ -21,7 +21,7 @@ A primeira compilação baixa ~100 crates e leva 2-5 minutos.
 ## Iniciar o node
 
 ```bash
-# Inicializa o estado gênese (1M Ewatt para a fundação)
+# Inicializa o estado gênese (1M eWatt para a fundação)
 ./target/release/ewatts-protocol init
 
 # Ver o status
@@ -30,11 +30,11 @@ A primeira compilação baixa ~100 crates e leva 2-5 minutos.
 
 Deve mostrar:
 ```
-Ewatts Node
+eWatts Node
   Blocks: 1
   UTXOs:  1
   Supply: 100000000000
-  VR:     333.33 uWh/Ewatt
+  VR:     333.33 uWh/eWatt
 ```
 
 ## Minerar
@@ -112,7 +112,7 @@ Abra http://localhost:8080 no navegador.
 
 ### Memory-Bound Proof of Work (MBPoW)
 
-Diferente do Bitcoin (SHA-256, ASIC) ou Ethereum (Ethash, GPU), o Ewatts é **memory-bound**: o gargalo é largura de banda da RAM, não poder computacional.
+Diferente do Bitcoin (SHA-256, ASIC) ou Ethereum (Ethash, GPU), o eWatts é **memory-bound**: o gargalo é largura de banda da RAM, não poder computacional.
 
 ```
 Benchmark aproximado (testnet):
@@ -125,18 +125,18 @@ A tese: memória é o recurso mais democratizado do mundo. Todo computador tem. 
 
 ### VR (Valor de Recurso)
 
-VR = kWh gasto por Ewatt minerado. Mede a eficiência energética da rede. Quanto menor o VR, mais eficiente.
+VR = kWh gasto por eWatt minerado. Mede a eficiência energética da rede. Quanto menor o VR, mais eficiente.
 
 ```
 VR = (effective_commit) / (reward)
-   ≈ (GB/s * tempo) / (Ewatt emitidos)
+   ≈ (GB/s * tempo) / (eWatt emitidos)
 ```
 
 O VR de cada bloco aparece no dashboard e no `info`.
 
 ### Emission
 
-A emissão por bloco começa em ~4 Ewatt e se ajusta conforme a potência total de mineração:
+A emissão por bloco começa em ~4 eWatt e se ajusta conforme a potência total de mineração:
 
 ```
 R = BASE_EMISSION × (Total_Effective / Historical_Avg)
@@ -192,11 +192,11 @@ A blockchain esconde origem, destino e valor. Apenas as partes envolvidas sabem 
 
 **Precisa de GPU?** Não. O mining é memory-bound, CPU já basta. GPU não ajuda.
 
-**Quanto posso minerar?** Na testnet, ~4 Ewatt por bloco a cada ~100ms ≈ 40 Ewatt/segundo. Na mainnet, o bloco leva 600 segundos.
+**Quanto posso minerar?** Na testnet, ~4 eWatt por bloco a cada ~100ms ≈ 40 eWatt/segundo. Na mainnet, o bloco leva 600 segundos.
 
-**Isso vale dinheiro?** Não. É testnet. Ewatt não tem valor. Se um dia virar mainnet, o valor será descoberto pelo mercado (VR ~ custo de energia).
+**Isso vale dinheiro?** Não. É testnet. eWatt não tem valor. Se um dia virar mainnet, o valor será descoberto pelo mercado (VR ~ custo de energia).
 
-**Por que "Ewatts"?** Energy Watts — o VR mede energia por moeda.
+**Por que "eWatts"?** Energy Watts — o VR mede energia por moeda.
 
 ## Links
 
