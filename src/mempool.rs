@@ -3,7 +3,6 @@
 
 use std::sync::Mutex;
 use crate::block::Transaction;
-use curve25519_dalek::traits::Identity;
 
 static MEMPOOL: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
 
