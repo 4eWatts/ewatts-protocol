@@ -2,6 +2,7 @@ pub mod constants;
 pub mod dag;
 pub mod proof;
 pub mod commitment;
+pub mod privacy;
 pub mod vr;
 pub mod block;
 pub mod reward;
