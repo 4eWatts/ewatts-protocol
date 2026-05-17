@@ -1,5 +1,5 @@
-use crate::constants;
-use ed25519_dalek::{Signature, Verifier, VerifyingKey, SigningKey};
+
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

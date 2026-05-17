@@ -1,9 +1,9 @@
 use serde::{Serialize, Deserialize};
-use serde::Deserializer;
-use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey, SecretKey};
+
+use ed25519_dalek::{Verifier, VerifyingKey, Signature, SigningKey};
 use std::collections::{HashMap, HashSet};
 use rand::RngCore;
-use crate::block::{Transaction, TxInput, TxOutput, Block};
+use crate::block::{Transaction, TxOutput, Block};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {

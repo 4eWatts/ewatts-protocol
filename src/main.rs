@@ -174,7 +174,7 @@ fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSe
     // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
     let miner_reward = ce / total_eff * em; // = em for solo miner
     let mut reward_list = vec![(miner_pk.to_vec(), miner_reward)];
-    let burned = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
+    let _burned = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
     let post_burn_reward = reward_list[0].1;
     let post_burn_emission = post_burn_reward;
     header.emission_rate = post_burn_emission;
