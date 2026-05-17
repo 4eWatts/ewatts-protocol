@@ -10,6 +10,9 @@ pub mod state;
 pub mod store;
 pub mod wallet;
 pub mod p2p;
+
+#[cfg(test)]
+pub mod tests;
  
  
  
