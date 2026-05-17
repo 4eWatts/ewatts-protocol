@@ -152,28 +152,28 @@ footer a:hover { color:#c8c8cc; }
 
   <div class="cards">
     <div class="card">
-      <h3>Memory-bound PoW</h3>
-      <p>The mining bottleneck is DRAM bandwidth, not computation. The DAG walk performs 10,000 random memory accesses per hash. Time to mine scales linearly with bandwidth, not with GHz.</p>
+      <h3>Mining runs on standard RAM</h3>
+      <p>No ASICs, no GPUs required. Mining speed is determined by how fast your computer can read its own memory. Every computer has RAM. Every computer can mine. The algorithm performs random memory accesses that scale with bandwidth, not clock speed.</p>
     </div>
     <div class="card">
-      <h3>MLSAG ring signatures</h3>
-      <p>Each transaction is signed with a ring of 11 keys. An observer cannot tell which key in the ring produced the signature. Key images prevent double-spending without linking transactions.</p>
+      <h3>Your identity is hidden</h3>
+      <p>Each transaction is signed with a ring of 11 possible keys. An observer cannot tell which key produced the signature. The same key can be used multiple times without linking the transactions together.</p>
     </div>
     <div class="card">
-      <h3>Confidential amounts</h3>
-      <p>Transaction values are hidden inside Pedersen commitments. Range proofs (bit decomposition with MLSAG) prove non-negativity without revealing the amount. Supply is auditable by summing commitments.</p>
+      <h3>Transaction amounts are hidden</h3>
+      <p>The value of each transaction is encrypted inside a cryptographic commitment. Range proofs prove the amount is positive without revealing it. The total supply remains auditable by summing commitments on-chain.</p>
     </div>
     <div class="card">
-      <h3>Stealth addresses</h3>
-      <p>Every payment goes to a one-time destination derived from the recipient's stealth address. Only the recipient can compute the corresponding private key. No two payments to the same person are linkable.</p>
+      <h3>Every payment gets a unique address</h3>
+      <p>Each transaction creates a one-time destination known only to the recipient. No two payments to the same person can be linked. Only the recipient can prove they received it.</p>
     </div>
     <div class="card">
-      <h3>VR-based emission</h3>
-      <p>Block emission is proportional to total network effective commit , a measure of aggregate DRAM bandwidth. Emission = BASE_EMISSION x (total_eff / historical_avg). Clamped between 5% and 20x.</p>
+      <h3>Money supply follows energy cost</h3>
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The ratio (kWh per coin) is visible on every block. No fixed halving schedule. Just physics.</p>
     </div>
     <div class="card">
-      <h3>No governance</h3>
-      <p>No dev fund. No admin keys. No foundation. Protocol changes require 95% of miners and 95% of nodes to signal via hard fork. The genesis parameters are immutable unless the network chooses otherwise.</p>
+      <h3>No one controls the network</h3>
+      <p>No developer fund. No admin keys. No foundation. No CEO. Protocol changes require 95% of miners and 95% of nodes. The rules are enforced by code, not by people.</p>
     </div>
   </div>
 </section>
