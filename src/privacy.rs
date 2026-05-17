@@ -319,8 +319,6 @@ impl RangeProof {
             let sig = MLSAGSignature::sign(&ring, &[a_i], bit as usize, &format!("bit_{}", i).into_bytes(), rng);
             commitments.push(c_i);
             proofs.push(sig);
-        }
-
             total_blinding = total_blinding + a_i * Scalar::from(1u64 << i);
         }
 
