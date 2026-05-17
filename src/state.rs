@@ -41,6 +41,7 @@ impl<'de> Deserialize<'de> for UtxoKey {
         let s = String::deserialize(d)?;
         let parts: Vec<&str> = s.split('_').collect();
         if parts.len() != 2 { return Err(serde::de::Error::custom("invalid key")); }
+        if parts[0].len() != 64 { return Err(serde::de::Error::custom("invalid hash length")); }
         let mut hash = [0u8; 32];
         for i in 0..32 {
             hash[i] = u8::from_str_radix(&parts[0][i*2..i*2+2], 16).map_err(serde::de::Error::custom)?;
@@ -124,17 +125,11 @@ pub fn build_ring_inline(
             // Private mode: stealth dest is the pubkey
             CompressedRistretto(*sd).decompress()
                 .ok_or_else(|| "Invalid stealth point in ring".to_string())?
-        } else if entry.public_key.len() == 32 {
-            // Legacy: convert ed25519 pubkey bytes to Ristretto... 
-            // This is a hack — ed25519 keys aren't the same as Ristretto.
-            // For now, just hash the public key to a Ristretto point.
-            crate::privacy::hash_to_point(&entry.public_key)
         } else {
-            // Fallback: hash everything to a point
-            let mut data = Vec::new();
-            data.extend_from_slice(&entry.amount.to_le_bytes());
-            data.extend_from_slice(&entry.public_key);
-            crate::privacy::hash_to_point(&data)
+            return Err(format!(
+                "Ring member {:x}..{} is a legacy (non-stealth) UTXO. Only private UTXOs can be ring members.",
+                m.tx_hash[0], m.output_index
+            ));
         };
         ring.push(vec![pk]);
     }
@@ -234,7 +229,7 @@ impl UtxoSet {
                 if let Some(ref cb) = o.commitment_bytes {
                     if let Ok(proof) = serde_json::from_slice::<crate::privacy::RangeProof>(rp_bytes) {
                         let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
-                            .decompress().unwrap_or(curve25519_dalek::traits::Identity::identity());
+                            .decompress().ok_or("Invalid commitment point in output")?;
                         if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
                             return Err("Range proof verification failed on output".into());
                         }
