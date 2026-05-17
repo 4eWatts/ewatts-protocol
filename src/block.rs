@@ -9,6 +9,7 @@ pub struct BlockHeader {
     pub previous_hash: [u8; 32],
     pub merkle_root: [u8; 32],
     pub timestamp: u64,
+    pub height: u64,
     pub epoch: u64,
     pub difficulty_target: u64,
     pub total_effective_commit: f64,
@@ -78,6 +79,7 @@ impl BlockHeader {
         h.update(self.previous_hash);
         h.update(self.merkle_root);
         h.update(self.timestamp.to_le_bytes());
+        h.update(self.height.to_le_bytes());
         h.update(self.epoch.to_le_bytes());
         h.update(self.difficulty_target.to_le_bytes());
         h.update(self.total_effective_commit.to_le_bytes());
@@ -106,13 +108,13 @@ mod tests {
     use super::*;
     #[test] fn test_header_hash() {
         let h = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
-            epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
+            height: 0, epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
             vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
         assert_eq!(h.hash(), h.hash());
     }
     #[test] fn test_different_nonce() {
         let mut a = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
-            epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
+            height: 0, epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
             vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
         let mut b = a.clone(); b.nonce = 43;
         assert_ne!(a.hash(), b.hash());

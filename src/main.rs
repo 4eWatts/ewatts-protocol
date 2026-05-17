@@ -93,7 +93,7 @@ fn miner_keypair() -> ed25519_dalek::SigningKey {
     ed25519_dalek::SigningKey::from_bytes(&seed)
 }
 
-fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
+pub fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
     -> Result<block::Block, String>
 {
     use crate::block::*;
@@ -549,12 +549,23 @@ fn cmd_balance(args: &[String]) {
 async fn cmd_p2p(args: &[String]) {
     let addr = args.get(2).map(|s| s.as_str()).unwrap_or("/ip4/0.0.0.0/tcp/0");
     let bootstrap = args.get(3).and_then(|s| s.parse::<libp2p::Multiaddr>().ok());
+    let do_mine = args.iter().any(|s| s == "--mine");
     println!("Starting P2P node on {}...", addr);
     if let Some(ref b) = bootstrap { println!("Bootstrap peer: {}", b); }
+    if do_mine { println!("Mining mode: ON (1 block every ~10s)"); }
+
+    // Load or init state
+    let mut state = if !crate::store::has_data() {
+        crate::main::cmd_init();
+        crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new())
+    } else {
+        crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new())
+    };
+
     match crate::p2p::P2pNode::new(addr, bootstrap).await {
         Ok(mut node) => {
             println!("P2P Node ID: {}", node.peer_id);
-            node.run().await;
+            node.run(do_mine, &mut state).await;
         }
         Err(e) => println!("P2P error: {}", e),
     }
