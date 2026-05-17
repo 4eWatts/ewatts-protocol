@@ -93,7 +93,7 @@ fn miner_keypair() -> ed25519_dalek::SigningKey {
     ed25519_dalek::SigningKey::from_bytes(&seed)
 }
 
-pub fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
+pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
     -> Result<block::Block, String>
 {
     use crate::block::*;
@@ -117,6 +117,7 @@ pub fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::Ut
         merkle_root: [0u8; 32], // TODO: real merkle
         timestamp: now_secs(),
         epoch,
+        height,
         difficulty_target: difficulty,
         total_effective_commit: 0.0,    // filled after mining
         emission_rate: 0.0,             // filled after mining
@@ -556,7 +557,7 @@ async fn cmd_p2p(args: &[String]) {
 
     // Load or init state
     let mut state = if !crate::store::has_data() {
-        crate::main::cmd_init();
+        cmd_init();
         crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new())
     } else {
         crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new())

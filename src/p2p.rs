@@ -94,7 +94,7 @@ impl P2pNode {
 
     /// Mine a block and gossip it to peers
     pub async fn mine_and_gossip(&mut self, prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet) {
-        match crate::main::mine_block(prev_hash, height, state) {
+        match mine_block(prev_hash, height, state) {
             Ok(block) => {
                 let hash = block.header.hash();
                 let h = block.header.height;
