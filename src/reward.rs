@@ -109,7 +109,7 @@ mod tests {
         let c1 = signed_commit(pk1, 100., &sk1);
         let c2 = signed_commit(pk2, 100., &sk2);
         let prev = vec![50., 100., 100., 100.];
-        let r = compute_block_rewards(0, &[c1, c2], &prev, 100.);
+        let r = compute_block_rewards(20000, let r = compute_block_rewards(0, &[c1, c2], &prev, 100.);[c1, c2], let r = compute_block_rewards(0, &[c1, c2], &prev, 100.);prev, 100.);
         assert!((r.miner_rewards[0].1 - r.miner_rewards[1].1).abs() < 1e-6);
         assert!(r.miner_rewards[0].1 > 0.);
     }
@@ -130,7 +130,7 @@ mod tests {
         let honest = signed_commit(pk1, 100., 100., &sk1);
         let under = signed_commit(pk2, 10., 100., &sk2);
         let prev = vec![50., 100., 100., 100.];
-        let r = compute_block_rewards(0, &[honest, under], &prev, 100.);
+        let r = compute_block_rewards(20000, let r = compute_block_rewards(0, &[honest, under], &prev, 100.);[honest, under], let r = compute_block_rewards(0, &[honest, under], &prev, 100.);prev, 100.);
         // honest c_eff=100, under c_eff=13 (capped at 1.3×): honest should get ~88.5%
         assert!(r.miner_rewards[0].1 > r.miner_rewards[1].1);
         assert!((r.miner_rewards[0].1 / (r.miner_rewards[0].1 + r.miner_rewards[1].1) - 0.885).abs() < 0.01);
