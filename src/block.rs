@@ -52,8 +52,8 @@ impl MlsagData {
     /// Create from in-memory MLSAGSignature + ring reference.
     pub fn from_sig(sig: &crate::privacy::MLSAGSignature) -> Self {
         let compress = |pt: &curve25519_dalek::ristretto::RistrettoPoint| pt.compress().to_bytes();
-        let scalar_bytes = |s: &curve25519_dalek::scalar::Scalar| {
-            let mut out = [0u8; 64];
+        let scalar_bytes = |s: &curve25519_dalek::scalar::Scalar| -> Vec<u8> {
+            let mut out = vec![0u8; 64];
             out[..32].copy_from_slice(&s.to_bytes());
             out
         };
@@ -79,8 +79,10 @@ impl MlsagData {
         let decompress = |b: &[u8; 32]| -> curve25519_dalek::ristretto::RistrettoPoint {
             CompressedRistretto(*b).decompress().unwrap_or(curve25519_dalek::traits::Identity::identity())
         };
-        let scalar_from = |b: &[u8; 64]| -> Scalar {
-            Scalar::from_bytes_mod_order_wide(b)
+        let scalar_from = |b: &[u8]| -> Scalar {
+            let mut arr = [0u8; 64];
+            arr.copy_from_slice(&b[..64.min(b.len())]);
+            Scalar::from_bytes_mod_order_wide(&arr)
         };
         let scalar32 = |b: &[u8; 32]| -> Scalar {
             Scalar::from_bytes_mod_order(*b)
