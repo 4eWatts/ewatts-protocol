@@ -4,7 +4,7 @@
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
+use curve25519_dalek::traits::{Identity, MultiscalarMul};
 use digest::{ExtendableOutput, Update, XofReader};
 use sha3::Shake256;
 use rand::rngs::ThreadRng;
@@ -287,7 +287,7 @@ impl MLSAGSignature {
         if ring.len() != self.ring_size {
             return false;
         }
-        if ring_size == 0 || self.n_layers == 0 {
+        if self.ring_size == 0 || self.n_layers == 0 {
             return false;
         }
         if ring[0].len() != self.n_layers {
