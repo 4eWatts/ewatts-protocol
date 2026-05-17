@@ -298,7 +298,7 @@ impl UtxoSet {
                 }
                 // P0-C: cap coinbase to maximum reasonable emission
                 let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
-                let max_emission = (crate::constants::BASE_EMISSION as u64) * 100_000_000u64 * 20;
+                let max_emission = (crate::constants::BASE_EMISSION as u64) * 100u64 * 20;
                 if coinbase_amount > max_emission {
                     return Err("Coinbase amount exceeds emission cap".into());
                 }
@@ -415,7 +415,7 @@ mod tests {
     }
 
     #[test] fn test_supply() {
-        let s = UtxoSet::genesis(100_000_000_000, &[0; 32]);
-        assert_eq!(s.total_supply(), 100_000_000_000);
+        let s = UtxoSet::genesis(100_000_000, &[0; 32]);
+        assert_eq!(s.total_supply(), 100_000_000);
     }
 }

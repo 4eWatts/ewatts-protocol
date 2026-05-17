@@ -78,7 +78,7 @@ fn cmd_init() {
     }
     let sk = genesis_keypair();
     let pubkey = sk.verifying_key().to_bytes();
-    let utxo_set = crate::state::UtxoSet::genesis(100_000_000_000_000, &pubkey);
+    let utxo_set = crate::state::UtxoSet::genesis(100_000_000, &pubkey);
     if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
         println!("Error: {}", e);
         return;
@@ -194,7 +194,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
 
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
-    let reward_base_units = (post_burn_reward * 100_000_000.0) as u64; // 1 Ewatt = 10^8 base
+    let reward_base_units = (post_burn_reward * 100.0) as u64; // 1 eWatt = 100 cents
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
@@ -288,7 +288,7 @@ fn cmd_mine() {
             }
 
             let reward_ewatt = block.body.transactions[0].outputs.iter()
-                .map(|o| o.amount).sum::<u64>() as f64 / 100_000_000.0;
+                .map(|o| o.amount).sum::<u64>() as f64 / 100.0;
 
             println!();
             println!("Block #{} mined!", height);
@@ -491,7 +491,7 @@ fn cmd_wallet(args: &[String]) {
                 println!("  UTXO: {:x}..{}  amount={}", o.key.tx_hash[0], o.key.output_index, o.entry.amount);
                 total += o.entry.amount;
             }
-            println!("  Total balance: {} ({:.4} Ewatt)", total, total as f64 / 100_000_000.0);
+            println!("  Total balance: {} ({:.4} Ewatt)", total, total as f64 / 100.0);
             println!("  Wallet keys: {}", wallet.keys.len());
         }
         "send" => {
@@ -741,7 +741,7 @@ fn cmd_dashboard() {
                     json_response(200, &serde_json::to_string(&serde_json::json!({
                         "address": addr_hex,
                         "balance": balance,
-                        "ewatt": balance as f64 / 100_000_000.0,
+                        "ewatt": balance as f64 / 100.0,
                     })).unwrap())
                 }
             }
