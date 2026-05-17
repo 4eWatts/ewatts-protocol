@@ -406,7 +406,7 @@ fn cmd_send(args: &[String]) {
         println!("Validation failed: {}", e);
         return;
     }
-    if let Err(e) = state.spend_transaction_inputs(&tx, height) {
+    if let Err(e) = state.spend_transaction_inputs(&tx, 0) {
         println!("Spend failed: {}", e);
         return;
     }
@@ -508,7 +508,7 @@ fn cmd_wallet(args: &[String]) {
             if let Err(e) = state.validate_transaction(&tx) {
                 println!("Validation: {}", e); return;
             }
-            if let Err(e) = state.spend_transaction_inputs(&tx, height) {
+            if let Err(e) = state.spend_transaction_inputs(&tx, 0) {
                 println!("Spend: {}", e); return;
             }
             let tx_hash = tx.hash();

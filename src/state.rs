@@ -9,8 +9,11 @@ use crate::block::{Transaction, TxInput, TxOutput, Block};
 pub struct UtxoEntry {
     pub amount: u64, pub public_key: Vec<u8>, pub spendable_after: u64, pub block_height: u64,
     pub tx_index: u32, pub output_index: u32,
+}
+impl UtxoEntry {
     pub fn is_spendable(&self, current_block: u64) -> bool { current_block >= self.spendable_after }
 }
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct UtxoKey { pub tx_hash: [u8; 32], pub output_index: u32 }
 
