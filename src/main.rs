@@ -199,9 +199,10 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height) }],
+        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }],
         ring_size: 1,
         signatures: vec![],
+        mlsag: None, ring_members: None,
     };
 
     // Assemble block
@@ -396,11 +397,12 @@ fn cmd_send(args: &[String]) {
         if total_input >= amount { break; }
     }
 
-    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0 }];
+    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }];
     if total_input > amount {
         outputs.push(crate::block::TxOutput {
             amount: total_input - amount,
             public_key: from_pk, spendable_after: 0,
+            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
         });
     }
 
@@ -410,6 +412,7 @@ fn cmd_send(args: &[String]) {
         outputs,
         ring_size: 1,
         signatures: vec![],
+        mlsag: None, ring_members: None,
     };
     let msg = crate::state::tx_msg(&tx);
     let sig = sk.sign(&msg);
@@ -506,15 +509,16 @@ fn cmd_wallet(args: &[String]) {
                 });
                 if total_input >= amount { break; }
             }
-            let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0 }];
+            let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None }];
             if total_input > amount {
                 outputs.push(crate::block::TxOutput {
                     amount: total_input - amount,
                     public_key: from_pk, spendable_after: 0,
+                    stealth_dest: None, commitment_bytes: None, range_proof_bytes: None,
                 });
             }
             let mut tx = crate::block::Transaction {
-                version: 1, inputs, outputs, ring_size: 1, signatures: vec![],
+                version: 1, inputs, outputs, ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
             };
             let msg = crate::state::tx_msg(&tx);
             tx.signatures = vec![sk.sign(&msg).to_bytes().to_vec()];
