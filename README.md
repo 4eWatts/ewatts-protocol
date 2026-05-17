@@ -1,53 +1,124 @@
-# Ewatts Protocol
+# eWatts Protocol
 
-**Memory-Bound Digital Currency — DRAM-Bound Proof-of-Energy**
+**Energy from memory, not machines.**
 
-This is the reference implementation of the Ewatts protocol, a neutral digital currency whose issuance is constrained by verifiable DRAM bandwidth competition.
+eWatts is a digital currency secured by DRAM bandwidth. Mining is memory-bound proof of work — the bottleneck is RAM speed, not hash power. No ASICs. No staking. No governance. Private by default.
+
+| Status | Value |
+|--------|-------|
+| Testnet | Live |
+| Tests | 52 passing |
+| Warnings | 0 |
+| Implementation | Rust, ~3,300 LOC |
+| License | MIT |
+| Domain | [ewatts.org](https://ewatts.org) |
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/4Ewatts/ewatts-protocol.git
+cd ewatts-protocol
+cargo build --release
+
+# Initialize state
+./target/release/ewatts-protocol init
+
+# Mine a block
+./target/release/ewatts-protocol mine
+
+# Start dashboard
+./target/release/ewatts-protocol dash
+```
+
+Full guide: [MINING.md](MINING.md)
+
+---
 
 ## Architecture
 
 ```
 src/
-├── main.rs          Entry point
-├── constants.rs     Protocol constants (spec §2)
-├── dag.rs           DAG generation (spec §4)
-├── proof.rs         MBPoW mining + verification (spec §5)
-├── commitment.rs    Bandwidth commitment system (spec §3)
-├── vr.rs            VR — Valor de Referência (spec §11)
-├── block.rs         Block structure and validation (spec §9)
-├── reward.rs        Reward calculation + emission (spec §6-7)
-└── difficulty.rs    Difficulty adjustment (spec §8)
+├── main.rs         CLI · Dashboard HTTP · Mining orchestrator
+├── privacy.rs      Stealth addresses · MLSAG ring sigs · Pedersen commitments · Range proofs
+├── block.rs        Block structure · Merkle tree · MlsagData serialization
+├── state.rs        UTXO set · MLSAG verification · Supply tracking
+├── mempool.rs      Transaction pool · Broadcast endpoint · Range proof validation
+├── wallet.rs       Key generation · UTXO scanning · Private transaction construction
+├── reward.rs       Emission formula · VR computation · Ramp-up cap · Founder lock
+├── proof.rs        MBPoW DAG mining algorithm
+├── p2p.rs          libp2p gossip · Block sync
+├── commitment.rs   Bandwidth commitment · Efficiency computation
+├── store.rs        Disk persistence
+└── vr.rs           Value of Resource computation
 ```
 
-## Quick Start
+## Privacy
 
-### Build
+All transactions are private by default:
 
-```bash
-cargo build --release
-```
+| Primitive | Implementation | Test |
+|-----------|---------------|------|
+| **MLSAG ring signatures** | Multi-layered, ring size 11, Ristretto255 | `test_mlsag_roundtrip`, `test_mlsag_multi_layer`, `test_mlsag_wrong_msg_fails` |
+| **Stealth addresses** | One-time destinations, spend+view key model | `test_stealth_address_roundtrip` |
+| **Pedersen commitments** | `C = a*G + v*H`, homomorphic | `test_pedersen_commitment`, `test_pedersen_homomorphic` |
+| **Range proofs** | Bit-decomposition with MLSAG 1-of-2 | `test_range_proof` |
 
-### Run Tests
+Key images prevent double-spending without linking transactions. Ephemeral keys (`R = r*G`) enable one-time key recovery by the recipient only.
 
-```bash
-cargo test
-```
+## Known Limitations
 
-### Mining (Testnet)
+This is testnet software. The following are known limitations:
 
-```rust
-use ewatts_protocol::{dag::Dag, proof::mine};
-let dag = Dag::generate(0, false);
-let header = [0u8; 32];
-let solution = mine(&header, 1, &dag, 100_000).unwrap();
-```
+- **Ring members** are selected randomly, not grouped by matching commitment (amount privacy is partial — a determined adversary with chain analysis may infer amounts)
+- **Coinbase outputs** use public ed25519 keys, not stealth addresses (miner reward is visible)
+- **Single executable** — no separate wallet daemon, no hardware wallet support
+- **No DDoS protection** on the public API endpoint
+- **Testnet DAG** is 4 MB (mainnet target: ~40 GB)
+- **No seed phrase backup** — wallet keys are stored as raw bytes on disk
 
-## Specification
+## Threat Model
 
-Detailed specifications:
-- [Whitepaper v23](https://github.com/4ewatts/ewatts-protocol)
-- [Spec v3](https://github.com/4ewatts/ewatts-protocol)
+**Adversary capabilities assumed:**
+- Passive observer of the blockchain (all public data)
+- Active network participant (can submit transactions, run nodes)
+- Can deploy up to 49% of mining bandwidth
+
+**Adversary capabilities NOT assumed:**
+- Breakage of elliptic curve discrete log (Curve25519)
+- Breakage of SHA3/Keccak256
+- Breakage of Shake256 (Fiat-Shamir transform)
+- Control of >50% of mining bandwidth simultaneously
+- Physical access to wallet device
+
+**In-scope attacks:**
+- Double-spend via chain reorganization
+- Privacy compromise via ring signature analysis
+- Forged transactions via signature malleability
+- Sybil attacks on P2P network
+
+**Out-of-scope (for testnet):**
+- 51% attacks (no economic penalty yet)
+- Long-range attacks (no checkpoints)
+- Side-channel attacks on wallet implementations
+
+## Whitepaper & Specs
+
+- [Whitepaper v27](docs/whitepaper-v27.md)
+- [Spec v7](docs/spec-v7.md)
+- [Mining Guide](MINING.md)
+- [App Architecture](App/ARCHITECTURE.md) (Desktop Miner + Mobile Wallet)
+- [Project Scope](App/SCOPE.md)
+
+## Security
+
+Report vulnerabilities to the security contacts listed in [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+---
+
+*Note: "4Ewatts" is the GitHub organization handle. The protocol and product are named "eWatts".*
