@@ -765,7 +765,7 @@ fn cmd_dashboard() {
             let state = crate::store::load_utxo_set().ok();
             let pool: Vec<serde_json::Value> = state.map(|s| {
                 let map = s.utxos_map();
-                let mut entries: Vec<_> = map.iter().collect();
+                let entries: Vec<_> = map.iter().collect();
                 // Shuffle and take up to 100
                 let count = std::cmp::min(entries.len(), 100);
                 entries[..count].iter().map(|(k, v)| serde_json::json!({
