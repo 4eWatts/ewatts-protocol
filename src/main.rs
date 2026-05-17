@@ -34,6 +34,7 @@ fn main() {
         "keygen" => cmd_keygen(),
         "wallet" => cmd_wallet(&args),
         "info" => cmd_info(),
+        "dash" => cmd_dashboard(),
         "p2p" => cmd_p2p(&args),
         _ => cmd_help(),
     }
@@ -61,6 +62,7 @@ fn cmd_help() {
     println!("  wallet list              List wallet keys and balances");
     println!("  wallet send <idx> <to_pk> <amt>  Send from wallet key");
     println!("  info                     Show node status");
+    println!("  dash                     Start dashboard (port 8080)");
     println!("  p2p [addr] [bootstrap]     Start P2P node");
     println!("  help                     Show this help");
 }
@@ -575,6 +577,79 @@ async fn cmd_p2p(args: &[String]) {
             node.run(do_mine, &mut state).await;
         }
         Err(e) => println!("P2P error: {}", e),
+    }
+}
+
+fn cmd_dashboard() {
+    use std::net::TcpListener;
+    use std::thread;
+
+    let addr = "0.0.0.0:8080";
+    let listener = TcpListener::bind(addr).unwrap();
+    println!("Dashboard: http://{addr}");
+
+    for stream in listener.incoming() {
+        let mut stream = stream.unwrap();
+        use std::io::{Read, Write};
+
+        let mut buf = [0u8; 4096];
+        let _ = stream.read(&mut buf);
+        let request = String::from_utf8_lossy(&buf);
+
+        let response = if request.starts_with("GET /api/status") {
+            let blocks = crate::store::load_blocks().unwrap_or_default();
+            let height = blocks.len();
+            let state = crate::store::load_utxo_set().ok();
+            let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
+            let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
+
+            let last_block = blocks.last();
+            let vr = last_block.map(|b| b.header.vr_block).unwrap_or(0.0);
+            let emission = last_block.map(|b| b.header.emission_rate).unwrap_or(0.0);
+
+            let blocks_json: Vec<serde_json::Value> = blocks.iter().map(|b| {
+                serde_json::json!({
+                    "height": b.header.height,
+                    "hash": hex::encode(b.header.hash()),
+                    "vr": b.header.vr_block,
+                    "reward": b.header.emission_rate,
+                    "time": b.header.timestamp,
+                })
+            }).collect();
+
+            let status = serde_json::json!({
+                "height": height,
+                "supply": supply,
+                "utxos": utxos,
+                "vr": vr,
+                "emission": emission,
+                "peers": 0,
+                "peers_list": [],
+                "blocks": blocks_json,
+            });
+
+            let body = serde_json::to_string(&status).unwrap();
+            format!(
+                "HTTP/1.1 200 OK
+Content-Type: application/json
+Access-Control-Allow-Origin: *
+Content-Length: {}
+
+{}",
+                body.len(), body
+            )
+        } else {
+            let body = "{"status":"ok"}";
+            format!(
+                "HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: {}
+
+{}",
+                body.len(), body
+            )
+        };
+        stream.write_all(response.as_bytes()).ok();
     }
 }
 
