@@ -279,7 +279,7 @@ mod tests {
             version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [1u8;32] }],
             outputs: vec![TxOutput { amount: 0, public_key: vec![], spendable_after: 0,
                 stealth_dest: Some([9u8;32]), commitment_bytes: Some([3u8;32]),
-                range_proof_bytes: Some(vec![4u8; 64]) }],
+                range_proof_bytes: Some(vec![4u8; 64]), ephemeral: None }],
             ring_size: 11, signatures: vec![],
             mlsag: Some(MlsagData { ring_size: 11, n_layers: 1, key_images: vec![[5u8;32]],
                 c0: [6u8;64].to_vec(), responses: vec![vec![[7u8;32]; 11]] }),
