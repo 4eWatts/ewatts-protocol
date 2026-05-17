@@ -3,6 +3,7 @@
 
 use std::sync::Mutex;
 use crate::block::Transaction;
+use curve25519_dalek::traits::Identity;
 
 static MEMPOOL: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
 
@@ -17,20 +18,25 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
             .ok_or("Missing ring members for MLSAG tx")?;
         let msg = crate::state::tx_msg(&tx);
 
-        let mut all_rings = Vec::new();
+        let utxo_map = state.utxos_map();
+        let mut ring_layers: Vec<Vec<curve25519_dalek::ristretto::RistrettoPoint>> = Vec::new();
         for members_for_input in ring_members.iter() {
-            let ring = crate::state::build_ring_inline(state, members_for_input)?;
-            all_rings.push(ring);
+            let ring = crate::state::build_ring_inline(utxo_map, members_for_input)?;
+            // ring[i] = vec![pk] for each ring position
+            let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring.into_iter()
+                .map(|v| v.into_iter().next().unwrap_or(curve25519_dalek::traits::Identity::identity()))
+                .collect();
+            ring_layers.push(flat);
         }
-        if all_rings.is_empty() {
+        if ring_layers.is_empty() {
             return Err("No rings in MLSAG tx".into());
         }
-        let n_layers = all_rings.len();
-        let ring_size = all_rings[0].len();
+        let n_layers = ring_layers.len();
+        let ring_size = ring_layers[0].len();
         let mut ring_formatted = vec![Vec::with_capacity(n_layers); ring_size];
         for ring_pos in 0..ring_size {
             for layer in 0..n_layers {
-                ring_formatted[ring_pos].push(all_rings[layer][ring_pos]);
+                ring_formatted[ring_pos].push(ring_layers[layer][ring_pos]);
             }
         }
         let sig = mlsag.to_sig();

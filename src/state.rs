@@ -271,6 +271,11 @@ impl UtxoSet {
         self.utxos.get(key)
     }
 
+    /// Access the internal UTXO map (for mempool ring building).
+    pub fn utxos_map(&self) -> &std::collections::HashMap<UtxoKey, UtxoEntry> {
+        &self.utxos
+    }
+
     pub fn apply_block(&mut self, block: &Block, block_height: u64) -> Result<(), String> {
         for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
             let tx_hash = tx.hash();
