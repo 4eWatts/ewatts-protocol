@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ewatts Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  h1 { font-size: 24px; font-weight: 600; color: #58a6ff; }
+  h1 span { color: #8b949e; font-weight: 400; }
+  .subtitle { color: #8b949e; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+  .card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 8px; }
+  .card .value { font-size: 28px; font-weight: 700; color: #f0f6fc; }
+  .card .unit { font-size: 14px; color: #8b949e; }
+  .card .change { font-size: 13px; margin-top: 4px; }
+  .card .change.up { color: #3fb950; }
+  .card .change.down { color: #f85149; }
+  .green { color: #3fb950; }
+  .orange { color: #d29922; }
+  .blue { color: #58a6ff; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; border-bottom: 1px solid #30363d; }
+  td { padding: 8px 12px; font-size: 14px; border-bottom: 1px solid #21262d; font-family: 'SF Mono', monospace; }
+  tr:hover td { background: #1c2128; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .tag.green { background: rgba(63,185,80,0.15); color: #3fb950; }
+  .tag.yellow { background: rgba(210,153,34,0.15); color: #d29922; }
+  .tag.blue { background: rgba(88,166,255,0.15); color: #58a6ff; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.online { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+  .status-dot.offline { background: #f85149; }
+  .peers { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .peer { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-family: 'SF Mono', monospace; }
+  .bar-chart { display: flex; gap: 4px; align-items: flex-end; height: 80px; margin-top: 12px; }
+  .bar { flex: 1; background: #58a6ff; border-radius: 2px 2px 0 0; min-height: 4px; transition: height 0.3s; opacity: 0.7; }
+  .bar:hover { opacity: 1; }
+  .footer { text-align: center; color: #484f58; font-size: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid #21262d; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Ewatts <span>Dashboard</span></h1>
+    <div class="subtitle">Memory-Bound Proof-of-Work · DRAM-Backed Digital Currency</div>
+  </div>
+  <div>
+    <span class="status-dot online" id="statusDot"></span>
+    <span id="statusText" style="font-size:14px">Live</span>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Block Height</h3>
+    <div class="value" id="blockHeight">0</div>
+    <div class="change up" id="blockRate">▲ 0 blocks/min</div>
+  </div>
+  <div class="card">
+    <h3>VR (Valor de Referência)</h3>
+    <div class="value" id="vr">—</div>
+    <div class="change" id="vrChange">kWh/Ewatt</div>
+  </div>
+  <div class="card">
+    <h3>Total Supply</h3>
+    <div class="value" id="supply">0</div>
+    <div class="change" id="supplyChange">Ewatt</div>
+  </div>
+  <div class="card">
+    <h3>Peers</h3>
+    <div class="value" id="peers">0</div>
+    <div class="change" id="peersChange">connected</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>Effective Bandwidth</h3>
+    <div class="value" id="bandwidth">0</div>
+    <div class="change" id="bandwidthChange">GB/s</div>
+  </div>
+  <div class="card">
+    <h3>Emission Rate</h3>
+    <div class="value" id="emission">0</div>
+    <div class="change" id="emissionChange">Ewatt/block</div>
+  </div>
+  <div class="card">
+    <h3>UTXOs</h3>
+    <div class="value" id="utxos">0</div>
+    <div class="change" id="utxosChange">unspent outputs</div>
+  </div>
+  <div class="card">
+    <h3>Burned (Ramp-up)</h3>
+    <div class="value" id="burned">0</div>
+    <div class="change orange">Ewatt capped</div>
+  </div>
+</div>
+
+<h2 style="font-size:18px;margin:24px 0 12px;color:#f0f6fc;">Recent Blocks</h2>
+<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden;">
+<table>
+  <thead><tr><th>Height</th><th>Hash</th><th>VR</th><th>Reward</th><th>Time</th></tr></thead>
+  <tbody id="blocksTable">
+    <tr><td colspan="5" style="text-align:center;color:#484f58;padding:20px;">Waiting for data...</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 style="font-size:18px;margin:24px 0 12px;color:#f0f6fc;">Network</h2>
+<div class="peers" id="peersList">
+  <div style="color:#484f58;font-size:14px;">No peers connected</div>
+</div>
+
+<div class="bar-chart" id="blockChart"></div>
+
+<div class="footer">
+  Ewatts Protocol v27 · <span id="lastUpdate">—</span>
+</div>
+
+<script>
+async function fetchStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    updateDashboard(data);
+  } catch(e) {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Offline';
+  }
+}
+
+function updateDashboard(data) {
+  document.getElementById('blockHeight').textContent = data.height || 0;
+  document.getElementById('vr').textContent = data.vr ? data.vr.toFixed(6) + ' kWh' : '—';
+  document.getElementById('supply').textContent = data.supply ? (data.supply / 1e8).toFixed(2) : '0';
+  document.getElementById('peers').textContent = data.peers || 0;
+  document.getElementById('bandwidth').textContent = data.bandwidth ? data.bandwidth.toFixed(1) : '0';
+  document.getElementById('emission').textContent = data.emission ? data.emission.toFixed(2) : '0';
+  document.getElementById('utxos').textContent = data.utxos || 0;
+  document.getElementById('burned').textContent = data.burned ? data.burned.toFixed(4) : '0';
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+  if (data.blocks && data.blocks.length > 0) {
+    const tbody = document.getElementById('blocksTable');
+    tbody.innerHTML = data.blocks.slice(-10).reverse().map(b => `
+      <tr>
+        <td>#${b.height}</td>
+        <td style="font-size:12px;">${b.hash ? b.hash.slice(0,16)+'...' : '—'}</td>
+        <td>${b.vr ? b.vr.toFixed(6) : '—'}</td>
+        <td>${b.reward ? b.reward.toFixed(2) : '—'}</td>
+        <td>${b.time ? new Date(b.time*1000).toLocaleTimeString() : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  if (data.peers_list && data.peers_list.length > 0) {
+    document.getElementById('peersList').innerHTML = data.peers_list.map(p =>
+      `<div class="peer">${p}</div>`
+    ).join('');
+  }
+
+  // Block chart
+  if (data.blocks && data.blocks.length > 0) {
+    const chart = document.getElementById('blockChart');
+    const recent = data.blocks.slice(-24);
+    const maxReward = Math.max(...recent.map(b => b.reward || 0), 1);
+    chart.innerHTML = recent.map(b => {
+      const h = Math.max(4, ((b.reward || 0) / maxReward) * 76);
+      return `<div class="bar" style="height:${h}px" title="#${b.height}: ${(b.reward||0).toFixed(2)} Ewatt"></div>`;
+    }).join('');
+  }
+}
+
+setInterval(fetchStatus, 5000);
+fetchStatus();
+</script>
+</body>
+</html>
