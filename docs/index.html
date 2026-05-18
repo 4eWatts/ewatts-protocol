@@ -136,13 +136,49 @@ footer a:hover { color:#c8c8cc; }
       <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Why DRAM?</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
         Most proof-of-work currencies use hash functions (SHA-256, Ethash) that can be accelerated by 
-        specialized hardware — ASICs and GPUs. This concentrates mining power into factories over time. 
-        eWatts uses a different primitive: random access to a large dataset held in DRAM. The mining 
-        bottleneck is memory bandwidth, not computation. The ratio of bandwidth to energy in DRAM has 
-        remained stable across multiple process generations. No ASIC can escape this physical limit. 
-        This makes DRAM the hardest substrate to monopolize — precisely because it is the most common.
+        specialized hardware — ASICs and GPUs. eWatts uses a different primitive: random access 
+        to a large dataset held in DRAM. The bottleneck is DRAM latency — and it has not improved 
+        in 20 years.
       </p>
-      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: Why the Energy Anchor Drifts ~1-2%/Year While Hash PoW Drifts ~25-30%/Year</a></p>
+      <div style="margin-top:12px;padding:12px 14px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;line-height:1.8;">
+        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM first-word latency, 20 years (nanoseconds)</div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR3-1066 (2007)</span><span style="color:#c8c8cc;">~45 ns</span></div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR4-2133 (2014)</span><span style="color:#c8c8cc;">~48 ns</span></div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR5-4800 (2024)</span><span style="color:#c8c8cc;">~52 ns</span></div>
+        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Total change</span><span style="color:#5a5a72;">+7 ns in 17 years (essentially flat)</span></div>
+        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency, same period (J/TH)</div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S9 (2016)</span><span style="color:#c8c8cc;">100 J/TH</span></div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S21 (2024)</span><span style="color:#c8c8cc;">13.5 J/TH</span></div>
+        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Improvement</span><span style="color:#5a5a72;">~7× better (declining at ~25-30%/year)</span></div>
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
+        DRAM latency is bounded by physics: the speed of light in silicon (~6-7 cm/ns) and the physical 
+        distance from CPU to memory controller. No process shrink, no ASIC, and no logic optimization 
+        can reduce this. SHA-256 enjoys aggressive acceleration from each new fab node. This gap is 
+        structural and permanent.
+      </p>
+      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: detailed derivation with energy economics, CXL/HBM analysis, Quai comparison</a></p>
+    </div>
+
+    <div>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Supply responds to demand, not to a calendar</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
+        Bitcoin has a fixed supply curve set in code in 2009. Demand can rise or fall — emission 
+        continues mechanically regardless. The result is a structural decoupling of supply from 
+        real demand that intensifies at each halving.
+      </p>
+      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
+        eWatts emission scales with bandwidth committed by miners. When demand rises, the token 
+        price rises, more miners join, total bandwidth rises, and emission grows in proportion. 
+        When demand falls, miners exit, bandwidth drops, and emission shrinks. The feedback loop 
+        is fully internal to the protocol: no oracle, no governance vote, no preset schedule. 
+        The protocol observes physical work and emits accordingly.
+      </p>
+      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
+        This is not a peg. It is a structural property of how new coins are created. Unlike any 
+        fixed-supply or fiat-anchored system, supply elasticity here is endogenous to the network 
+        and grounded in real work.
+      </p>
     </div>
 
     <div>
@@ -195,12 +231,12 @@ footer a:hover { color:#c8c8cc; }
     </div>
     <div class="card">
       <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The target is approximately 1 USD per eWatt at 2026 energy costs — a reference for understanding, not a hard peg. Each eWatt divides 
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. One eWatt represents approximately one kilowatt-hour (kWh) of mining energy at equilibrium — a universal physical unit, not a dollar peg. At 2026 global average electricity costs, this corresponds to roughly 1 USD for intuition. Each eWatt divides 
         into 100 ecents (eWatt-cents). No satoshis. No mental math.
     </div>
     <div class="card">
       <h3>No one controls the network</h3>
-      <p>No developer fund. No admin keys. No foundation. No CEO. Protocol changes require 95% of miners and 95% of nodes. The rules are enforced by code, not by people.</p>
+      <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. Mining starts at block 1 with all early coinbase outputs time-locked on-chain (max 50,000 blocks or current + 40,000 blocks). Protocol changes require 95% of miners and 95% of nodes. The rules are enforced by code, not by people.</p>
     </div>
   </div>
 </section>
@@ -270,6 +306,7 @@ $ ./target/release/ewatts-protocol dash</pre>
   <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
   <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
   <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
+  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: testnet — see README for current implementation maturity and known limitations.</p>
 </section>
 
 <footer>
