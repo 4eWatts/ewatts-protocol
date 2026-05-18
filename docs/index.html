@@ -85,7 +85,7 @@ footer a:hover { color:#c8c8cc; }
   <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
     <span style="color:#5a5a72;">testnet</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>52 tests passing</span>
+    <span>57 tests passing</span>
     <span style="color:#2a2a3a;">|</span>
     <span>0 warnings</span>
   </div>
@@ -126,7 +126,7 @@ footer a:hover { color:#c8c8cc; }
         Gold has a cost floor (expensive to mine), does not degrade, and has served as money for millennia. 
         But gold is difficult to divide, heavy to transport, and requires physical vaults for storage. 
         eWatts preserves the cost floor — energy, the only commodity available in every country — and 
-        removes the physical limitations: perfectly divisible into 100 ecents (two decimals — familiar to anyone who 
+        removes the physical limitations: perfectly divisible into 100 ecents (familiar to anyone who 
         uses dollars), transmissible at the speed of light, storable as a 32-byte private key. And unlike gold, mining runs on standard 
         memory, with no specialized hardware required.
       </p>
@@ -141,21 +141,22 @@ footer a:hover { color:#c8c8cc; }
         in 20 years.
       </p>
       <div style="margin-top:12px;padding:12px 14px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;line-height:1.8;">
-        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM first-word latency, 20 years (nanoseconds)</div>
+        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM latency <span style="font-weight:400;color:#5a5a72;">(change over 17 years)</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR3-1066 (2007)</span><span style="color:#c8c8cc;">~45 ns</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR4-2133 (2014)</span><span style="color:#c8c8cc;">~48 ns</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR5-4800 (2024)</span><span style="color:#c8c8cc;">~52 ns</span></div>
-        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Total change</span><span style="color:#5a5a72;">+7 ns in 17 years (essentially flat)</span></div>
-        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency, same period (J/TH)</div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR4-2133 (2014)</span><span style="color:#c8c8cc;">~48 ns (+7%)</span></div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR5-4800 (2024)</span><span style="color:#c8c8cc;">~52 ns (+16%)</span></div>
+        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Annual change</span><span style="color:#5a5a72;">~0% per year (effectively flat)</span></div>
+        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency <span style="font-weight:400;color:#5a5a72;">(change over 8 years)</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S9 (2016)</span><span style="color:#c8c8cc;">100 J/TH</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S21 (2024)</span><span style="color:#c8c8cc;">13.5 J/TH</span></div>
-        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Improvement</span><span style="color:#5a5a72;">~7× better (declining at ~25-30%/year)</span></div>
+        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S21 (2024)</span><span style="color:#c8c8cc;">13.5 J/TH (-86%)</span></div>
+        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Annual improvement</span><span style="color:#5a5a72;">~25-30% per year</span></div>
       </div>
       <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
         DRAM latency is bounded by physics: the speed of light in silicon (~6-7 cm/ns) and the physical 
         distance from CPU to memory controller. No process shrink, no ASIC, and no logic optimization 
-        can reduce this. SHA-256 enjoys aggressive acceleration from each new fab node. This gap is 
-        structural and permanent.
+        can reduce this. SHA-256 enjoys aggressive acceleration from each new fab node. The result: 
+        the energy cost to produce one eWatt drifts at ~1-2% per year, while Bitcoin's drifts at 
+        ~25-30%. The anchor stays stable in real terms, decade after decade.
       </p>
       <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: detailed derivation with energy economics, CXL/HBM analysis, Quai comparison</a></p>
     </div>
@@ -249,7 +250,7 @@ footer a:hover { color:#c8c8cc; }
   <table class="specs">
     <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
     <tr><td>Target block time</td><td>600 seconds</td></tr>
-    <tr><td>Fast tx verification</td><td>&lt;3 ms (ring signature ceremony)</td></tr>
+    <tr><td>Fast tx verification</td><td>&lt;3 ms (MLSAG ring of 11)</td></tr>
     <tr><td>Ring size</td><td>11</td></tr>
     <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
     <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
