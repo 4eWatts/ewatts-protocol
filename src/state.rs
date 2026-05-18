@@ -225,43 +225,37 @@ impl UtxoSet {
 
         // P0-D: verify range proofs on all private outputs
         for o in &tx.outputs {
-            if let Some(ref rp_bytes) = o.range_proof_bytes {
-                if let Some(ref cb) = o.commitment_bytes {
-                    // Parse the range proof — must succeed
-                    let proof = serde_json::from_slice::<crate::privacy::RangeProof>(rp_bytes)
-                        .map_err(|_| "Invalid range proof encoding on output".to_string())?;
-                    // Decompress the commitment point
-                    let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
-                        .decompress().ok_or("Invalid commitment point in output")?;
-                    // Verify the proof against the commitment
-                    if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
-                        return Err("Range proof verification failed on output".into());
-                    }
+            if o.is_private() {
+                let rp_bytes = o.range_proof_bytes.as_ref()
+                    .ok_or("Private output missing range proof")?;
+                let cb = o.commitment_bytes.as_ref()
+                    .ok_or("Private output missing commitment")?;
+                let proof: crate::privacy::RangeProof = serde_json::from_slice(rp_bytes)
+                    .map_err(|e| format!("Invalid range proof encoding: {}", e))?;
+                let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
+                    .decompress().ok_or("Invalid commitment point")?;
+                if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
+                    return Err("Range proof verification failed on output".into());
                 }
             }
         }
+
+        // TODO: Pedersen balance check for private mode (P0, before mainnet)
+        // Currently validate_transaction checks ins < outs using plaintext .amount fields.
+        // In private mode, those are placeholders. Need to:
+        // 1. Sum input commitments from UTXOs (UtxoEntry.commitment_bytes)
+        // 2. Sum output commitments from tx.outputs[].commitment_bytes
+        // 3. Verify: sum(input_commits) - sum(output_commits) == 0*G (or fee commitment)
+        // This requires the fee commitment to be part of the transaction structure.
+        // Until implemented, private mode is a known limitation: range proofs ensure
+        // each output is non-negative, but total supply conservation in private mode
+        // is enforced by the plaintext check only.
 
         // Apply spends
         for input in &tx.inputs {
             let key = UtxoKey { tx_hash: input.previous_tx_hash, output_index: input.output_index };
             self.utxos.remove(&key);
             self.spent_key_images.insert(input.key_image);
-        }
-
-        // Verify range proofs on outputs (private mode)
-        if tx.mlsag.is_some() {
-            for o in &tx.outputs {
-                // Range proof verification would go here
-                // For now, just check that private outputs have the required fields
-                if o.is_private() {
-                    if o.commitment_bytes.is_none() {
-                        return Err("Private output missing commitment".into());
-                    }
-                    if o.range_proof_bytes.is_none() {
-                        return Err("Private output missing range proof".into());
-                    }
-                }
-            }
         }
 
         Ok(())
