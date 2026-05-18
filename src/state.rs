@@ -227,12 +227,15 @@ impl UtxoSet {
         for o in &tx.outputs {
             if let Some(ref rp_bytes) = o.range_proof_bytes {
                 if let Some(ref cb) = o.commitment_bytes {
-                    if let Ok(proof) = serde_json::from_slice::<crate::privacy::RangeProof>(rp_bytes) {
-                        let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
-                            .decompress().ok_or("Invalid commitment point in output")?;
-                        if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
-                            return Err("Range proof verification failed on output".into());
-                        }
+                    // Parse the range proof — must succeed
+                    let proof = serde_json::from_slice::<crate::privacy::RangeProof>(rp_bytes)
+                        .map_err(|_| "Invalid range proof encoding on output".to_string())?;
+                    // Decompress the commitment point
+                    let comm_pt = curve25519_dalek::ristretto::CompressedRistretto(*cb)
+                        .decompress().ok_or("Invalid commitment point in output")?;
+                    // Verify the proof against the commitment
+                    if !proof.verify(&crate::privacy::Commitment(comm_pt)) {
+                        return Err("Range proof verification failed on output".into());
                     }
                 }
             }
