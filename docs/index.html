@@ -110,100 +110,66 @@ footer a:hover { color:#c8c8cc; }
   <h2>A more honest store of energy</h2>
 
   <div style="display:flex;flex-direction:column;gap:24px;margin-top:20px;">
+
     <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Bridges for global collaboration</h3>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">A neutral settlement layer</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Trade across borders is friction by design — capital controls, currency conversion, settlement delays. 
-        A neutral medium of exchange reduces this friction to near zero. eWatts is designed to serve as that 
-        bridge: permissionless to use, private by default, and anchored to a real cost of production rather 
-        than to the policy of any country. Not a replacement for local currency. A settlement layer for 
-        trade that should not require permission.
-      </p>
-    </div>
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Gold but accessible</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Like gold, eWatts has a production cost floor (energy). Unlike gold, it is perfectly divisible, 
-        transmissible at the speed of light, storable as a 32-byte key, and mineable on standard 
-        memory — leveraging computing infrastructure already in any country. Both parties to a 
-        transaction can independently arbitrage its value against local energy costs.
+        eWatts is designed for cross-border trade and global collaboration: permissionless to use, 
+        private by default, and anchored to a real cost of production rather than to the policy of 
+        any country. Like gold, it has a production cost floor (energy). Unlike gold, it is perfectly 
+        divisible, transmissible at the speed of light, storable as a 32-byte key, and mineable on 
+        standard memory — leveraging computing infrastructure already in any country. Both parties 
+        to a transaction can independently arbitrage its value against local energy costs.
       </p>
     </div>
 
     <div>
       <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Why DRAM?</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Most proof-of-work currencies use hash functions (SHA-256, Ethash) that can be accelerated by 
-        specialized hardware — ASICs and GPUs. eWatts uses a different primitive: random access 
-        to a large dataset held in DRAM. The bottleneck is DRAM latency — and it has not improved 
-        in 20 years.
+        Most proof-of-work currencies use hash functions (SHA-256, Ethash) that improve ~25-30% per year 
+        with each new ASIC generation. eWatts uses random access to DRAM — a bottleneck that has not 
+        improved in 20 years.
       </p>
       <div style="margin-top:12px;padding:12px 14px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;line-height:1.8;">
-        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM latency <span style="font-weight:400;color:#5a5a72;">(change over 17 years)</span></div>
+        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM latency <span style="font-weight:400;color:#5a5a72;">(17 years)</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR3-1066 (2007)</span><span style="color:#c8c8cc;">~45 ns</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR4-2133 (2014)</span><span style="color:#c8c8cc;">~48 ns (+7%)</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR5-4800 (2024)</span><span style="color:#c8c8cc;">~52 ns (+16%)</span></div>
-        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Annual change</span><span style="color:#5a5a72;">~0% per year (effectively flat)</span></div>
-        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency <span style="font-weight:400;color:#5a5a72;">(change over 8 years)</span></div>
+        <div style="margin-top:4px;color:#6b6b88;">Annual change: ~0% (flat)</div>
+        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency <span style="font-weight:400;color:#5a5a72;">(8 years)</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S9 (2016)</span><span style="color:#c8c8cc;">100 J/TH</span></div>
         <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S21 (2024)</span><span style="color:#c8c8cc;">13.5 J/TH (-86%)</span></div>
-        <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Annual improvement</span><span style="color:#5a5a72;">~25-30% per year</span></div>
+        <div style="margin-top:4px;color:#6b6b88;">Annual improvement: ~25-30%</div>
       </div>
       <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        DRAM latency is bounded by physics — the speed of light in silicon and physical distance. 
-        No ASIC can reduce it. SHA-256 improves ~25-30% per year with each new fab node. The result: 
-        eWatts' energy anchor drifts ~1-2% per year; Bitcoin's drifts ~25-30%. The difference is 
-        structural and permanent.
+        The result: eWatts' energy anchor drifts ~1-2% per year; Bitcoin's drifts ~25-30%. 
+        The difference is structural and permanent — DRAM latency is bounded by the speed of 
+        light in silicon; no ASIC can shortcut it.
       </p>
-      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: full derivation</a></p>
+      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Full technical derivation</a></p>
     </div>
 
     <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Supply responds to demand, not a calendar</h3>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Money that works for credit, not against it</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Bitcoin's supply follows a fixed halving schedule regardless of demand. eWatts emission 
-        scales with bandwidth committed by miners: demand rises -> more miners -> more bandwidth 
-        -> more emission. The feedback loop is fully internal — no oracle, no governance, no 
-        preset schedule.
-      </p>
-    </div>
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Credit needs a stable unit</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Most transactions are credit, not cash. Credit requires trust that a unit's value will 
-        hold through the loan term. Bitcoin's deflation disincentivizes lending; fiat inflation 
-        erodes loan value. Many countries have shown the cost when that trust breaks.
-      </p>
-      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
-        eWatts offers a standard where no monetary or fiscal policy can interfere. An energy 
-        anchor drifting ~1-2%/year keeps the real value of a loan roughly stable. For countries 
-        facing monetary crisis, it provides a neutral yardstick both parties can verify — a 
-        reference that works when the local one no longer does.
+        Most transactions are credit, not cash. Bitcoin's deflation disincentivizes lending; fiat 
+        inflation erodes loan value. Many countries have shown the cost when monetary policy breaks 
+        that trust. eWatts offers a third path: an energy anchor drifting ~1-2%/year that keeps the 
+        real value of a loan roughly stable over its term. Emission is elastic (proportional to 
+        bandwidth, not a calendar), and no central bank can print, devalue, or interfere. For 
+        countries facing monetary crisis, it provides a neutral yardstick both parties can verify.
       </p>
     </div>
 
     <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Grounded in energy, not a stablecoin</h3>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Private by default, by design</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Miners cannot profitably sell below their energy cost. New miners enter when price exceeds it. 
-        Over time, the market oscillates around this energy floor — not a peg, but a physical boundary. 
-        The network's Value of Resource (kWh per coin) is visible on every block. There is no halving 
-        schedule because supply responds to actual bandwidth demand. Like gold and Bitcoin, eWatts is 
-        a commodity money — suited as a settlement layer and store of value, not as a day-to-day medium 
-        of exchange with stable purchasing power. This is not a limitation. It is the property of any 
-        money that cannot be arbitrarily printed.
+        Every transaction protects sender (ring signatures), recipient (stealth addresses), and amount 
+        (Pedersen commitments). Privacy is the only mode. Changing it requires 95% of miners and 95% 
+        of nodes — near-unanimous consent, enforced by code.
       </p>
     </div>
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Private from the start, not an option</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Every transaction preserves privacy by design: stealth addresses protect the recipient, ring signatures 
-        protect the sender, and Pedersen commitments protect the amount. No selective disclosure. Privacy is 
-        the only mode supported. Changing this requires near-unanimous network consent — 95% of miners and 
-        95% of nodes via hard fork.
-      </p>
-    </div>
+
   </div>
 </section>
 
