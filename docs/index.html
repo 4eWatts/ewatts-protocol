@@ -123,14 +123,10 @@ footer a:hover { color:#c8c8cc; }
     <div>
       <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Gold but accessible</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Gold has a cost floor (expensive to mine), does not degrade, and has served as money for millennia. 
-        But gold is difficult to divide, heavy to transport, and requires physical vaults for storage. 
-        eWatts preserves the cost floor — energy, the only commodity available in every country — and 
-        removes the physical limitations: perfectly divisible into 100 ecents (familiar to anyone who 
-        uses dollars), transmissible at the speed of light, storable as a 32-byte private key. And unlike gold, mining runs on standard 
-        memory, with no specialized hardware required, leveraging existing computing infrastructure in any country.
-        Both parties to a transaction can independently verify the energy cost of minting new coins and arbitrage 
-        the value — the protocol is symmetric by design.
+        Like gold, eWatts has a production cost floor (energy). Unlike gold, it is perfectly divisible, 
+        transmissible at the speed of light, storable as a 32-byte key, and mineable on standard 
+        memory — leveraging computing infrastructure already in any country. Both parties to a 
+        transaction can independently arbitrage its value against local energy costs.
       </p>
     </div>
 
@@ -154,59 +150,36 @@ footer a:hover { color:#c8c8cc; }
         <div style="margin-top:4px;display:flex;justify-content:space-between;color:#6b6b88;"><span>Annual improvement</span><span style="color:#5a5a72;">~25-30% per year</span></div>
       </div>
       <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        DRAM latency is bounded by physics: the speed of light in silicon (~6-7 cm/ns) and the physical 
-        distance from CPU to memory controller. No process shrink, no ASIC, and no logic optimization 
-        can reduce this. SHA-256 enjoys aggressive acceleration from each new fab node. The result: 
-        the energy cost to produce one eWatt drifts at ~1-2% per year, while Bitcoin's drifts at 
-        ~25-30%. The anchor stays stable in real terms, decade after decade.
+        DRAM latency is bounded by physics — the speed of light in silicon and physical distance. 
+        No ASIC can reduce it. SHA-256 improves ~25-30% per year with each new fab node. The result: 
+        eWatts' energy anchor drifts ~1-2% per year; Bitcoin's drifts ~25-30%. The difference is 
+        structural and permanent.
       </p>
-      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: detailed derivation with energy economics, CXL/HBM analysis, peer comparison</a></p>
+      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Technical Note: full derivation</a></p>
     </div>
 
     <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Supply responds to demand, not to a calendar</h3>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Supply responds to demand, not a calendar</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Bitcoin has a fixed supply curve set in code in 2009. Demand can rise or fall — emission 
-        continues mechanically regardless. The result is a structural decoupling of supply from 
-        real demand that intensifies at each halving.
-      </p>
-      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
-        eWatts emission scales with bandwidth committed by miners. When demand rises, the token 
-        price rises, more miners join, total bandwidth rises, and emission grows in proportion. 
-        When demand falls, miners exit, bandwidth drops, and emission shrinks. The feedback loop 
-        is fully internal to the protocol: no oracle, no governance vote, no preset schedule. 
-        The protocol observes physical work and emits accordingly.
-      </p>
-      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
-        This is not a peg. It is a structural property of how new coins are created. Unlike any 
-        fixed-supply or fiat-anchored system, supply elasticity here is endogenous to the network 
-        and grounded in real work.
+        Bitcoin's supply follows a fixed halving schedule regardless of demand. eWatts emission 
+        scales with bandwidth committed by miners: demand rises -> more miners -> more bandwidth 
+        -> more emission. The feedback loop is fully internal — no oracle, no governance, no 
+        preset schedule.
       </p>
     </div>
 
     <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Credit needs a stable yardstick</h3>
+      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Credit needs a stable unit</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Credit is the engine of modern economies. Businesses borrow to invest in capacity. Consumers 
-        borrow to buy homes. Governments borrow to build infrastructure. All of this depends on a 
-        shared expectation about the future value of the unit of account — lenders and borrowers need 
-        a yardstick that does not shift unpredictably over the life of a loan.
+        Most transactions are credit, not cash. Credit requires trust that a unit's value will 
+        hold through the loan term. Bitcoin's deflation disincentivizes lending; fiat inflation 
+        erodes loan value. Many countries have shown the cost when that trust breaks.
       </p>
       <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
-        Bitcoin's fixed supply creates deflationary pressure: its purchasing power tends to rise 
-        over time, which disincentivizes lending. Why lend bitcoin at 3% when you expect 10% 
-        appreciation? Credit markets simply do not form around an appreciating asset. Fiat 
-        currencies have the opposite problem — inflation erodes the real value of loans, 
-        benefiting borrowers at the expense of savers, and creating boom-bust cycles around 
-        monetary expansion.
-      </p>
-      <p style="margin-top:8px;font-size:13px;color:#6b6b8a;line-height:1.7;">
-        eWatts offers a third path. An energy anchor that drifts at ~1-2% per year means the 
-        real value of a loan stays roughly stable over its term. Both lender and borrower 
-        can plan around a predictable, minimal drift — not zero (no real asset is zero drift), 
-        but stable enough for credit to function. The network's Value of Resource (kWh per coin) 
-        provides an objective reference that neither party controls. This is not a promise; it 
-        is a physical measurement written on every block.
+        eWatts offers a standard where no monetary or fiscal policy can interfere. An energy 
+        anchor drifting ~1-2%/year keeps the real value of a loan roughly stable. For countries 
+        facing monetary crisis, it provides a neutral yardstick both parties can verify — a 
+        reference that works when the local one no longer does.
       </p>
     </div>
 
