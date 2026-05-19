@@ -96,6 +96,12 @@ pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
         if let Some(c) = &o.commitment_bytes {
             msg.extend_from_slice(c);
         }
+        if let Some(rp) = &o.range_proof_bytes {
+            msg.extend_from_slice(rp);
+        }
+        if let Some(e) = &o.ephemeral {
+            msg.extend_from_slice(e);
+        }
     }
     msg.extend_from_slice(&tx.ring_size.to_le_bytes());
     msg
@@ -127,7 +133,10 @@ fn verify_mlsag(
     ring_pubkeys: &[Vec<curve25519_dalek::ristretto::RistrettoPoint>],
     msg: &[u8],
 ) -> bool {
-    let sig = mlsag.to_sig();
+    let sig = match mlsag.to_sig() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
     sig.verify(ring_pubkeys, msg)
 }
 
@@ -412,6 +421,16 @@ impl UtxoSet {
                 let max_emission = (crate::constants::BASE_EMISSION as u64) * 100u64 * 20;
                 if coinbase_amount > max_emission {
                     return Err("Coinbase amount exceeds emission cap".into());
+                }
+                // P0-2: enforce spendable_after on coinbase outputs
+                let expected_lock = crate::reward::founder_lock_block(block_height);
+                for o in &tx.outputs {
+                    if o.spendable_after != expected_lock {
+                        return Err(format!(
+                            "Coinbase spendable_after must be {} (got {})",
+                            expected_lock, o.spendable_after
+                        ));
+                    }
                 }
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
                 self.add_coinbase_supply(coinbase_amount);

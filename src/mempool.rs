@@ -1,8 +1,8 @@
 //! Mempool: pending transaction pool for the fast-lane transaction hash layer.
 //! Transactions are validated on submission and queued for the next mining block.
 
-use std::sync::Mutex;
 use crate::block::Transaction;
+use std::sync::Mutex;
 
 static MEMPOOL: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
 
@@ -13,7 +13,9 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
 
     // If it's a MLSAG private tx, verify the ring signature
     if let Some(ref mlsag) = tx.mlsag {
-        let ring_members = tx.ring_members.as_ref()
+        let ring_members = tx
+            .ring_members
+            .as_ref()
             .ok_or("Missing ring members for MLSAG tx")?;
         let msg = crate::state::tx_msg(&tx);
 
@@ -22,8 +24,13 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
         for members_for_input in ring_members.iter() {
             let ring = crate::state::build_ring_inline(utxo_map, members_for_input)?;
             // ring[i] = vec![pk] for each ring position
-            let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring.into_iter()
-                .map(|v| v.into_iter().next().unwrap_or(curve25519_dalek::traits::Identity::identity()))
+            let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring
+                .into_iter()
+                .map(|v| {
+                    v.into_iter()
+                        .next()
+                        .unwrap_or(curve25519_dalek::traits::Identity::identity())
+                })
                 .collect();
             ring_layers.push(flat);
         }
@@ -38,7 +45,9 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
                 ring_formatted[ring_pos].push(ring_layers[layer][ring_pos]);
             }
         }
-        let sig = mlsag.to_sig();
+        let sig = mlsag
+            .to_sig()
+            .map_err(|e| format!("MLSAG deserialization: {}", e))?;
         if !sig.verify(&ring_formatted, &msg) {
             return Err("MLSAG signature invalid".into());
         }

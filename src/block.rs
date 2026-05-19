@@ -1,7 +1,7 @@
-use sha3::{Digest, Keccak256};
-use serde::{Serialize, Deserialize};
-use crate::constants;
 use crate::commitment::Commitment;
+use crate::constants;
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
@@ -27,7 +27,10 @@ pub struct BlockBody {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Block { pub header: BlockHeader, pub body: BlockBody }
+pub struct Block {
+    pub header: BlockHeader,
+    pub body: BlockBody,
+}
 
 /// A reference to a UTXO: (tx_hash, output_index).
 /// Used for ring member references.
@@ -43,9 +46,9 @@ pub struct UtxoRef {
 pub struct MlsagData {
     pub ring_size: usize,
     pub n_layers: usize,
-    pub key_images: Vec<[u8; 32]>,           // compressed RistrettoPoints
-    pub c0: Vec<u8>,                         // Scalar (64 bytes wide → reduced mod order)
-    pub responses: Vec<Vec<[u8; 32]>>,       // [ring_size][n_layers] scalars
+    pub key_images: Vec<[u8; 32]>,     // compressed RistrettoPoints
+    pub c0: Vec<u8>,                   // Scalar (64 bytes wide → reduced mod order)
+    pub responses: Vec<Vec<[u8; 32]>>, // [ring_size][n_layers] scalars
 }
 
 impl MlsagData {
@@ -62,13 +65,19 @@ impl MlsagData {
             n_layers: sig.n_layers,
             key_images: sig.key_images.iter().map(compress).collect(),
             c0: scalar_bytes(&sig.c0),
-            responses: sig.responses.iter().map(|row| {
-                row.iter().map(|s| {
-                    let mut b = [0u8; 32];
-                    b.copy_from_slice(&s.to_bytes());
-                    b
-                }).collect()
-            }).collect(),
+            responses: sig
+                .responses
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|s| {
+                            let mut b = [0u8; 32];
+                            b.copy_from_slice(&s.to_bytes());
+                            b
+                        })
+                        .collect()
+                })
+                .collect(),
         }
     }
 
@@ -77,24 +86,26 @@ impl MlsagData {
         use curve25519_dalek::ristretto::CompressedRistretto;
         use curve25519_dalek::scalar::Scalar;
         let decompress = |b: &[u8; 32]| -> curve25519_dalek::ristretto::RistrettoPoint {
-            CompressedRistretto(*b).decompress().unwrap_or(curve25519_dalek::traits::Identity::identity())
+            CompressedRistretto(*b)
+                .decompress()
+                .unwrap_or(curve25519_dalek::traits::Identity::identity())
         };
         let scalar_from = |b: &[u8]| -> Scalar {
             let mut arr = [0u8; 64];
             arr.copy_from_slice(&b[..64.min(b.len())]);
             Scalar::from_bytes_mod_order_wide(&arr)
         };
-        let scalar32 = |b: &[u8; 32]| -> Scalar {
-            Scalar::from_bytes_mod_order(*b)
-        };
+        let scalar32 = |b: &[u8; 32]| -> Scalar { Scalar::from_bytes_mod_order(*b) };
         crate::privacy::MLSAGSignature {
             ring_size: self.ring_size,
             n_layers: self.n_layers,
             key_images: self.key_images.iter().map(decompress).collect(),
             c0: scalar_from(&self.c0),
-            responses: self.responses.iter().map(|row| {
-                row.iter().map(scalar32).collect()
-            }).collect(),
+            responses: self
+                .responses
+                .iter()
+                .map(|row| row.iter().map(scalar32).collect())
+                .collect(),
         }
     }
 }
@@ -116,7 +127,7 @@ pub struct Transaction {
 pub struct TxInput {
     pub previous_tx_hash: [u8; 32],
     pub output_index: u32,
-    pub key_image: [u8; 32],   // 32 bytes = compressed RistrettoPoint for MLSAG
+    pub key_image: [u8; 32], // 32 bytes = compressed RistrettoPoint for MLSAG
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,8 +152,13 @@ impl TxOutput {
     /// Create a public P2PKH output (coinbase / legacy).
     pub fn new(amount: u64, public_key: Vec<u8>) -> Self {
         TxOutput {
-            amount, public_key, spendable_after: 0,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
+            amount,
+            public_key,
+            spendable_after: 0,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
         }
     }
 
@@ -154,7 +170,7 @@ impl TxOutput {
         range_proof: Vec<u8>,
     ) -> Self {
         TxOutput {
-            amount,  // kept for supply tracking
+            amount, // kept for supply tracking
             public_key: vec![],
             spendable_after: 0,
             stealth_dest: Some(dest),
@@ -167,11 +183,21 @@ impl TxOutput {
     /// Create a founder time-locked output.
     pub fn new_locked(amount: u64, public_key: Vec<u8>, block_number: u64) -> Self {
         let lock = if block_number < constants::RAMP_UP_BLOCKS {
-            std::cmp::max(constants::FOUNDER_LOCK_BLOCKS, block_number + constants::FOUNDER_LOCK_ADDITIONAL)
-        } else { 0 };
+            std::cmp::max(
+                constants::FOUNDER_LOCK_BLOCKS,
+                block_number + constants::FOUNDER_LOCK_ADDITIONAL,
+            )
+        } else {
+            0
+        };
         TxOutput {
-            amount, public_key, spendable_after: lock,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
+            amount,
+            public_key,
+            spendable_after: lock,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
         }
     }
 
@@ -234,58 +260,141 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn test_header_hash() {
-        let h = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
-            height: 0, epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
-            vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
+    #[test]
+    fn test_header_hash() {
+        let h = BlockHeader {
+            version: constants::PROTOCOL_VERSION,
+            previous_hash: [0; 32],
+            merkle_root: [0; 32],
+            timestamp: 1000,
+            height: 0,
+            epoch: 0,
+            difficulty_target: 1,
+            total_effective_commit: 100.,
+            emission_rate: 100.,
+            miner_effective_commit: 50.,
+            vr_block: 0.001,
+            nonce: 42,
+            elapsed_ms: 5000,
+        };
         assert_eq!(h.hash(), h.hash());
     }
-    #[test] fn test_different_nonce() {
-        let a = BlockHeader { version: constants::PROTOCOL_VERSION, previous_hash: [0;32], merkle_root: [0;32], timestamp: 1000,
-            height: 0, epoch: 0, difficulty_target: 1, total_effective_commit: 100., emission_rate: 100., miner_effective_commit: 50.,
-            vr_block: 0.001, nonce: 42, elapsed_ms: 5000 };
-        let mut b = a.clone(); b.nonce = 43;
+    #[test]
+    fn test_different_nonce() {
+        let a = BlockHeader {
+            version: constants::PROTOCOL_VERSION,
+            previous_hash: [0; 32],
+            merkle_root: [0; 32],
+            timestamp: 1000,
+            height: 0,
+            epoch: 0,
+            difficulty_target: 1,
+            total_effective_commit: 100.,
+            emission_rate: 100.,
+            miner_effective_commit: 50.,
+            vr_block: 0.001,
+            nonce: 42,
+            elapsed_ms: 5000,
+        };
+        let mut b = a.clone();
+        b.nonce = 43;
         assert_ne!(a.hash(), b.hash());
     }
-    #[test] fn test_tx_hash() {
-        let tx = Transaction { version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [0;32] }],
-            outputs: vec![TxOutput { amount: 1000, public_key: vec![0u8;32], spendable_after: 0,
-                stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
-            ring_size: 11, signatures: vec![], mlsag: None, ring_members: None };
+    #[test]
+    fn test_tx_hash() {
+        let tx = Transaction {
+            version: 1,
+            inputs: vec![TxInput {
+                previous_tx_hash: [0; 32],
+                output_index: 0,
+                key_image: [0; 32],
+            }],
+            outputs: vec![TxOutput {
+                amount: 1000,
+                public_key: vec![0u8; 32],
+                spendable_after: 0,
+                stealth_dest: None,
+                commitment_bytes: None,
+                range_proof_bytes: None,
+                ephemeral: None,
+            }],
+            ring_size: 11,
+            signatures: vec![],
+            mlsag: None,
+            ring_members: None,
+        };
         assert_eq!(tx.hash(), tx.hash());
     }
-    #[test] fn test_private_tx_hash() {
-        let tx = Transaction { version: 1,
-            inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [1u8;32] }],
+    #[test]
+    fn test_private_tx_hash() {
+        let tx = Transaction {
+            version: 1,
+            inputs: vec![TxInput {
+                previous_tx_hash: [0; 32],
+                output_index: 0,
+                key_image: [1u8; 32],
+            }],
             outputs: vec![TxOutput {
-                amount: 0, public_key: vec![], spendable_after: 0,
-                stealth_dest: Some([2u8;32]), commitment_bytes: Some([3u8;32]),
+                amount: 0,
+                public_key: vec![],
+                spendable_after: 0,
+                stealth_dest: Some([2u8; 32]),
+                commitment_bytes: Some([3u8; 32]),
                 range_proof_bytes: Some(vec![4u8; 64]),
                 ephemeral: None,
             }],
-            ring_size: 11, signatures: vec![],
+            ring_size: 11,
+            signatures: vec![],
             mlsag: Some(MlsagData {
-                ring_size: 11, n_layers: 1,
-                key_images: vec![[5u8;32]],
-                c0: [6u8;64].to_vec(),
-                responses: vec![vec![[7u8;32]; 11]],
+                ring_size: 11,
+                n_layers: 1,
+                key_images: vec![[5u8; 32]],
+                c0: [6u8; 32],
+                responses: vec![vec![[7u8; 32]; 11]],
             }),
-            ring_members: Some(vec![
-                (0..11).map(|i| UtxoRef { tx_hash: [i as u8; 32], output_index: i }).collect()
-            ]),
+            ring_members: Some(vec![(0..11)
+                .map(|i| UtxoRef {
+                    tx_hash: [i as u8; 32],
+                    output_index: i,
+                })
+                .collect()]),
         };
         assert_eq!(tx.hash(), tx.hash());
-        assert_ne!(tx.hash(), Transaction {
-            version: 1, inputs: vec![TxInput { previous_tx_hash: [0;32], output_index: 0, key_image: [1u8;32] }],
-            outputs: vec![TxOutput { amount: 0, public_key: vec![], spendable_after: 0,
-                stealth_dest: Some([9u8;32]), commitment_bytes: Some([3u8;32]),
-                range_proof_bytes: Some(vec![4u8; 64]), ephemeral: None }],
-            ring_size: 11, signatures: vec![],
-            mlsag: Some(MlsagData { ring_size: 11, n_layers: 1, key_images: vec![[5u8;32]],
-                c0: [6u8;64].to_vec(), responses: vec![vec![[7u8;32]; 11]] }),
-            ring_members: Some(vec![
-                (0..11).map(|i| UtxoRef { tx_hash: [i as u8; 32], output_index: i }).collect()
-            ]),
-        }.hash());
+        assert_ne!(
+            tx.hash(),
+            Transaction {
+                version: 1,
+                inputs: vec![TxInput {
+                    previous_tx_hash: [0; 32],
+                    output_index: 0,
+                    key_image: [1u8; 32]
+                }],
+                outputs: vec![TxOutput {
+                    amount: 0,
+                    public_key: vec![],
+                    spendable_after: 0,
+                    stealth_dest: Some([9u8; 32]),
+                    commitment_bytes: Some([3u8; 32]),
+                    range_proof_bytes: Some(vec![4u8; 64]),
+                    ephemeral: None
+                }],
+                ring_size: 11,
+                signatures: vec![],
+                mlsag: Some(MlsagData {
+                    ring_size: 11,
+                    n_layers: 1,
+                    key_images: vec![[5u8; 32]],
+                    c0: [6u8; 32],
+                    responses: vec![vec![[7u8; 32]; 11]]
+                }),
+                ring_members: Some(vec![(0..11)
+                    .map(|i| UtxoRef {
+                        tx_hash: [i as u8; 32],
+                        output_index: i
+                    })
+                    .collect()]),
+            }
+            .hash()
+        );
     }
 }
