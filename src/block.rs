@@ -47,7 +47,7 @@ pub struct MlsagData {
     pub ring_size: usize,
     pub n_layers: usize,
     pub key_images: Vec<[u8; 32]>,     // compressed RistrettoPoints
-    pub c0: Vec<u8>,                   // Scalar (64 bytes wide → reduced mod order)
+    pub c0: [u8; 32],                  // Scalar bytes (32 bytes)
     pub responses: Vec<Vec<[u8; 32]>>, // [ring_size][n_layers] scalars
 }
 
@@ -55,16 +55,11 @@ impl MlsagData {
     /// Create from in-memory MLSAGSignature + ring reference.
     pub fn from_sig(sig: &crate::privacy::MLSAGSignature) -> Self {
         let compress = |pt: &curve25519_dalek::ristretto::RistrettoPoint| pt.compress().to_bytes();
-        let scalar_bytes = |s: &curve25519_dalek::scalar::Scalar| -> Vec<u8> {
-            let mut out = vec![0u8; 64];
-            out[..32].copy_from_slice(&s.to_bytes());
-            out
-        };
         MlsagData {
             ring_size: sig.ring_size,
             n_layers: sig.n_layers,
             key_images: sig.key_images.iter().map(compress).collect(),
-            c0: scalar_bytes(&sig.c0),
+            c0: sig.c0.to_bytes(),
             responses: sig
                 .responses
                 .iter()
@@ -81,32 +76,32 @@ impl MlsagData {
         }
     }
 
-    /// Deserialize to in-memory MLSAGSignature (without ring — add during verification).
-    pub fn to_sig(&self) -> crate::privacy::MLSAGSignature {
+    /// Deserialize to in-memory MLSAGSignature (without ring).
+    pub fn to_sig(&self) -> Result<crate::privacy::MLSAGSignature, String> {
         use curve25519_dalek::ristretto::CompressedRistretto;
         use curve25519_dalek::scalar::Scalar;
-        let decompress = |b: &[u8; 32]| -> curve25519_dalek::ristretto::RistrettoPoint {
-            CompressedRistretto(*b)
-                .decompress()
-                .unwrap_or(curve25519_dalek::traits::Identity::identity())
-        };
-        let scalar_from = |b: &[u8]| -> Scalar {
-            let mut arr = [0u8; 64];
-            arr.copy_from_slice(&b[..64.min(b.len())]);
-            Scalar::from_bytes_mod_order_wide(&arr)
-        };
+        let decompress =
+            |b: &[u8; 32]| -> Result<curve25519_dalek::ristretto::RistrettoPoint, String> {
+                CompressedRistretto(*b)
+                    .decompress()
+                    .ok_or_else(|| "Invalid compressed point in MlsagData".to_string())
+            };
         let scalar32 = |b: &[u8; 32]| -> Scalar { Scalar::from_bytes_mod_order(*b) };
-        crate::privacy::MLSAGSignature {
+        let mut key_images = Vec::with_capacity(self.key_images.len());
+        for ki in &self.key_images {
+            key_images.push(decompress(ki)?);
+        }
+        Ok(crate::privacy::MLSAGSignature {
             ring_size: self.ring_size,
             n_layers: self.n_layers,
-            key_images: self.key_images.iter().map(decompress).collect(),
-            c0: scalar_from(&self.c0),
+            key_images,
+            c0: Scalar::from_bytes_mod_order(self.c0),
             responses: self
                 .responses
                 .iter()
                 .map(|row| row.iter().map(scalar32).collect())
                 .collect(),
-        }
+        })
     }
 }
 
