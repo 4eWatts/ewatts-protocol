@@ -1,41 +1,38 @@
-# Security Policy
+# Security
 
-## Reporting a Vulnerability
+## Audit Invariants
 
-**Do not open a public GitHub issue for security vulnerabilities.**
+Certain function pairs in the codebase must remain consistent. A change in one function requires verifying the other.
 
-Contact the project maintainer directly:
+### Critical Pairs
 
-- **Email**: security@ewatts.org
-- **PGP Key**: Available at https://ewatts.org/pgp-key.txt
+| Pair | Invariant |
+|------|-----------|
+| `RangeProof::prove_with_blinding` ↔ `RangeProof::verify` | Bounds checks must be identical in both: `commitments.len() > 64`, `commitments.len() == proofs.len()`, `commitments.len() == bits` |
+| `MLSAGSignature::sign` ↔ `MLSAGSignature::verify` | Length validations in verify must cover everything sign assumes about ring structure |
+| `Commitment::new_with_blinding` ↔ `Commitment::verify` | Pedersen formula must be identical modulo sign (additive vs subtractive check) |
 
-You should receive a response within 48 hours. If not, follow up via the same channel.
+### Code Review Checklist
 
-## Scope
+Before submitting or merging any change to consensus-critical code, verify:
 
-The following are considered in-scope for security reports:
+1. **Change to a `prove` / `sign` / `new` function requires a corresponding change or test in the matching `verify` function.** The most common bug pattern is fixing bounds in one but forgetting the other.
 
-- Consensus vulnerabilities (chain splits, double-spends, coin inflation)
-- Privacy vulnerabilities (deanonymization, transaction linking, amount disclosure)
-- Network vulnerabilities (eclipse attacks, sybil attacks, DDoS)
-- Cryptographic implementation bugs (MLSAG, Pedersen, range proofs)
+2. **New validation in a `verify` function requires a test that submits a violating input.** Without a test, the validation is dead code — it may panic or be removed in a refactor without detection.
 
-## Out of Scope
+3. **Modification to consensus-critical code requires a property test demonstrating the invariant survives the change.** Standard property tests (wrong ring size, tampered values, oversized proofs) catch regressions before they reach mainnet.
 
-- Attacks requiring physical access to a mining node
-- Social engineering of users
-- 51% attacks (by design, testnet has no economic penalty)
+## Known Limitations
 
-## Disclosure Policy
+### Side-Channel Timing (MLSAG Signature)
 
-We follow a 90-day responsible disclosure window:
+The signing loop in `MLSAGSignature::sign()` processes ring positions in order `(real_index+1, real_index+2, ..., real_index-1)`. This is NOT constant-time with respect to `real_index`. An attacker with timing or cache observation of the signer's machine may be able to recover `real_index`, breaking anonymity.
 
-1. Reporter submits vulnerability via secure channel
-2. We acknowledge receipt within 48 hours
-3. We develop and test a fix
-4. Fix is deployed to testnet
-5. 90 days after notification, the issue is publicly disclosed
+Side-channel hardening is planned for post-testnet phase.
 
-## Rewards
+## Roadmap
 
-This is a testnet project with no monetary value. No bug bounties are offered at this time.
+- [ ] Fuzzing (`cargo-fuzz` / `proptest`) for verify functions — automated detection of bounds violations
+- [ ] External audit (Trail of Bits / NCC Group) — when funding is available
+- [ ] Reproducible builds
+- [ ] 6-12 months of open testnet without incident before mainnet
