@@ -21,9 +21,18 @@ pub fn average_block_time(timestamps: &[u64]) -> f64 {
         .filter(|&d| d > 0.0 && d < 3600.0)
         .collect();
     if diffs.is_empty() {
-        return constants::TARGET_BLOCK_TIME_SECS as f64;
+        // All diffs filtered; assume network is struggling, ease slightly
+        return constants::TARGET_BLOCK_TIME_SECS as f64 * 1.5;
     }
-    diffs.iter().sum::<f64>() / diffs.len() as f64
+    // Use median instead of mean for robustness against timestamp manipulation
+    let mut sorted = diffs.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let mid = sorted.len() / 2;
+    if sorted.len() % 2 == 0 {
+        (sorted[mid - 1] + sorted[mid]) / 2.0
+    } else {
+        sorted[mid]
+    }
 }
 
 #[cfg(test)]
