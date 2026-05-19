@@ -13,7 +13,7 @@ hex = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.8"
-ed25519-dalek = "2"
+ed25519-dalek = { version = "2", features = ["rand_core", "fast"] }
 curve25519-dalek = { version = "4", features = ["group", "digest", "serde"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"

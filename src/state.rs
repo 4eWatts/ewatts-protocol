@@ -1,4 +1,4 @@
-use curve25519_dalek::ristretto::CompressedRistretto;
+use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -301,8 +301,6 @@ impl UtxoSet {
         if has_private_outputs || tx.mlsag.is_some() {
             use crate::privacy::{pedersen_h, Commitment};
             use curve25519_dalek::ristretto::CompressedRistretto;
-            use curve25519_dalek::traits::Identity;
-
             // Sum input commitments from UTXOs
             let mut input_sum = Commitment::zero();
             let mut input_amount = 0u64;
