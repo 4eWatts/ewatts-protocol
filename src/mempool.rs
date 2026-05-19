@@ -6,6 +6,9 @@ use std::sync::Mutex;
 
 static MEMPOOL: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
 
+/// Maximum pending transactions in the mempool.
+const MAX_MEMPOOL_TXS: usize = 5000;
+
 /// Submit a transaction to the mempool after validation.
 pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), String> {
     // Validate basic structure
@@ -23,7 +26,6 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
         let mut ring_layers: Vec<Vec<curve25519_dalek::ristretto::RistrettoPoint>> = Vec::new();
         for members_for_input in ring_members.iter() {
             let ring = crate::state::build_ring_inline(utxo_map, members_for_input)?;
-            // ring[i] = vec![pk] for each ring position
             let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring
                 .into_iter()
                 .map(|v| {
@@ -53,22 +55,25 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
         }
     }
 
+    // Acquire mempool lock once for double-spend check + push (🔴 race window fix)
+    let mut pool = MEMPOOL.lock().unwrap();
+
+    // Check mempool size limit (🔴 DoS fix)
+    if pool.len() >= MAX_MEMPOOL_TXS {
+        return Err("Mempool full".into());
+    }
+
     // Check for double-spend against mempool (key images)
-    {
-        let pool = MEMPOOL.lock().unwrap();
-        for pending in pool.iter() {
-            for pending_input in &pending.inputs {
-                for input in &tx.inputs {
-                    if pending_input.key_image == input.key_image {
-                        return Err("Double-spend: key image already in mempool".into());
-                    }
+    for pending in pool.iter() {
+        for pending_input in &pending.inputs {
+            for input in &tx.inputs {
+                if pending_input.key_image == input.key_image {
+                    return Err("Double-spend: key image already in mempool".into());
                 }
             }
         }
     }
 
-    // Add to mempool
-    let mut pool = MEMPOOL.lock().unwrap();
     pool.push(tx);
     Ok(())
 }
@@ -79,10 +84,10 @@ pub fn drain() -> Vec<Transaction> {
     std::mem::take(&mut *pool)
 }
 
-/// Peek at pending transactions.
+/// Peek at pending transactions (returns first 100 to avoid cloning everything).
 pub fn peek() -> Vec<Transaction> {
     let pool = MEMPOOL.lock().unwrap();
-    pool.clone()
+    pool.iter().take(100).cloned().collect()
 }
 
 /// Number of pending transactions.
