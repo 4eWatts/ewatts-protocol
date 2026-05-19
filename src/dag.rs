@@ -25,11 +25,16 @@ impl Dag {
         } else {
             constants::DAG_GROWTH_RATE_BYTES_PER_YEAR
         };
-        let total = constants::DAG_INITIAL_SIZE_BYTES
-            + size * epoch / constants::BLOCKS_PER_YEAR * constants::DAG_EPOCH_BLOCKS;
+        // Per-epoch growth: size/year * (epoch_blocks / blocks_per_year)
+        // Multiply first to preserve precision (integer division otherwise truncates)
+        let per_epoch_growth = (size * constants::DAG_EPOCH_BLOCKS) / constants::BLOCKS_PER_YEAR;
+        let total = constants::DAG_INITIAL_SIZE_BYTES + per_epoch_growth * epoch;
         Self::generate_with_size(epoch, total)
     }
     pub fn generate_with_size(epoch: u64, size_bytes: u64) -> Self {
+        if size_bytes < 64 {
+            panic!("DAG size_bytes must be >= 64 (got {})", size_bytes);
+        }
         let n = (size_bytes / 64) as usize;
         let seed: [u8; 32] = Keccak256::digest(&epoch.to_le_bytes()).into();
         let cn = std::cmp::max(1, n / 128);
