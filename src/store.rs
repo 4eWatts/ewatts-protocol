@@ -13,7 +13,10 @@ fn ensure_dir() -> std::io::Result<()> {
 pub fn save_utxo_set(state: &UtxoSet) -> Result<(), String> {
     ensure_dir().map_err(|e| format!("dir: {}", e))?;
     let json = serde_json::to_string_pretty(state).map_err(|e| format!("serializar: {}", e))?;
-    fs::write(format!("{}/utxo.json", DATA_DIR), &json).map_err(|e| format!("escrever: {}", e))?;
+    let path = format!("{}/utxo.json", DATA_DIR);
+    let tmp = format!("{}/utxo.json.tmp", DATA_DIR);
+    fs::write(&tmp, &json).map_err(|e| format!("escrever: {}", e))?;
+    fs::rename(&tmp, &path).map_err(|e| format!("rename: {}", e))?;
     Ok(())
 }
 
@@ -33,7 +36,7 @@ pub fn save_block(block: &Block) -> Result<(), String> {
         .map_err(|e| format!("abrir: {}", e))?;
     writeln!(file, "{}", json).map_err(|e| format!("escrever: {}", e))?;
     file.flush().map_err(|e| format!("flush: {}", e))?;
-    file.sync_all().map_err(|e| format!("sync: {}", e))?;
+    file.sync_data().map_err(|e| format!("sync: {}", e))?;
     Ok(())
 }
 
