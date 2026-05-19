@@ -150,12 +150,10 @@ impl P2pNode {
                                         // Validate and store if we don't have it
                                         if let Ok(blocks) = crate::store::load_blocks() {
                                             if h <= blocks.len() as u64 {
-                                                // Skip if we already have this height
-                                                return;
+                                                // already have this block, skip
+                                            } else if let Err(e) = crate::store::save_block(&block) {
+                                                println!("P2P: Store error: {}", e);
                                             }
-                                        }
-                                        if let Err(e) = crate::store::save_block(&block) {
-                                            println!("P2P: Store error: {}", e);
                                         }
                                     }
                                     P2pMessage::NewTransaction(_) => {
