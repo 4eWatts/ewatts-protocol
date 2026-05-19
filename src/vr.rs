@@ -14,17 +14,27 @@ pub fn compute_vr(
     window_blocks: u64,
     block_time_secs: u64,
 ) -> VrResult {
-    if total_ewatts_mined <= 0.0 || window_blocks == 0 {
+    if total_ewatts_mined <= 0.0
+        || window_blocks == 0
+        || !avg_effective_gbps.is_finite()
+        || avg_effective_gbps <= 0.0
+    {
         return VrResult {
             block_number: 0,
             vr_kwh_per_ewatt: 0.0,
             total_energy_joules: 0.0,
-            total_ewatts_mined: 0.0,
+            total_ewatts_mined: if total_ewatts_mined > 0.0 {
+                total_ewatts_mined
+            } else {
+                0.0
+            },
             window_blocks,
         };
     }
     let total_secs = window_blocks as f64 * block_time_secs as f64;
-    let total_joules = avg_effective_gbps * total_secs * constants::J_PER_GB;
+    // Convert Gbps to GB/s (divide by 8) and compute joules
+    let total_gb = (avg_effective_gbps * total_secs) / 8.0;
+    let total_joules = total_gb * constants::J_PER_GB;
     let total_kwh = total_joules / constants::J_PER_KWH;
     VrResult {
         block_number: 0,
@@ -44,6 +54,9 @@ pub fn estimate_settlement(kwh_amount: f64, vr: f64) -> f64 {
 }
 
 pub fn format_vr(vr: f64) -> String {
+    if !vr.is_finite() {
+        return "0.000 kWh/Ewatt".to_string();
+    }
     if vr < 1e-6 {
         format!("{:.3} uWh/Ewatt", vr * 1e9)
     } else if vr < 1e-3 {
@@ -55,7 +68,7 @@ pub fn format_vr(vr: f64) -> String {
 
 pub fn compute_vr_series(eff: &[f64], emit: &[f64], window: u64, bt: u64) -> Vec<VrResult> {
     let n = eff.len();
-    if n < window as usize {
+    if n < window as usize || emit.len() != n {
         return vec![];
     }
     let mut s = Vec::with_capacity(n - window as usize);
@@ -96,5 +109,27 @@ mod tests {
         let a = compute_vr(100., 100_000., 1000, 600);
         let b = compute_vr(200., 100_000., 1000, 600);
         assert!((b.vr_kwh_per_ewatt / a.vr_kwh_per_ewatt - 2.).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_vr_gbps_to_gb_conversion() {
+        // 100 Gbps for 600s = 60,000 Gb = 7,500 GB at 0.08 J/GB = 600 J
+        let v = compute_vr(100., 100_000., 1, 600);
+        assert!(
+            (v.total_energy_joules - 600.0).abs() < 1.0,
+            "expected ~600J, got {}",
+            v.total_energy_joules
+        );
+    }
+
+    #[test]
+    fn test_vr_nan_guard() {
+        let v = compute_vr(f64::NAN, 100_000., 1000, 600);
+        assert_eq!(v.vr_kwh_per_ewatt, 0.0, "NaN bandwidth should yield 0 VR");
+    }
+
+    #[test]
+    fn test_format_vr_nan() {
+        assert_eq!(format_vr(f64::NAN), "0.000 kWh/Ewatt");
     }
 }
