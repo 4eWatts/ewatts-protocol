@@ -49,7 +49,13 @@ fn now_secs() -> u64 {
 }
 
 fn genesis_keypair() -> ed25519_dalek::SigningKey {
-    ed25519_dalek::SigningKey::from_bytes(&[0u8; 32])
+    if crate::store::has_genesis_key() {
+        let seed = crate::store::load_genesis_key().unwrap_or_else(|_| [0u8; 32]);
+        ed25519_dalek::SigningKey::from_bytes(&seed)
+    } else {
+        // Fallback during init before genesis key is saved
+        ed25519_dalek::SigningKey::from_bytes(&[0u8; 32])
+    }
 }
 
 fn cmd_help() {
@@ -76,7 +82,11 @@ fn cmd_init() {
         println!("Already initialized. Delete ewatts_data/ to reset.");
         return;
     }
-    let sk = genesis_keypair();
+    // Generate random genesis key and persist it
+    let mut genesis_seed = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut genesis_seed);
+    let sk = ed25519_dalek::SigningKey::from_bytes(&genesis_seed);
+    let _ = crate::store::save_genesis_key(&genesis_seed);
     let pubkey = sk.verifying_key().to_bytes();
     let utxo_set = crate::state::UtxoSet::genesis(100_000_000, &pubkey);
     if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
@@ -84,7 +94,6 @@ fn cmd_init() {
         return;
     }
     // Also save genesis key in wallet
-    let _seed = [0u8; 32];
     let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
     println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
 }
@@ -95,10 +104,20 @@ fn cmd_keygen() {
 }
 
 fn miner_keypair() -> ed25519_dalek::SigningKey {
-    // Use a deterministic miner key for now (different from genesis)
-    let mut seed = [0u8; 32];
-    seed[0] = 0x01;
-    ed25519_dalek::SigningKey::from_bytes(&seed)
+    if crate::store::has_miner_key() {
+        let seed = crate::store::load_miner_key().unwrap_or_else(|_| {
+            let mut s = [0u8; 32];
+            s[0] = 0x01;
+            s
+        });
+        ed25519_dalek::SigningKey::from_bytes(&seed)
+    } else {
+        // Generate a random miner key on first call and persist it
+        let mut seed = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut seed);
+        let _ = crate::store::save_miner_key(&seed);
+        ed25519_dalek::SigningKey::from_bytes(&seed)
+    }
 }
 
 pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
@@ -122,7 +141,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let mut header = BlockHeader {
         version: constants::PROTOCOL_VERSION,
         previous_hash: prev_hash,
-        merkle_root: [0u8; 32], // TODO: real merkle
+        merkle_root: [0u8; 32], // filled after transaction assembly
         timestamp: now_secs(),
         epoch,
         height,
@@ -151,7 +170,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     header.elapsed_ms = sol.elapsed_ms as u32;
 
     // Create commitment
-    let declared_gbps = 50.0; // fixed for testnet (wr.gbps is 0 on small DAG) // what the miner actually delivered
+    let declared_gbps = wr.gbps.max(constants::MIN_COMMIT_GBS); // use actual work report
     let mut commit = commitment::Commitment {
         miner_id: miner_pk,
         bandwidth_gbps: declared_gbps,
@@ -173,8 +192,29 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let ce = commitment::effective_commitment(commit.bandwidth_gbps, eff);
     header.miner_effective_commit = ce;
 
-    // Emission rate: single miner, avg_hist = BASE_EMISSION for first block
-    let avg_hist = if height == 0 { constants::BASE_EMISSION } else { constants::BASE_EMISSION };
+    // Emission rate: compute avg_hist from recent block history
+    let avg_hist = {
+        let all_blocks = crate::store::load_blocks().unwrap_or_default();
+        let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
+        let window_start = if all_blocks.len() > window_len {
+            all_blocks.len() - window_len
+        } else {
+            0
+        };
+        if window_start < all_blocks.len() && window_start < height as usize {
+            let window: Vec<f64> = all_blocks[window_start..]
+                .iter()
+                .map(|b| b.header.total_effective_commit)
+                .collect();
+            if window.is_empty() {
+                constants::BASE_EMISSION
+            } else {
+                window.iter().sum::<f64>() / window.len() as f64
+            }
+        } else {
+            constants::BASE_EMISSION
+        }
+    };
     let total_eff = ce;
     let em = crate::reward::compute_emission_rate(total_eff, avg_hist);
     header.total_effective_commit = total_eff;
@@ -194,7 +234,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
 
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
-    let reward_base_units = (post_burn_reward * 100.0) as u64; // 1 eWatt = 100 cents
+    let reward_base_units = (post_burn_reward * 100.0).round() as u64; // 1 eWatt = 100 cents
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
@@ -351,6 +391,15 @@ fn cmd_simulate(args: &[String]) {
                     println!("Error saving block: {}", e); return;
                 }
 
+                // Periodic checkpoint to prevent total loss on crash
+                if (i + 1) % 100 == 0 {
+                    if let Err(e) = crate::store::save_utxo_set(&state) {
+                        println!("  Checkpoint save failed: {}", e);
+                    } else {
+                        println!("  ✓ Checkpoint at block #{}", current_height);
+                    }
+                }
+
                 prev_hash = hash;
                 print!("  ✓ VR: {}", crate::vr::format_vr(block.header.vr_block));
                 println!(" | UTXOs: {} | Supply: {}",
@@ -394,7 +443,7 @@ fn cmd_send(args: &[String]) {
         _ => { println!("Invalid pubkey. 64 hex chars."); return; }
     };
 
-    let mut state = match crate::store::load_utxo_set() {
+    let state = match crate::store::load_utxo_set() {
         Ok(s) => s,
         Err(e) => { println!("Error loading: {}", e); return; }
     };
@@ -449,22 +498,13 @@ fn cmd_send(args: &[String]) {
     let sig = sk.sign(&msg);
     tx.signatures = vec![sig.to_bytes().to_vec()];
 
-    if let Err(e) = state.validate_transaction(&tx) {
-        println!("Validation failed: {}", e);
-        return;
-    }
-    if let Err(e) = state.spend_transaction_inputs(&tx, 0) {
-        println!("Spend failed: {}", e);
-        return;
-    }
-    let tx_hash = tx.hash();
-    state.add_transaction_outputs(&tx_hash, &tx, 0, 0);
-
-    if let Err(e) = crate::store::save_utxo_set(&state) {
-        println!("Save failed: {}", e);
-    } else {
-        println!("Sent {} to {}", amount, hex::encode(&args[2]));
-        println!("Tx hash: {}", hex::encode(&tx_hash[..8]));
+    // Submit through mempool instead of direct state application
+    match crate::mempool::submit(tx, &state) {
+        Ok(()) => {
+            println!("Sent {} to {}", amount, hex::encode(&args[2]));
+            println!("Transaction submitted to mempool. Mine next block to confirm.");
+        }
+        Err(e) => println!("Transaction rejected: {}", e),
     }
 }
 

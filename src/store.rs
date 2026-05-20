@@ -58,3 +58,45 @@ pub fn load_blocks() -> Result<Vec<Block>, String> {
 pub fn has_data() -> bool {
     Path::new(DATA_DIR).exists() && Path::new(&format!("{}/utxo.json", DATA_DIR)).exists()
 }
+
+pub fn save_genesis_key(seed: &[u8; 32]) -> Result<(), String> {
+    ensure_dir().map_err(|e| format!("dir: {}", e))?;
+    fs::write(format!("{}/genesis.key", DATA_DIR), seed)
+        .map_err(|e| format!("write genesis key: {}", e))
+}
+
+pub fn load_genesis_key() -> Result<[u8; 32], String> {
+    let data = fs::read(format!("{}/genesis.key", DATA_DIR))
+        .map_err(|e| format!("load genesis key: {}", e))?;
+    if data.len() != 32 {
+        return Err("Invalid genesis key file".into());
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&data);
+    Ok(key)
+}
+
+pub fn has_genesis_key() -> bool {
+    Path::new(&format!("{}/genesis.key", DATA_DIR)).exists()
+}
+
+pub fn save_miner_key(seed: &[u8; 32]) -> Result<(), String> {
+    ensure_dir().map_err(|e| format!("dir: {}", e))?;
+    fs::write(format!("{}/miner.key", DATA_DIR), seed)
+        .map_err(|e| format!("write miner key: {}", e))
+}
+
+pub fn load_miner_key() -> Result<[u8; 32], String> {
+    let data = fs::read(format!("{}/miner.key", DATA_DIR))
+        .map_err(|e| format!("load miner key: {}", e))?;
+    if data.len() != 32 {
+        return Err("Invalid miner key file".into());
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&data);
+    Ok(key)
+}
+
+pub fn has_miner_key() -> bool {
+    Path::new(&format!("{}/miner.key", DATA_DIR)).exists()
+}
