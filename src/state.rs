@@ -307,6 +307,14 @@ impl UtxoSet {
         // Verifies that sum(input_commitments) - sum(output_commitments) - fee*H == 0
         // This ensures committed values match the plaintext amounts (supply conservation).
         let has_private_outputs = tx.outputs.iter().any(|o| o.is_private());
+        // Reject hybrid txs: if any output is private, ALL must be private
+        if has_private_outputs {
+            for o in &tx.outputs {
+                if !o.is_private() {
+                    return Err("Hybrid tx: all outputs must be private if any is private".into());
+                }
+            }
+        }
         if has_private_outputs || tx.mlsag.is_some() {
             use crate::privacy::{pedersen_h, Commitment};
             use curve25519_dalek::ristretto::CompressedRistretto;
