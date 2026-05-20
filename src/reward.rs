@@ -73,7 +73,7 @@ pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], prev
     let burned = apply_ramp_up_cap(block_number, &mut rewards);
     RewardSummary {
         miner_rewards: rewards.iter().map(|(pk, r)| (pk.clone(), ewatt_to_units(*r))).collect(),
-        total_emission: ewatt_to_units(rewards.iter().map(|(_, r)| r).sum()),
+        total_emission: ewatt_to_units(emission),  // pre-cap total (includes burned)
         emission_rate_used: ewatt_to_units(emission),
         burned: ewatt_to_units(burned),
     }
