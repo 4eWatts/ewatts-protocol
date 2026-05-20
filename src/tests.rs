@@ -21,7 +21,7 @@ fn integration_block_hash_determinism() {
         previous_hash: [0;32], merkle_root: [0;32],
         timestamp: 1000, height: 0, epoch: 0,
         difficulty_target: 1, total_effective_commit: 100.0,
-        emission_rate: 100.0, miner_effective_commit: 50.0,
+        emission_rate: 100_000_000, miner_effective_commit: 50.0,
         vr_block: 0.001, nonce: 42, elapsed_ms: 5000,
     };
     assert_eq!(h1.hash(), h1.hash());
@@ -48,5 +48,5 @@ fn integration_reward_proportionality() {
     c2.signature = sk.sign(&msg2).to_bytes().to_vec();
     let r = compute_block_rewards(20000, &[c1, c2], &[100.0], 100.0);
     assert!(r.miner_rewards.len() == 2);
-    assert!((r.miner_rewards[0].1 - r.miner_rewards[1].1).abs() < 1e-6);
+    assert_eq!(r.miner_rewards[0].1, r.miner_rewards[1].1);
 }

@@ -147,7 +147,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
         height,
         difficulty_target: difficulty,
         total_effective_commit: 0.0,    // filled after mining
-        emission_rate: 0.0,             // filled after mining
+        emission_rate: 0,             // base units, filled after mining
         miner_effective_commit: 0.0,
         vr_block: 0.0,
         nonce: 0,
@@ -218,7 +218,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let total_eff = ce;
     let em = crate::reward::compute_emission_rate(total_eff, avg_hist);
     header.total_effective_commit = total_eff;
-    header.emission_rate = em;
+    header.emission_rate = (em * constants::UNITS_PER_EWATT as f64).round() as u64;
 
     // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
     let miner_reward = ce / total_eff * em; // = em for solo miner
@@ -226,7 +226,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let _burned = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
     let post_burn_reward = reward_list[0].1;
     let post_burn_emission = post_burn_reward;
-    header.emission_rate = post_burn_emission;
+    header.emission_rate = (post_burn_emission * constants::UNITS_PER_EWATT as f64).round() as u64;
 
     // VR (use post-burn reward for accuracy)
     let vr_result = crate::vr::compute_vr(ce, post_burn_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
@@ -234,7 +234,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
 
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
-    let reward_base_units = (post_burn_reward * 100.0).round() as u64; // 1 eWatt = 100 cents
+    let reward_base_units = (post_burn_reward * constants::UNITS_PER_EWATT as f64).round() as u64;
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
@@ -328,12 +328,12 @@ fn cmd_mine() {
             }
 
             let reward_ewatt = block.body.transactions[0].outputs.iter()
-                .map(|o| o.amount).sum::<u64>() as f64 / 100.0;
+                .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
 
             println!();
             println!("Block #{} mined!", height);
             println!("  Hash:   {}", hex::encode(&block_hash[..8]));
-            println!("  Reward: {:.2} Ewatt", reward_ewatt);
+            println!("  Reward: {:.6} Ewatt", reward_ewatt);
             println!("  VR:     {}",
                 crate::vr::format_vr(block.header.vr_block));
             println!("  UTXOs:  {}", state.utxo_count());
@@ -531,7 +531,7 @@ fn cmd_wallet(args: &[String]) {
                 println!("  UTXO: {:x}..{}  amount={}", o.key.tx_hash[0], o.key.output_index, o.entry.amount);
                 total += o.entry.amount;
             }
-            println!("  Total balance: {} ({:.4} Ewatt)", total, total as f64 / 100.0);
+            println!("  Total balance: {} ({:.6} Ewatt)", total, total as f64 / constants::UNITS_PER_EWATT as f64);
             println!("  Wallet keys: {}", wallet.keys.len());
         }
         "send" => {
@@ -781,7 +781,7 @@ fn cmd_dashboard() {
                     json_response(200, &serde_json::to_string(&serde_json::json!({
                         "address": addr_hex,
                         "balance": balance,
-                        "ewatt": balance as f64 / 100.0,
+                        "ewatt": balance as f64 / constants::UNITS_PER_EWATT as f64,
                     })).unwrap())
                 }
             }
@@ -829,7 +829,7 @@ fn cmd_dashboard() {
             let mempool = crate::mempool::pending_count();
             let last = blocks.last();
             let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
-            let emission = last.map(|b| b.header.emission_rate).unwrap_or(0.0);
+            let emission = last.map(|b| b.header.emission_rate).unwrap_or(0) as u64;
             let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
                 "height": b.header.height, "hash": hex::encode(b.header.hash()),
                 "vr": b.header.vr_block, "reward": b.header.emission_rate,

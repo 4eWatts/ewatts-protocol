@@ -11,7 +11,10 @@ pub const DAG_ACCELERATION_RATE: u64 = 1024 * 1024 * 1024;
 pub const DAG_ACCELERATION_THRESHOLD_ETA: f64 = 1.3;
 pub const DAG_ACCELERATION_THRESHOLD_BANDWIDTH: f64 = 100.0;
 pub const DAG_ACCELERATION_YEARS: u32 = 2;
+pub const DECIMAL_PLACES: u32 = 6;
+pub const UNITS_PER_EWATT: u64 = 1_000_000;
 pub const BASE_EMISSION: f64 = 100.0;
+pub const BASE_EMISSION_UNITS: u64 = 100_000_000;   // 100 Ewatt em base units
 pub const EMISSION_FLOOR_MULTIPLIER: f64 = 0.05;     // v27: 5 Ewatt min (was 0.1)
 pub const EMISSION_CEILING_MULTIPLIER: f64 = 20.0;   // v27: 2,000 Ewatt max (was 10.0)
 pub const COMMIT_WINDOW_BLOCKS: u64 = 4300;           // v27: 30 days (was 1000 = 7 days)
