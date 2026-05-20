@@ -418,7 +418,7 @@ impl UtxoSet {
                 }
                 // P0-C: cap coinbase to maximum reasonable emission
                 let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
-                let max_emission = (crate::constants::BASE_EMISSION as u64) * 100u64 * 20;
+                let max_emission = crate::constants::BASE_EMISSION_UNITS * 20;
                 if coinbase_amount > max_emission {
                     return Err("Coinbase amount exceeds emission cap".into());
                 }
