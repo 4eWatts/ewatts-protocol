@@ -16,6 +16,7 @@ pub struct BlockHeader {
     pub emission_rate: u64,    // base units per block (1 Ewatt = 1_000_000 units)
     pub miner_effective_commit: f64,
     pub vr_block: f64,
+    pub coinbase_burn: u64,  // base units burned via ramp-up cap
     pub nonce: u64,
     pub elapsed_ms: u32,
 }
@@ -220,6 +221,7 @@ impl BlockHeader {
         h.update(self.emission_rate.to_le_bytes());
         h.update(self.miner_effective_commit.to_le_bytes());
         h.update(self.vr_block.to_le_bytes());
+        h.update(self.coinbase_burn.to_le_bytes());
         h.update(self.nonce.to_le_bytes());
         h.update(self.elapsed_ms.to_le_bytes());
         h.finalize().into()
@@ -269,6 +271,7 @@ mod tests {
             emission_rate: 100_000_000,
             miner_effective_commit: 50.,
             vr_block: 0.001,
+            coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
         };
@@ -288,6 +291,7 @@ mod tests {
             emission_rate: 100_000_000,
             miner_effective_commit: 50.,
             vr_block: 0.001,
+            coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
         };

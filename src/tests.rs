@@ -22,7 +22,7 @@ fn integration_block_hash_determinism() {
         timestamp: 1000, height: 0, epoch: 0,
         difficulty_target: 1, total_effective_commit: 100.0,
         emission_rate: 100_000_000, miner_effective_commit: 50.0,
-        vr_block: 0.001, nonce: 42, elapsed_ms: 5000,
+        vr_block: 0.001, coinbase_burn: 0, nonce: 42, elapsed_ms: 5000,
     };
     assert_eq!(h1.hash(), h1.hash());
 }

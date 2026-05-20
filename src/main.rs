@@ -82,20 +82,34 @@ fn cmd_init() {
         println!("Already initialized. Delete ewatts_data/ to reset.");
         return;
     }
-    // Generate random genesis key and persist it
-    let mut genesis_seed = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut genesis_seed);
-    let sk = ed25519_dalek::SigningKey::from_bytes(&genesis_seed);
-    let _ = crate::store::save_genesis_key(&genesis_seed);
-    let pubkey = sk.verifying_key().to_bytes();
-    let utxo_set = crate::state::UtxoSet::genesis(100_000_000, &pubkey);
-    if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
-        println!("Error: {}", e);
-        return;
+    // NOTE: cfg gates control testnet vs mainnet behavior.
+    // Mainnet build: cargo build --features mainnet --no-default-features
+    #[cfg(feature = "testnet")]
+    {
+        let mut genesis_seed = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut genesis_seed);
+        let sk = ed25519_dalek::SigningKey::from_bytes(&genesis_seed);
+        let _ = crate::store::save_genesis_key(&genesis_seed);
+        let pubkey = sk.verifying_key().to_bytes();
+        let utxo_set = crate::state::UtxoSet::genesis(100_000_000, &pubkey);
+        if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
+            println!("Error: {}", e);
+            return;
+        }
+        let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
+        println!("Genesis: 1,000,000 Ewatt to {} (testnet bootstrap)", hex::encode(pubkey));
     }
-    // Also save genesis key in wallet
-    let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
-    println!("Genesis: 1,000,000 Ewatt to {}", hex::encode(pubkey));
+
+    #[cfg(not(feature = "testnet"))]
+    {
+        // Mainnet: start with empty state. First block coinbase mints initial supply.
+        let utxo_set = crate::state::UtxoSet::new();
+        if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
+            println!("Error: {}", e);
+            return;
+        }
+        println!("Genesis: empty state. Mining starts from block 0.");
+    }
 }
 
 fn cmd_keygen() {
@@ -223,7 +237,8 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
     let miner_reward = ce / total_eff * em; // = em for solo miner
     let mut reward_list = vec![(miner_pk.to_vec(), miner_reward)];
-    let _burned = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
+    let burned_ewatt = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
+    header.coinbase_burn = (burned_ewatt * constants::UNITS_PER_EWATT as f64).round() as u64;
     let post_burn_reward = reward_list[0].1;
     let post_burn_emission = post_burn_reward;
     header.emission_rate = (post_burn_emission * constants::UNITS_PER_EWATT as f64).round() as u64;

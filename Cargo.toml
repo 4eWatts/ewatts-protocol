@@ -30,6 +30,11 @@ features = [
     "tokio",
 ]
 
+[features]
+default = ["testnet"]
+testnet = []
+mainnet = []
+
 [profile.release]
 lto = true
 codegen-units = 1
