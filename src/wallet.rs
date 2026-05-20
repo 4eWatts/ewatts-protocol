@@ -266,6 +266,9 @@ pub fn create_private_tx(
     let mut selected_inputs = Vec::with_capacity(selected_utxos.len());
     let mut secret_keys = Vec::with_capacity(selected_utxos.len());
 
+    // Decide real_index ONCE: all inputs share the same position in their rings
+    let real_index = rng.next_u32() as usize % ring_size;
+
     // First pass: build rings, compute key_images BEFORE signing (P0-2 fix)
     for utxo in &selected_utxos {
         // Select ring members: filter FIRST, then take (P0-4 fix)
@@ -286,8 +289,7 @@ pub fn create_private_tx(
                 output_index: all_utxos[idx].0.output_index,
             });
         }
-        // Randomize own UTXO position in ring (P0-3 fix: was always 0)
-        let real_index = rng.next_u32() as usize % ring_size;
+        // Insert own UTXO at the FIXED real_index (shared across all layers)
         members.insert(
             real_index,
             UtxoRef {
@@ -395,8 +397,8 @@ pub fn create_private_tx(
     };
 
     // Sign over finalized tx_msg (includes key_images in hash, P0-2)
+    // Using the same real_index that was used for ring construction
     let msg = crate::state::tx_msg(&tx);
-    let real_index = rng.next_u32() as usize % ring_sz;
     let sig = MLSAGSignature::sign(&mlsag_ring, &secret_keys, real_index, &msg, rng);
 
     let mut tx = tx;
@@ -434,5 +436,86 @@ mod tests {
         let utxo_set = UtxoSet::new();
         let result = create_private_tx(&w, &dummy_addr, 0, &utxo_set, &mut rand::thread_rng());
         assert!(result.is_err(), "zero amount tx should be rejected");
+    }
+
+    /// Create stealth UTXOs in the state for testing ring membership.
+    fn seed_stealth_utxo(utxo_set: &mut UtxoSet, pk: [u8; 32], sd: [u8; 32], amount: u64) {
+        use crate::privacy::pedersen_h;
+        use curve25519_dalek::scalar::Scalar;
+        use rand::RngCore;
+        let mut rng = rand::thread_rng();
+        let blinding = Scalar::random(&mut rng);
+        let comm = crate::privacy::Commitment::new_with_blinding(amount, blinding);
+        let mut tx_hash = [0u8; 32];
+        rng.fill_bytes(&mut tx_hash);
+        utxo_set.add_transaction_outputs(&tx_hash, &Transaction {
+            version: 1,
+            inputs: vec![],
+            outputs: vec![TxOutput {
+                amount,
+                public_key: pk.to_vec(),
+                spendable_after: 0,
+                stealth_dest: Some(sd),
+                commitment_bytes: Some(comm.0.compress().to_bytes()),
+                range_proof_bytes: Some(vec![]),
+                ephemeral: None,
+            }],
+            ring_size: 1,
+            signatures: vec![],
+            mlsag: None,
+            ring_members: None,
+        }, 0, 0);
+    }
+
+    #[test]
+    fn test_create_private_tx_roundtrip() {
+        use crate::state::UtxoSet;
+        use rand::RngCore;
+
+        let mut rng = rand::thread_rng();
+
+        // Create Alice and Bob wallets
+        let mut alice_w = Wallet { keys: vec![] };
+        alice_w.new_key("alice");
+        let mut bob_w = Wallet { keys: vec![] };
+        bob_w.new_key("bob");
+
+        let alice_addr = alice_w.keys[0].stealth_address().unwrap();
+        let bob_spend = bob_w.keys[0].spend_key;
+
+        // Create UTXO set and seed 11 stealth UTXOs for ring members
+        let mut utxo_set = UtxoSet::new();
+        let mut dummy_pk = [0u8; 32];
+        rng.fill_bytes(&mut dummy_pk);
+
+        // Alice's UTXO (the one she'll spend)
+        let alice_sd = alice_addr.spend_key.compress().to_bytes();
+        seed_stealth_utxo(&mut utxo_set, dummy_pk, alice_sd, 500);
+
+        // 10 decoy UTXOs for ring membership
+        for _ in 0..10 {
+            let mut sd = [0u8; 32];
+            rng.fill_bytes(&mut sd);
+            seed_stealth_utxo(&mut utxo_set, dummy_pk, sd, 100);
+        }
+
+        // Alice creates a private tx to Bob
+        let tx = create_private_tx(&alice_w, &bob_spend, 100, &utxo_set, &mut rng)
+            .expect("Private tx creation should succeed");
+
+        // Verify state accepts the tx (MLSAG + Pedersen + range proof)
+        utxo_set.spend_transaction_inputs(&tx, 1)
+            .expect("State should accept the private tx");
+
+        // Verify: Alice's balance decreased
+        let alice_owned = alice_w.scan_utxos(&utxo_set);
+        let alice_balance: u64 = alice_owned.iter().map(|o| o.entry.amount).sum();
+        // Alice spent 500, got ~400 back as change (100 sent, rest change)
+        assert!(alice_balance > 0, "Alice should have change");
+
+        // Verify: Bob can see the new UTXO
+        let bob_owned = bob_w.scan_utxos(&utxo_set);
+        let bob_balance: u64 = bob_owned.iter().map(|o| o.entry.amount).sum();
+        assert_eq!(bob_balance, 100, "Bob should receive 100");
     }
 }
