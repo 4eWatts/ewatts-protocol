@@ -197,9 +197,21 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     let msg = commitment::commit_msg(&commit);
     commit.signature = sk.sign(&msg).to_bytes().to_vec();
 
-    // Validate commitment
-    let recent = &[]; // first block — no history
-    commitment::validate_commitment(&commit, recent)
+    // Validate commitment against recent bandwidth history
+    let recent: Vec<f64> = {
+        let all_blocks = crate::store::load_blocks().unwrap_or_default();
+        let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
+        let start = all_blocks.len().saturating_sub(window_len);
+        if start < all_blocks.len() {
+            all_blocks[start..]
+                .iter()
+                .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_gbps))
+                .collect()
+        } else {
+            vec![]
+        }
+    };
+    commitment::validate_commitment(&commit, &recent)
         .map_err(|e| format!("Commitment invalid: {}", e))?;
 
     // Compute effective commitment
