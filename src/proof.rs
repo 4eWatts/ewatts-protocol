@@ -56,10 +56,8 @@ pub fn mine(
     nonce_limit: u64,
 ) -> Option<Solution> {
     let walk_length = difficulty_to_accesses(difficulty);
-    let sample_interval = std::cmp::max(
-        1,
-        (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64,
-    );
+    // Integer math: VERIFICATION_SAMPLE_RATE = 0.001 = 1/1000
+    let sample_interval = std::cmp::max(1, walk_length / 1000);
     let mut rng = rand::thread_rng();
     for _attempt in 0..nonce_limit {
         let nonce: u64 = rng.gen();
@@ -111,11 +109,10 @@ pub fn verify(
             walk_length, solution.walk_length
         ));
     }
-    let sample_interval = std::cmp::max(
-        1,
-        (walk_length as f64 * constants::VERIFICATION_SAMPLE_RATE) as u64,
-    );
+    // Integer math: VERIFICATION_SAMPLE_RATE = 0.001 = 1/1000
+    let sample_interval = std::cmp::max(1, walk_length / 1000);
     let mut mix = initial_mix(header_hash, solution.nonce);
+    let mut last_offset: u64 = 0;
     for i in 0..walk_length {
         let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
         for k in 0..64 {
@@ -136,6 +133,11 @@ pub fn verify(
             if s.mix_hash != mix {
                 return Err("Mix hash mismatch".to_string());
             }
+            // Verify elapsed offset is monotonic (detects gross timing manipulation)
+            if s.elapsed_offset_us < last_offset {
+                return Err("Non-monotonic elapsed offset".to_string());
+            }
+            last_offset = s.elapsed_offset_us;
         }
     }
     let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
