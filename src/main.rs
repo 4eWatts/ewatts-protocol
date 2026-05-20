@@ -164,6 +164,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
         emission_rate: 0,             // base units, filled after mining
         miner_effective_commit: 0.0,
         vr_block: 0.0,
+        coinbase_burn: 0,
         nonce: 0,
         elapsed_ms: 0,
     };
