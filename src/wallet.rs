@@ -426,7 +426,6 @@ mod tests {
     fn test_create_tx_zero_amount_rejected() {
         let mut w = Wallet { keys: vec![] };
         w.new_key("test");
-        let dummy_addr = [0u8; 32];
         let utxo_set = UtxoSet::new();
         let dummy_addr = crate::privacy::StealthAddress {
             spend_key: curve25519_dalek::ristretto::CompressedRistretto([0u8; 32]).decompress().unwrap_or(crate::privacy::ring_g()),
