@@ -25,7 +25,7 @@ fn test_dag() -> crate::dag::Dag {
 // range proof where bit commitments use a_i=0, so total blinding is zero
 // and C = v*H (Pedersen balance check passes trivially).
 
-fn range_proof_zero_blinding(v: u64, rng: &mut impl rand::RngCore) -> crate::privacy::RangeProof {
+fn range_proof_zero_blinding(v: u64, rng: &mut rand::rngs::ThreadRng) -> crate::privacy::RangeProof {
     use crate::privacy::{Commitment, MLSAGSignature, pedersen_h};
     use curve25519_dalek::scalar::Scalar;
     use curve25519_dalek::ristretto::RistrettoPoint;
@@ -126,7 +126,7 @@ fn integration_private_tx_roundtrip() {
     let mut ring_pubkeys: Vec<RistrettoPoint> = Vec::with_capacity(ring_size);
 
     for (k, v) in &all_utxos {
-        if *k == alice_utxo.key { continue; }
+        if *k == &alice_utxo.key { continue; }
         ring_pubkeys.push(v.stealth_dest_point().unwrap());
         ring_members.push(UtxoRef { tx_hash: k.tx_hash, output_index: k.output_index });
         if ring_pubkeys.len() >= ring_size - 1 { break; }
