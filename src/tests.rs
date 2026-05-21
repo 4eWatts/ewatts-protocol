@@ -31,10 +31,10 @@ fn test_dag() -> crate::dag::Dag {
 
 #[test]
 fn integration_private_tx_roundtrip() {
-    use crate::privacy::{StealthAddress, RangeProof, Commitment, ring_g, hash_to_point, hash_pk};
+    use crate::privacy::{StealthAddress, RangeProof, Commitment, hash_pk};
     use crate::privacy::MLSAGSignature;
+    use curve25519_dalek::ristretto::RistrettoPoint;
     use curve25519_dalek::scalar::Scalar;
-    use curve25519_dalek::traits::Identity;
     use rand::RngCore;
 
     let mut rng = rand::thread_rng();
