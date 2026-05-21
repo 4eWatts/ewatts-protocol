@@ -589,7 +589,16 @@ fn cmd_wallet(args: &[String]) {
                 Err(e) => { println!("Error loading state: {}", e); return; }
             };
             let mut rng = rand::thread_rng();
-            match crate::wallet::create_private_tx(&wallet, &to_bytes, amount, &state, &mut rng) {
+            let to_addr = crate::privacy::StealthAddress {
+                spend_key: curve25519_dalek::ristretto::CompressedRistretto(to_bytes)
+                    .decompress()
+                    .unwrap_or_else(|| {
+                        println!("  Warning: invalid spend key in address");
+                        curve25519_dalek::ristretto::RistrettoPoint::identity()
+                    }),
+                view_key: curve25519_dalek::ristretto::RistrettoPoint::identity(),
+            };
+            match crate::wallet::create_private_tx(&wallet, &to_addr, amount, &state, &mut rng) {
                 Ok(tx) => {
                     println!("  Transaction created: {} inputs, {} outputs", tx.inputs.len(), tx.outputs.len());
                     println!("  Hash: {}", hex::encode(tx.hash()));

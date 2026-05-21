@@ -210,7 +210,7 @@ impl Wallet {
 /// This is a simplified version — real wallet needs proper ring selection and R storage.
 pub fn create_private_tx(
     wallet: &Wallet,
-    to_stealth_bytes: &[u8; 32],
+    to_addr: &StealthAddress,
     amount: u64,
     utxo_set: &UtxoSet,
     rng: &mut ThreadRng,
@@ -329,12 +329,6 @@ pub fn create_private_tx(
     }
 
     // Destination: create stealth output for recipient
-    let to_addr = StealthAddress {
-        spend_key: curve25519_dalek::ristretto::CompressedRistretto(*to_stealth_bytes)
-            .decompress()
-            .ok_or_else(|| "Invalid recipient stealth address".to_string())?,
-        view_key: RistrettoPoint::identity(),
-    };
     let (dest, _r_ephem) = to_addr.derive_destination(rng);
 
     // Output to recipient — use prove_with_blinding (P0-1 fix)
@@ -434,31 +428,45 @@ mod tests {
         w.new_key("test");
         let dummy_addr = [0u8; 32];
         let utxo_set = UtxoSet::new();
+        let dummy_addr = crate::privacy::StealthAddress {
+            spend_key: curve25519_dalek::ristretto::CompressedRistretto([0u8; 32]).decompress().unwrap_or(crate::privacy::ring_g()),
+            view_key: curve25519_dalek::ristretto::RistrettoPoint::identity(),
+        };
         let result = create_private_tx(&w, &dummy_addr, 0, &utxo_set, &mut rand::thread_rng());
         assert!(result.is_err(), "zero amount tx should be rejected");
     }
 
-    /// Create stealth UTXOs in the state for testing ring membership.
-    fn seed_stealth_utxo(utxo_set: &mut UtxoSet, pk: [u8; 32], sd: [u8; 32], amount: u64) {
-        use crate::privacy::pedersen_h;
-        use curve25519_dalek::scalar::Scalar;
-        use rand::RngCore;
-        let mut rng = rand::thread_rng();
-        let blinding = Scalar::random(&mut rng);
-        let comm = crate::privacy::Commitment::new_with_blinding(amount, blinding);
+    /// Create a properly-formed stealth UTXO owned by `recipient`, with
+    /// correct one-time address derivation, ephemeral key, commitment, and range proof.
+    fn seed_stealth_utxo(
+        utxo_set: &mut UtxoSet,
+        recipient: &StealthAddress,
+        amount: u64,
+        rng: &mut ThreadRng,
+    ) {
+        use crate::privacy::{Commitment, RangeProof};
+
+        // Derive one-time destination from recipient's stealth address
+        let (dest, _r_ephem) = recipient.derive_destination(rng);
+
+        // Create commitment + range proof
+        let (range_proof, blinding) = RangeProof::prove_with_blinding(amount, 32, rng);
+        let comm = Commitment::new_with_blinding(amount, blinding);
+
         let mut tx_hash = [0u8; 32];
         rng.fill_bytes(&mut tx_hash);
+
         utxo_set.add_transaction_outputs(&tx_hash, &Transaction {
             version: 1,
             inputs: vec![],
             outputs: vec![TxOutput {
                 amount,
-                public_key: pk.to_vec(),
+                public_key: vec![],
                 spendable_after: 0,
-                stealth_dest: Some(sd),
+                stealth_dest: Some(dest.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm.0.compress().to_bytes()),
-                range_proof_bytes: Some(vec![]),
-                ephemeral: None,
+                range_proof_bytes: Some(serde_json::to_vec(&range_proof).unwrap()),
+                ephemeral: Some(dest.ephemeral.compress().to_bytes()),
             }],
             ring_size: 1,
             signatures: vec![],
@@ -481,41 +489,37 @@ mod tests {
         bob_w.new_key("bob");
 
         let alice_addr = alice_w.keys[0].stealth_address().unwrap();
-        let bob_spend = bob_w.keys[0].spend_key;
+        let bob_addr = bob_w.keys[0].stealth_address().unwrap();
 
-        // Create UTXO set and seed 11 stealth UTXOs for ring members
+        // Seed 11 stealth UTXOs: 1 spendable by Alice, 10 decoys
         let mut utxo_set = UtxoSet::new();
-        let mut dummy_pk = [0u8; 32];
-        rng.fill_bytes(&mut dummy_pk);
-
-        // Alice's UTXO (the one she'll spend)
-        let alice_sd = alice_addr.spend_key.compress().to_bytes();
-        seed_stealth_utxo(&mut utxo_set, dummy_pk, alice_sd, 500);
-
-        // 10 decoy UTXOs for ring membership
+        seed_stealth_utxo(&mut utxo_set, &alice_addr, 500, &mut rng);
         for _ in 0..10 {
-            let mut sd = [0u8; 32];
-            rng.fill_bytes(&mut sd);
-            seed_stealth_utxo(&mut utxo_set, dummy_pk, sd, 100);
+            let (dummy_addr, _) = StealthAddress::generate(&mut rng);
+            seed_stealth_utxo(&mut utxo_set, &dummy_addr, 100, &mut rng);
         }
 
-        // Alice creates a private tx to Bob
-        let tx = create_private_tx(&alice_w, &bob_spend, 100, &utxo_set, &mut rng)
-            .expect("Private tx creation should succeed");
-
-        // Verify state accepts the tx (MLSAG + Pedersen + range proof)
-        utxo_set.spend_transaction_inputs(&tx, 1)
-            .expect("State should accept the private tx");
-
-        // Verify: Alice's balance decreased
+        // Verify Alice can see her UTXO before spend
         let alice_owned = alice_w.scan_utxos(&utxo_set);
-        let alice_balance: u64 = alice_owned.iter().map(|o| o.entry.amount).sum();
-        // Alice spent 500, got ~400 back as change (100 sent, rest change)
-        assert!(alice_balance > 0, "Alice should have change");
+        assert_eq!(alice_owned.len(), 1, "Alice should see 1 UTXO");
+        assert_eq!(alice_owned[0].commitment_val, 500);
 
-        // Verify: Bob can see the new UTXO
+        // Alice creates private tx to Bob
+        let tx = create_private_tx(&alice_w, &bob_addr, 100, &utxo_set, &mut rng)
+            .expect("Private tx creation");
+
+        // State validates: MLSAG + range proofs + Pedersen balance
+        utxo_set.spend_transaction_inputs(&tx, 1)
+            .expect("State accepts private tx");
+
+        // Bob scans and finds his UTXO
         let bob_owned = bob_w.scan_utxos(&utxo_set);
         let bob_balance: u64 = bob_owned.iter().map(|o| o.entry.amount).sum();
-        assert_eq!(bob_balance, 100, "Bob should receive 100");
+        assert_eq!(bob_balance, 100, "Bob receives 100");
+
+        // Alice's change (400) should also be findable
+        let alice_after = alice_w.scan_utxos(&utxo_set);
+        let alice_balance: u64 = alice_after.iter().map(|o| o.entry.amount).sum();
+        assert_eq!(alice_balance, 400, "Alice keeps 400 in change");
     }
 }
