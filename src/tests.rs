@@ -342,7 +342,6 @@ fn integration_coinbase_empty_inputs_required() {
 #[test]
 fn integration_pedersen_balance_prevents_inflation() {
     use crate::privacy::{Commitment, RangeProof, StealthAddress};
-    use curve25519_dalek::scalar::Scalar;
     use rand::RngCore;
 
     let mut rng = rand::thread_rng();

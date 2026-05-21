@@ -24,6 +24,7 @@ use sha3::{Digest, Keccak256};
 use std::time::{SystemTime, UNIX_EPOCH};
 use rand::RngCore;
 use ed25519_dalek::Signer;
+use curve25519_dalek::traits::Identity;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
