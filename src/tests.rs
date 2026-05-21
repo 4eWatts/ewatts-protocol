@@ -175,9 +175,13 @@ fn integration_private_tx_roundtrip() {
     let sig = MLSAGSignature::sign(&mlsag_ring, &[alice_utxo.one_time_key], real_index, &msg, &mut rng);
     let tx = Transaction { mlsag: Some(MlsagData::from_sig(&sig)), ..tx };
 
-    // State validates: MLSAG + range proofs + Pedersen balance
+    // State validates: spend inputs (MLSAG + range proofs + Pedersen)
     utxo_set.spend_transaction_inputs(&tx, 1)
-        .expect("State accepts private tx");
+        .expect("Spend accepts private tx");
+
+    // Add tx outputs to the UTXO set (normally done by apply_block)
+    let tx_hash = tx.hash();
+    utxo_set.add_transaction_outputs(&tx_hash, &tx, 1, 0);
 
     // Bob finds his UTXO
     let bob_owned = bob_w.scan_utxos(&utxo_set);
