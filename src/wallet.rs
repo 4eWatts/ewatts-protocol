@@ -476,9 +476,6 @@ mod tests {
 
     #[test]
     fn test_create_private_tx_roundtrip() {
-        use crate::state::UtxoSet;
-        use rand::RngCore;
-
         let mut rng = rand::thread_rng();
 
         // Create Alice and Bob wallets
