@@ -88,7 +88,7 @@ pub fn execute_reorg(
     to_apply: &[[u8; 32]],
     store: &mut ChainStore,
     state: &mut UtxoSet,
-) -> Result<Vec<[u8; 32]], String> {
+) -> Result<Vec<[u8; 32]>, String> {
     println!(
         "REORG: unwinding {} blocks, applying {} blocks",
         to_unwind.len(),
@@ -127,7 +127,7 @@ fn execute_reorg_inner(
     to_apply: &[[u8; 32]],
     store: &mut ChainStore,
     state: &mut UtxoSet,
-) -> Result<Vec<[u8; 32]], String> {
+) -> Result<Vec<[u8; 32]>, String> {
     // Phase 1: Unwind current chain (tip -> fork_point)
     for hash in to_unwind {
         let block = store.get_block(hash)
