@@ -435,8 +435,6 @@ impl UtxoSet {
     pub fn sub_from_supply(&mut self, amount: u64) {
         self.total_supply = self.total_supply.saturating_sub(amount);
     }
-        &self.spent_key_images
-    }
 
     /// Access the internal UTXO map (for mempool ring building).
     pub fn utxos_map(&self) -> &std::collections::HashMap<UtxoKey, UtxoEntry> {
