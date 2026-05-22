@@ -287,7 +287,7 @@ pub fn compute_block_work(header: &BlockHeader) -> u64 {
     if header.difficulty_target == 0 {
         return 0;
     }
-    (u64::MAX / header.difficulty_target.max(1))
+    u64::MAX / header.difficulty_target.max(1)
 }
 
 #[cfg(test)]

@@ -257,15 +257,16 @@ pub fn drain() -> Vec<Transaction> {
 /// Peek at pending transactions (returns first 100 by fee priority).
 pub fn peek() -> Vec<Transaction> {
     let pool_opt = MEMPOOL.lock().unwrap();
-    let pool_ref = pool_opt.as_ref().unwrap();
-    pool.pending.iter().take(100).map(|pt| pt.tx.clone()).collect()
+    match pool_opt.as_ref() {
+        Some(p) => p.pending.iter().take(100).map(|pt| pt.tx.clone()).collect(),
+        None => vec![],
+    }
 }
 
 /// Number of pending transactions.
 pub fn pending_count() -> usize {
     let pool_opt = MEMPOOL.lock().unwrap();
-    let pool_ref = pool_opt.as_ref().unwrap();
-    pool.pending.len()
+    pool_opt.as_ref().map(|p| p.pending.len()).unwrap_or(0)
 }
 
 #[cfg(test)]

@@ -236,7 +236,7 @@ mod tests {
     fn test_reorg_detection() {
         let genesis = make_block(0, [0u8; 32]);
         let g_hash = genesis.header.hash();
-        let store = ChainStore::new(genesis);
+        let mut store = ChainStore::new(genesis);
 
         // Chain A: 3 blocks
         let a1 = make_block(1, g_hash);
