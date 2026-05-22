@@ -88,7 +88,7 @@ pub fn execute_reorg(
     to_apply: &[[u8; 32]],
     store: &mut ChainStore,
     state: &mut UtxoSet,
-) -> Result<Vec<[u8; 32]>, String> {
+) -> Result<Vec<[u8; 32]], String> {
     println!(
         "REORG: unwinding {} blocks, applying {} blocks",
         to_unwind.len(),
@@ -106,32 +106,42 @@ pub fn execute_reorg(
         ));
     }
 
-    // Collect txs from unwound blocks for mempool resurrection
-    let mut unwound_tx_hashes: Vec<[u8; 32]> = Vec::new();
+    // Snapshot for atomic rollback on failure
+    let state_snapshot = state.clone();
+    let store_snapshot = store.clone();
 
-    // Phase 1: Unwind current chain (tip → fork_point)
+    match execute_reorg_inner(to_unwind, to_apply, store, state) {
+        Ok(resurrect) => Ok(resurrect),
+        Err(e) => {
+            *state = state_snapshot;
+            *store = store_snapshot;
+            println!("REORG FAILED: rolling back snapshot -- {}", e);
+            Err(e)
+        }
+    }
+}
+
+/// Inner reorg (no rollback). Caller handles atomicity via snapshot.
+fn execute_reorg_inner(
+    to_unwind: &[[u8; 32]],
+    to_apply: &[[u8; 32]],
+    store: &mut ChainStore,
+    state: &mut UtxoSet,
+) -> Result<Vec<[u8; 32]], String> {
+    // Phase 1: Unwind current chain (tip -> fork_point)
     for hash in to_unwind {
         let block = store.get_block(hash)
             .ok_or_else(|| "Block not found during unwind".to_string())?;
         let height = block.header.height;
-
-        // Collect tx hashes for mempool (skip coinbase)
-        for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
-            if tx_idx > 0 {
-                unwound_tx_hashes.push(tx.hash());
-            }
-        }
-
         state.unwind_block(block, height)?;
         println!("  Unwound block #{} {:x}..", height, hash[0]);
     }
 
-    // Phase 2: Apply new chain (fork_point → new tip)
+    // Phase 2: Apply new chain (fork_point -> new tip)
     for hash in to_apply {
         let block = store.get_block(hash)
             .ok_or_else(|| "Block not found during reorg apply".to_string())?;
         let height = block.header.height;
-
         state.apply_block(block, height)?;
         println!("  Applied block #{} {:x}..", height, hash[0]);
     }
@@ -149,8 +159,7 @@ pub fn execute_reorg(
         store.chain_tip_hash()[0]
     );
 
-    // Filter: only return tx hashes that are NOT in the new chain
-    // (by checking which key_images are still in spent_key_images after reorg)
+    // Determine which txs from unwound blocks should be resurrected
     let mut resurrect = Vec::new();
     for hash in to_unwind {
         if let Some(block) = store.get_block(hash) {
@@ -159,9 +168,7 @@ pub fn execute_reorg(
                     let all_still_spent = tx.inputs.iter()
                         .all(|i| state.spent_key_images().contains(&i.key_image));
                     if !all_still_spent {
-                        // At least one input is no longer spent → tx can be resurrected
                         let tx_hash = tx.hash();
-                        // But check if it's already in the new chain
                         let already_in_new_chain = to_apply.iter().any(|bh| {
                             store.get_block(bh)
                                 .map(|b| b.body.transactions.iter().any(|t| t.hash() == tx_hash))
@@ -175,7 +182,6 @@ pub fn execute_reorg(
             }
         }
     }
-
     Ok(resurrect)
 }
 
