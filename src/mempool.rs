@@ -1,20 +1,78 @@
 //! Mempool: pending transaction pool for the fast-lane transaction hash layer.
 //! Transactions are validated on submission and queued for the next mining block.
+//! Uses fee-based priority with eviction when the mempool is full.
 
 use crate::block::Transaction;
+use crate::state::UtxoSet;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
-static MEMPOOL: Mutex<Vec<Transaction>> = Mutex::new(Vec::new());
+/// A pending transaction with its computed fee.
+#[derive(Debug, Clone)]
+struct PendingTx {
+    tx: Transaction,
+    fee: u64,         // computed as sum(inputs) - sum(outputs)
+    tx_hash: [u8; 32],
+}
+
+/// Mempool with priority queue (sorted by fee, highest first).
+struct MempoolInner {
+    // Txs sorted by fee descending
+    pending: Vec<PendingTx>,
+    // Key image -> tx_hash for O(1) double-spend check
+    key_images: HashMap<[u8; 32], [u8; 32]>,
+    // UTXO reference -> tx_hash for O(1) UTXO double-spend check
+    utxo_spends: HashMap<([u8; 32], u32), [u8; 32]>,
+}
+
+static MEMPOOL: Mutex<MempoolInner> = Mutex::new(MempoolInner {
+    pending: Vec::new(),
+    key_images: HashMap::new(),
+    utxo_spends: HashMap::new(),
+});
 
 /// Maximum pending transactions in the mempool.
 const MAX_MEMPOOL_TXS: usize = 5000;
 
+/// Compute the fee for a transaction: sum(input amounts) - sum(output amounts).
+/// For coinbase (no inputs), fee is 0.
+fn compute_fee(tx: &Transaction, state: &UtxoSet) -> Result<u64, String> {
+    if tx.inputs.is_empty() {
+        return Ok(0); // coinbase has no fee
+    }
+    let utxo_map = state.utxos_map();
+    let mut inputs_sum = 0u64;
+    for input in &tx.inputs {
+        let key = crate::state::UtxoKey {
+            tx_hash: input.previous_tx_hash,
+            output_index: input.output_index,
+        };
+        let utxo = utxo_map
+            .get(&key)
+            .ok_or_else(|| format!("UTXO not found: {:x}..{}", input.previous_tx_hash[0], input.output_index))?;
+        inputs_sum = inputs_sum
+            .checked_add(utxo.amount)
+            .ok_or("Input amount overflow")?;
+    }
+    let outputs_sum: u64 = tx
+        .outputs
+        .iter()
+        .try_fold(0u64, |acc, o| acc.checked_add(o.amount).ok_or("Output overflow"))
+        .map_err(|e: &str| e.to_string())?;
+    Ok(inputs_sum.saturating_sub(outputs_sum))
+}
+
 /// Submit a transaction to the mempool after validation.
-pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), String> {
-    // Validate basic structure
+/// If the mempool is full, evicts the lowest-fee transaction to make room.
+pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
+    // 1. Validate basic structure against state
     state.validate_transaction(&tx)?;
 
-    // If it's a MLSAG private tx, verify the ring signature
+    // 2. Compute fee (needed for eviction priority)
+    let fee = compute_fee(&tx, state)?;
+    let tx_hash = tx.hash();
+
+    // 3. Verify MLSAG ring signature if private mode
     if let Some(ref mlsag) = tx.mlsag {
         let ring_members = tx
             .ring_members
@@ -55,45 +113,105 @@ pub fn submit(tx: Transaction, state: &crate::state::UtxoSet) -> Result<(), Stri
         }
     }
 
-    // Acquire mempool lock once for double-spend check + push (🔴 race window fix)
+    // 4. Acquire mempool lock for double-spend checks + insertion
     let mut pool = MEMPOOL.lock().unwrap();
 
-    // Check mempool size limit (🔴 DoS fix)
-    if pool.len() >= MAX_MEMPOOL_TXS {
-        return Err("Mempool full".into());
-    }
-
-    // Check for double-spend against mempool (key images)
-    for pending in pool.iter() {
-        for pending_input in &pending.inputs {
-            for input in &tx.inputs {
-                if pending_input.key_image == input.key_image {
-                    return Err("Double-spend: key image already in mempool".into());
-                }
-            }
+    // 5. Check for key_image double-spend against already-spent (mined) UTXOs
+    for input in &tx.inputs {
+        if state.spent_key_images().contains(&input.key_image) {
+            return Err("Double-spend: key image already spent in chain".into());
         }
     }
 
-    pool.push(tx);
+    // 6. Check for double-spend against mempool (key images)
+    for input in &tx.inputs {
+        if pool.key_images.contains_key(&input.key_image) {
+            return Err("Double-spend: key image already in mempool".into());
+        }
+    }
+
+    // 7. Check for UTXO reference double-spend (same UTXO, even with different key_image)
+    for input in &tx.inputs {
+        let utxo_ref = (input.previous_tx_hash, input.output_index);
+        if pool.utxo_spends.contains_key(&utxo_ref) {
+            return Err("Double-spend: UTXO already spent in mempool".into());
+        }
+    }
+
+    // 8. If full, try to evict lowest-fee tx (only if this tx has higher fee)
+    if pool.pending.len() >= MAX_MEMPOOL_TXS {
+        // Find the lowest-fee tx
+        let min_fee_idx = pool
+            .pending
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, pt)| pt.fee)
+            .map(|(idx, _)| idx);
+
+        if let Some(idx) = min_fee_idx {
+            if fee > pool.pending[idx].fee {
+                // Evict the lowest-fee tx
+                let evicted = pool.pending.swap_remove(idx);
+                // Clean up indices
+                for input in &evicted.tx.inputs {
+                    pool.key_images.remove(&input.key_image);
+                    pool.utxo_spends.remove(&(input.previous_tx_hash, input.output_index));
+                }
+            } else {
+                return Err(format!(
+                    "Mempool full. This tx fee ({}) <= lowest fee in pool ({})",
+                    fee,
+                    pool.pending[idx].fee
+                ));
+            }
+        } else {
+            return Err("Mempool full (no evictable tx)".into());
+        }
+    }
+
+    // 9. Index key images
+    for input in &tx.inputs {
+        pool.key_images.insert(input.key_image, tx_hash);
+        pool.utxo_spends.insert(
+            (input.previous_tx_hash, input.output_index),
+            tx_hash,
+        );
+    }
+
+    // 10. Insert in fee-sorted position
+    let pending_tx = PendingTx {
+        tx,
+        fee,
+        tx_hash,
+    };
+    let insert_pos = pool
+        .pending
+        .binary_search_by(|pt| pt.fee.cmp(&fee).reverse())
+        .unwrap_or_else(|e| e);
+    pool.pending.insert(insert_pos, pending_tx);
+
     Ok(())
 }
 
-/// Drain all pending transactions from the mempool (FIFO).
+/// Drain all pending transactions from the mempool (FIFO, highest fee first).
 pub fn drain() -> Vec<Transaction> {
     let mut pool = MEMPOOL.lock().unwrap();
-    std::mem::take(&mut *pool)
+    let txs: Vec<Transaction> = pool.pending.drain(..).map(|pt| pt.tx).collect();
+    pool.key_images.clear();
+    pool.utxo_spends.clear();
+    txs
 }
 
-/// Peek at pending transactions (returns first 100 to avoid cloning everything).
+/// Peek at pending transactions (returns first 100 by fee priority).
 pub fn peek() -> Vec<Transaction> {
     let pool = MEMPOOL.lock().unwrap();
-    pool.iter().take(100).cloned().collect()
+    pool.pending.iter().take(100).map(|pt| pt.tx.clone()).collect()
 }
 
 /// Number of pending transactions.
 pub fn pending_count() -> usize {
     let pool = MEMPOOL.lock().unwrap();
-    pool.len()
+    pool.pending.len()
 }
 
 #[cfg(test)]

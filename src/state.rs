@@ -411,6 +411,11 @@ impl UtxoSet {
         self.utxos.get(key)
     }
 
+    /// Access spent key images (for mempool double-spend check).
+    pub fn spent_key_images(&self) -> &std::collections::HashSet<[u8; 32]> {
+        &self.spent_key_images
+    }
+
     /// Access the internal UTXO map (for mempool ring building).
     pub fn utxos_map(&self) -> &std::collections::HashMap<UtxoKey, UtxoEntry> {
         &self.utxos
