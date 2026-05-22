@@ -53,49 +53,28 @@ pub fn analyze_fork(
         return ForkDecision::ExtendCanonical;
     }
 
-    // Competing fork?
-    if store.is_competing_fork(&block.header) {
-        let new_hash = hash;
-        let tip_hash = store.chain_tip_hash();
-        let current_work = store.chain_tip_work();
-        let new_work = store.work_at(&new_hash);
+    // Check if this block extends a known chain (sidechain or canonical fork)
+    // by computing the accumulated work of the chain it would create.
+    let tip_hash = store.chain_tip_hash();
+    let current_work = store.chain_tip_work();
+    let block_work = crate::chain::compute_block_work(&block.header) as u128;
+    let parent_work = store.work_at(&prev_hash);
+    let new_work = parent_work.saturating_add(block_work);
 
-        if new_work > current_work {
-            // Heavier chain! Need to reorg.
-            let lca = store.find_lca(&new_hash, &tip_hash);
-            if let Some(fork_point) = lca {
-                let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
-                let to_apply_rev = store.get_chain_to_fork(&new_hash, &fork_point);
-                // Reverse to_apply so it's from fork_point up to new tip
-                let mut to_apply = to_apply_rev;
-                to_apply.reverse();
-                return ForkDecision::ReorgToNew { to_unwind, to_apply };
-            }
+    if new_work > current_work {
+        // Heavier chain! Need to reorg.
+        let lca = store.find_lca(&hash, &tip_hash);
+        if let Some(fork_point) = lca {
+            let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
+            let to_apply_rev = store.get_chain_to_fork(&hash, &fork_point);
+            let mut to_apply = to_apply_rev;
+            to_apply.reverse();
+            return ForkDecision::ReorgToNew { to_unwind, to_apply };
         }
-
-        return ForkDecision::Sidechain;
     }
 
-    // Block at or below current height — check if extends a known sidechain
-    if let Some(_) = store.get_block(&prev_hash) {
-        // It extends a side chain
-        let tip_hash = store.chain_tip_hash();
-        let new_work = store.work_at(&hash);
-        let current_work = store.chain_tip_work();
-
-        if new_work > current_work {
-            let lca = store.find_lca(&hash, &tip_hash);
-            if let Some(fork_point) = lca {
-                let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
-                let mut to_apply = store.get_chain_to_fork(&hash, &fork_point);
-                to_apply.reverse();
-                return ForkDecision::ReorgToNew { to_unwind, to_apply };
-            }
-        }
-        return ForkDecision::Sidechain;
-    }
-
-    ForkDecision::Orphan
+    // Not heavier — just a sidechain or non-competing block
+    ForkDecision::Sidechain
 }
 
 /// Execute a full reorg: unwind current chain, apply new chain.
@@ -267,17 +246,15 @@ mod tests {
         let b3_hash = b3.header.hash();
         store.add_block(b3).unwrap();
 
-        let b4 = make_block(4, b3_hash);
-        let _b4_hash = b4.header.hash();
-        store.add_block(b4).unwrap();
+        // B4 is the NEW block we're analyzing — NOT yet in the store
+        let b4_received = make_block(4, b3_hash);
 
         // Check: B4 should trigger a reorg since B chain is heavier (4 blocks > 3)
-        let b4_received = make_block(4, b3_hash); // same but fresh
         let decision = analyze_fork(&b4_received, &store);
         match &decision {
             ForkDecision::ReorgToNew { to_unwind, to_apply } => {
-                assert_eq!(to_unwind.len(), 3); // A3, A2, A1
-                assert_eq!(to_apply.len(), 4);  // B1, B2, B3, B4
+                assert_eq!(to_unwind.len(), 3, "should unwind A3, A2, A1"); // A3, A2, A1
+                assert_eq!(to_apply.len(), 4, "should apply B1, B2, B3, B4");  // B1, B2, B3, B4
             }
             other => panic!("Expected ReorgToNew, got {:?}", other),
         }
