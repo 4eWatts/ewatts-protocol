@@ -183,6 +183,7 @@ impl UtxoSet {
         UtxoSet {
             utxos: HashMap::new(),
             spent_key_images: HashSet::new(),
+            total_supply: 0,
             spend_log: HashMap::new(),
         }
     }

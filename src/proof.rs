@@ -64,7 +64,7 @@ pub fn mine(
         let mut mix = initial_mix(header_hash, nonce);
         let start = std::time::Instant::now();
         let mut trace = Vec::new();
-        for _i in 0..walk_length {
+        for i in 0..walk_length {
             let index = read_u64_le(&mix[..8]) % dag.len() as u64;
             let element = dag.get(index as usize);
             for k in 0..64 {
@@ -130,7 +130,7 @@ pub fn verify(
         // Full verification with proof trace sampling.
         let sample_interval = std::cmp::max(1, walk_length / 1000);
         let mut last_offset: u64 = 0;
-        for _i in 0..walk_length {
+        for i in 0..walk_length {
             let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
             for k in 0..64 {
                 mix[k] ^= element[k];
