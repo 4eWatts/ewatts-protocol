@@ -108,7 +108,7 @@ pub fn execute_reorg(
     to_apply: &[[u8; 32]],
     store: &mut ChainStore,
     state: &mut UtxoSet,
-) -> Result<Vec<[u8; 32]], String> {
+) -> Result<Vec<[u8; 32]>, String> {
     println!(
         "REORG: unwinding {} blocks, applying {} blocks",
         to_unwind.len(),
