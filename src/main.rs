@@ -12,6 +12,8 @@ pub mod store;
 pub mod wallet;
 pub mod p2p;
 pub mod mempool;
+pub mod chain;
+pub mod reorg;
 
 #[cfg(test)]
 pub mod tests;

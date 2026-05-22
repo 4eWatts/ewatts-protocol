@@ -416,6 +416,28 @@ impl UtxoSet {
         &self.spent_key_images
     }
 
+    /// Mutably access spent key images (for reorg unwind).
+    pub fn spent_key_images_mut(&mut self) -> &mut std::collections::HashSet<[u8; 32]> {
+        &mut self.spent_key_images
+    }
+
+    /// Mutably access UTXOs (for reorg unwind).
+    pub fn utxos_mut(&mut self) -> &mut std::collections::HashMap<UtxoKey, UtxoEntry> {
+        &mut self.utxos
+    }
+
+    /// Mutably access total supply (for reorg unwind).
+    pub fn add_to_supply(&mut self, amount: u64) {
+        self.total_supply = self.total_supply.checked_add(amount).unwrap_or(self.total_supply);
+    }
+
+    /// Subtract from total supply (for reorg unwind).
+    pub fn sub_from_supply(&mut self, amount: u64) {
+        self.total_supply = self.total_supply.saturating_sub(amount);
+    }
+        &self.spent_key_images
+    }
+
     /// Access the internal UTXO map (for mempool ring building).
     pub fn utxos_map(&self) -> &std::collections::HashMap<UtxoKey, UtxoEntry> {
         &self.utxos
@@ -452,6 +474,48 @@ impl UtxoSet {
                 self.validate_transaction(tx)?;
                 self.spend_transaction_inputs(tx, block_height)?;
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
+            }
+        }
+        Ok(())
+    }
+
+    /// Reverse a block's effects (for reorg unwinding).
+    /// This is the inverse of apply_block.
+    pub fn unwind_block(&mut self, block: &Block, block_height: u64) -> Result<(), String> {
+        // Process transactions in reverse order
+        for (tx_idx, tx) in block.body.transactions.iter().enumerate().rev() {
+            let tx_hash = tx.hash();
+            if tx_idx == 0 {
+                // Coinbase: remove created outputs, subtract supply
+                let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
+                for (i, _) in tx.outputs.iter().enumerate() {
+                    let key = UtxoKey {
+                        tx_hash,
+                        output_index: i as u32,
+                    };
+                    self.utxos.remove(&key);
+                }
+                self.total_supply = self.total_supply.saturating_sub(coinbase_amount);
+            } else {
+                // Regular tx: remove created outputs, restore spent inputs
+                // 1. Remove outputs created by this tx
+                for (i, _) in tx.outputs.iter().enumerate() {
+                    let key = UtxoKey {
+                        tx_hash,
+                        output_index: i as u32,
+                    };
+                    self.utxos.remove(&key);
+                }
+
+                // 2. For private txs: we cannot fully reverse the spent UTXOs here
+                // because MLSAG hides which input was actually spent.
+                // Instead, we rely on the fact that a reorg means we'll re-apply
+                // a different chain, so spent key images will be restored by
+                // BlockDiff tracking if we used apply_block_and_track.
+                // For basic reorg, we just un-mark key_images as spent.
+                for input in &tx.inputs {
+                    self.spent_key_images.remove(&input.key_image);
+                }
             }
         }
         Ok(())

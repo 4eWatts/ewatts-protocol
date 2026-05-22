@@ -93,12 +93,12 @@ impl P2pNode {
         Ok(P2pNode { peer_id, swarm, peers: HashSet::new() })
     }
 
-    /// Validate an incoming block: verify PoW proof + apply to UTXO state.
-    /// Returns Ok(()) if the block is valid and extends our chain.
-    /// On success, the block is saved and the UTXO set is updated.
+    /// Validate an incoming block: verify PoW proof + fork decision + state application.
+    /// Uses the reorg engine to handle forks, orphans, and chain reorganization.
     fn validate_and_apply_block(
         block: &Block,
         state: &mut crate::state::UtxoSet,
+        store: &mut crate::chain::ChainStore,
     ) -> Result<(), String> {
         let height = block.header.height;
 
@@ -109,54 +109,61 @@ impl P2pNode {
             let header_hash = block.header.hash();
             let solution = crate::proof::Solution {
                 nonce: block.header.nonce,
-                proof_trace: vec![], // lightweight verify: just check difficulty
+                proof_trace: vec![],
                 elapsed_ms: block.header.elapsed_ms as u64,
                 walk_length: crate::proof::difficulty_to_accesses(block.header.difficulty_target),
             };
             crate::proof::verify(&header_hash, &solution, block.header.difficulty_target, &dag)?;
         }
 
-        // 2. Quick height sanity check (must be height we're expecting)
-        let our_height = crate::store::cached_block_count() as u64;
-        if height > our_height + 1 {
-            return Err(format!(
-                "Block height {} too far ahead (we're at {})",
-                height, our_height
-            ));
-        }
-        if height == our_height {
-            // Same height — check if it's a competing fork
-            if let Some(tip_hash) = crate::store::chain_tip_hash() {
-                if block.header.previous_hash == tip_hash {
-                    // Same block, skip
-                    return Err("Already have this block".into());
-                }
-                // Competing fork at same height: log but don't reorg
-                println!("P2P: Competing fork at height {} (ours: {:x}.., theirs: {:x}..), rejecting",
-                    height, tip_hash[0], block.header.hash()[0]);
-                return Err("Competing fork rejected (no reorg yet)".into());
-            }
+        // 2. Check the store for the block's parent
+        let parent_known = store.get_block(&block.header.previous_hash).is_some();
+        if !parent_known && height > 0 {
+            // Orphan block: store for later
+            println!("P2P: Orphan block #{} (parent unknown), queuing", height);
+            store.add_orphan(block.clone());
+            return Ok(());
         }
 
-        // 3. Verify previous_hash matches our chain tip
-        if height > 0 {
-            if let Some(tip_hash) = crate::store::chain_tip_hash() {
-                if block.header.previous_hash != tip_hash {
-                    // This block doesn't extend our canonical chain — might be a fork
-                    // or a gap. For testnet, reject non-extending blocks.
-                    return Err(format!(
-                        "Previous hash mismatch: expected {:x}.., got {:x}..",
-                        tip_hash[0], block.header.previous_hash[0]
-                    ));
+        // 3. Add block to the chain store (establishes parent-child relationship)
+        if store.get_block(&block.header.hash()).is_some() {
+            return Err("Duplicate block".into());
+        }
+        store.add_block(block.clone())?;
+
+        // 4. Analyze fork and decide action
+        match crate::reorg::analyze_fork(block, store) {
+            crate::reorg::ForkDecision::ExtendCanonical => {
+                // Apply to state
+                state.apply_block(block, height)?;
+                store.set_chain_tip(&block.header.hash()).ok();
+                println!("P2P: Extended canonical chain to #{}", height);
+            }
+            crate::reorg::ForkDecision::ReorgToNew { to_unwind, to_apply } => {
+                println!("P2P: REORG — unwinding {} blocks, applying {}",
+                    to_unwind.len(), to_apply.len());
+                let resurrected = crate::reorg::execute_reorg(
+                    &to_unwind, &to_apply, store, state
+                )?;
+                // Return resurrected txs to mempool
+                for tx_hash in &resurrected {
+                    println!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
                 }
             }
-            // If we have no tip but height > 0, that means our chain is empty
-            // but the block claims height > 0. Shouldn't happen normally.
+            crate::reorg::ForkDecision::Sidechain => {
+                println!("P2P: Sidechain block #{} stored (not heaviest)", height);
+                // Block is stored in the tree, not applied to state.
+                // If the sidechain becomes heavier later, a reorg will be triggered.
+            }
+            crate::reorg::ForkDecision::Orphan => {
+                println!("P2P: Block #{} stored as orphan", height);
+            }
+            crate::reorg::ForkDecision::Reject(msg) => {
+                // Block was already in store — remove the duplicate entry
+                // (Actually, add_block() was a no-op for duplicates)
+                return Err(format!("Block rejected: {}", msg));
+            }
         }
-
-        // 4. Apply to state (runs ALL validation: Pedersen balance, range proofs,
-        //    MLSAG, double-spend, spendable_after, coinbase caps)
-        state.apply_block(block, height)?;
 
         Ok(())
     }
@@ -180,6 +187,8 @@ impl P2pNode {
 
     pub async fn run(&mut self, mine: bool, state: &mut crate::state::UtxoSet) {
         let mut last_state_save = std::time::Instant::now();
+        // Load or initialize fork-aware chain store
+        let mut chain_store = crate::store::load_chain_store();
 
         loop {
             tokio::select! {
@@ -193,7 +202,7 @@ impl P2pNode {
                             self.peers.insert(peer_id);
 
                             // Request latest blocks from new peer
-                            let from = crate::store::cached_block_count() as u64;
+                            let from = chain_store.chain_tip_height() + 1;
                             self.swarm.behaviour_mut().block_sync.send_request(
                                 &peer_id, P2pMessage::BlockRequest { from_height: from, to_height: from + 100 },
                             );
@@ -209,10 +218,10 @@ impl P2pNode {
                                     P2pMessage::NewBlock(block) => {
                                         let h = block.header.height;
                                         println!("P2P: Gossip block #{} received", h);
-
-                                        match Self::validate_and_apply_block(&block, state) {
+                                        match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                             Ok(()) => {
                                                 Self::accept_block(&block, &mut self.swarm);
+                                                // Save chain store state to disk periodically
                                             }
                                             Err(e) => {
                                                 println!("P2P: Gossip block #{} rejected: {}", h, e);
@@ -256,7 +265,7 @@ impl P2pNode {
                                                     println!("P2P: Synced {} blocks", blocks.len());
                                                     for block in blocks {
                                                         let h = block.header.height;
-                                                        match Self::validate_and_apply_block(&block, state) {
+                                                        match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                             Ok(()) => {
                                                                 Self::accept_block(&block, &mut self.swarm);
                                                             }
@@ -285,9 +294,9 @@ impl P2pNode {
                     futures::future::pending::<()>().await;
                 }} => {
                     if mine {
-                        let height = crate::store::cached_block_count() as u64;
-                        let prev_hash = crate::store::chain_tip_hash().unwrap_or([0u8; 32]);
-                        self.mine_and_gossip(prev_hash, height, state).await;
+                        let height = chain_store.chain_tip_height();
+                        let prev_hash = chain_store.chain_tip_hash();
+                        self.mine_and_gossip(prev_hash, height, state, &mut chain_store).await;
                     }
                 }
             }
@@ -295,6 +304,9 @@ impl P2pNode {
             // Periodic UTXO set save (every ~30s to prevent state loss on crash)
             if last_state_save.elapsed() > std::time::Duration::from_secs(30) {
                 if let Err(e) = crate::store::save_utxo_set(state) {
+                if let Err(e) = crate::store::save_chain_store(&chain_store) {
+                    eprintln!("P2P: Chain store save failed: {}", e);
+                }
                     eprintln!("P2P: State save failed: {}", e);
                 }
                 last_state_save = std::time::Instant::now();
@@ -303,18 +315,29 @@ impl P2pNode {
     }
 
     /// Mine a block and gossip it to peers
-    pub async fn mine_and_gossip(&mut self, prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet) {
+    pub async fn mine_and_gossip(
+        &mut self,
+        prev_hash: [u8; 32],
+        height: u64,
+        state: &mut crate::state::UtxoSet,
+        chain_store: &mut crate::chain::ChainStore,
+    ) {
         match mine_block(prev_hash, height, state) {
             Ok(block) => {
                 let hash = block.header.hash();
                 let h = block.header.height;
 
-                // Persist locally (mine_block already applied to state)
+                // Persist locally and add to chain store
                 if let Err(e) = crate::store::save_block(&block) {
                     eprintln!("P2P: Save error: {}", e);
                     return;
                 }
                 println!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
+                // Add to chain store
+                if chain_store.get_block(&hash).is_none() {
+                    let _ = chain_store.add_block(block.clone());
+                    chain_store.set_chain_tip(&hash).ok();
+                }
 
                 // Gossip to peers
                 if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {

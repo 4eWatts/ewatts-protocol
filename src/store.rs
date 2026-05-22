@@ -164,6 +164,56 @@ pub fn has_genesis_key() -> bool {
     Path::new(&format!("{}/genesis.key", DATA_DIR)).exists()
 }
 
+// ── ChainStore persistence (temporary: save/load from JSON) ──
+
+/// Save the chain store to disk (block tree for fork resolution).
+pub fn save_chain_store(store: &crate::chain::ChainStore) -> Result<(), String> {
+    ensure_dir().map_err(|e| format!("dir: {}", e))?;
+    let json = serde_json::to_string(store).map_err(|e| format!("serialize chain: {}", e))?;
+    let path = format!("{}/chain_store.json", DATA_DIR);
+    let tmp = format!("{}/chain_store.json.tmp", DATA_DIR);
+    std::fs::write(&tmp, &json).map_err(|e| format!("write chain: {}", e))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("rename chain: {}", e))?;
+    Ok(())
+}
+
+/// Load the chain store from disk, rebuilding from blocks if needed.
+pub fn load_chain_store() -> crate::chain::ChainStore {
+    // Try to load from chain_store.json
+    let path = format!("{}/chain_store.json", DATA_DIR);
+    if Path::new(&path).exists() {
+        if let Ok(data) = std::fs::read_to_string(&path) {
+            if let Ok(store) = serde_json::from_str::<crate::chain::ChainStore>(&data) {
+                if store.has_genesis() {
+                    return store;
+                }
+            }
+        }
+    }
+
+    // Fallback: rebuild from blocks and UTXO set
+    let mut store = crate::chain::ChainStore::empty();
+    if let Ok(blocks) = load_blocks() {
+        for block in &blocks {
+            let hash = block.header.hash();
+            // Skip if we already have it (add_block checks for duplicates)
+            if store.get_block(&hash).is_none() {
+                // For genesis, we need to add it specially
+                if block.header.height == 0 {
+                    store = crate::chain::ChainStore::new(block.clone());
+                } else if store.get_block(&block.header.previous_hash).is_some() {
+                    let _ = store.add_block(block.clone());
+                }
+            }
+        }
+        // Set chain tip to the last block
+        if let Some(last) = blocks.last() {
+            store.set_chain_tip(&last.header.hash()).ok();
+        }
+    }
+    store
+}
+
 pub fn save_miner_key(seed: &[u8; 32]) -> Result<(), String> {
     ensure_dir().map_err(|e| format!("dir: {}", e))?;
     fs::write(format!("{}/miner.key", DATA_DIR), seed)
