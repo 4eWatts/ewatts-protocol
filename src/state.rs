@@ -75,6 +75,10 @@ pub struct UtxoSet {
     utxos: HashMap<UtxoKey, UtxoEntry>,
     spent_key_images: HashSet<[u8; 32]>,
     total_supply: u64,
+    /// Maps key_image -> (UtxoKey, UtxoEntry) for spent UTXOs (reorg unwinding).
+    /// Populated during apply_block. Used by unwind_block to restore inputs.
+    #[serde(skip)]
+    spend_log: HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
 }
 
 /// Build the message to be signed/hashed for a transaction.
@@ -179,7 +183,9 @@ impl UtxoSet {
         UtxoSet {
             utxos: HashMap::new(),
             spent_key_images: HashSet::new(),
+            spend_log: HashMap::new(),
             total_supply: 0,
+            spend_log: HashMap::new(),
         }
     }
 
@@ -377,6 +383,14 @@ impl UtxoSet {
                 output_index: input.output_index,
             };
             self.utxos.remove(&key);
+            // Record in spend_log so unwind_block can restore this UTXO
+            let spent_key = UtxoKey {
+                tx_hash: input.previous_tx_hash,
+                output_index: input.output_index,
+            };
+            if let Some(entry) = self.utxos.get(&spent_key) {
+                self.spend_log.insert(input.key_image, (spent_key.clone(), entry.clone()));
+            }
             self.spent_key_images.insert(input.key_image);
         }
 
@@ -416,20 +430,12 @@ impl UtxoSet {
         &self.spent_key_images
     }
 
-    /// Mutably access spent key images (for reorg unwind).
-    pub fn spent_key_images_mut(&mut self) -> &mut std::collections::HashSet<[u8; 32]> {
-        &mut self.spent_key_images
+    /// Access the spend log (key_image -> (UtxoKey, UtxoEntry) for reorg unwinding).
+    pub fn spend_log(&self) -> &std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)> {
+        &self.spend_log
     }
 
-    /// Mutably access UTXOs (for reorg unwind).
-    pub fn utxos_mut(&mut self) -> &mut std::collections::HashMap<UtxoKey, UtxoEntry> {
-        &mut self.utxos
-    }
 
-    /// Mutably access total supply (for reorg unwind).
-    pub fn add_to_supply(&mut self, amount: u64) {
-        self.total_supply = self.total_supply.checked_add(amount).unwrap_or(self.total_supply);
-    }
 
     /// Subtract from total supply (for reorg unwind).
     pub fn sub_from_supply(&mut self, amount: u64) {
