@@ -138,7 +138,7 @@ fn miner_keypair() -> ed25519_dalek::SigningKey {
 }
 
 pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
-    -> Result<block::Block, String>
+    -> Result<(block::Block, crate::state::BlockDiff), String>
 {
     use crate::block::*;
     use crate::commitment;
@@ -316,10 +316,10 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
         },
     };
 
-    // Apply to UTXO set
-    state.apply_block(&block, height)?;
+    // Apply to UTXO set with tracking
+    let diff = state.apply_block_and_track(&block, height)?;
 
-    Ok(block)
+    Ok((block, diff))
 }
 
 fn cmd_mine() {
@@ -340,7 +340,7 @@ fn cmd_mine() {
     println!("Mining block #{}...", height);
 
     match mine_block(prev_hash, height, &mut state) {
-        Ok(block) => {
+        Ok((block, _diff)) => {
             let block_hash = block.header.hash();
 
             // Save
@@ -410,7 +410,7 @@ fn cmd_simulate(args: &[String]) {
         println!("\n--- Block #{} ---", current_height);
 
         match mine_block(prev_hash, current_height, &mut state) {
-            Ok(block) => {
+            Ok((block, _diff)) => {
                 let hash = block.header.hash();
 
                 if let Err(e) = crate::store::save_block(&block) {

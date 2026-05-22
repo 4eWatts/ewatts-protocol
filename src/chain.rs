@@ -21,6 +21,10 @@ const MAX_ORPHANS: usize = 500;
 pub struct ChainStore {
     /// All known blocks keyed by their hash.
     blocks: HashMap<[u8; 32], BlockEntry>,
+    /// Block diffs keyed by block hash (for reorg unwinding).
+    /// Populated when a block is applied via apply_block_and_track.
+    #[serde(skip)]
+    pub block_diffs: HashMap<[u8; 32], crate::state::BlockDiff>,
     /// Hash of the current canonical chain tip.
     chain_tip: [u8; 32],
     /// Orphan blocks: blocks whose parent is not yet known, keyed by hash.
@@ -49,6 +53,7 @@ impl ChainStore {
             chain_tip: genesis_hash,
             orphans: HashMap::new(),
             orphan_order: VecDeque::new(),
+            block_diffs: HashMap::new(),
             tip_height: 0,
             tip_work: work,
         }
@@ -61,6 +66,7 @@ impl ChainStore {
             chain_tip: [0u8; 32],
             orphans: HashMap::new(),
             orphan_order: VecDeque::new(),
+            block_diffs: HashMap::new(),
             tip_height: 0,
             tip_work: 0,
         }
@@ -107,6 +113,18 @@ impl ChainStore {
     /// Returns the parent's accumulated work so the caller can compute the fork's total work.
     pub fn add_block(&mut self, block: Block) -> Result<u128, String> {
         let hash = block.header.hash();
+        self.add_block_inner(block, None)
+    }
+
+    /// Add a block and store its BlockDiff for reorg unwinding.
+    pub fn add_block_with_diff(&mut self, block: Block, diff: crate::state::BlockDiff) -> Result<u128, String> {
+        let hash = block.header.hash();
+        let result = self.add_block_inner(block, Some(diff));
+        result
+    }
+
+    fn add_block_inner(&mut self, block: Block, diff: Option<crate::state::BlockDiff>) -> Result<u128, String> {
+        let hash = block.header.hash();
         let height = block.header.height;
         let parent_hash = block.header.previous_hash;
 
@@ -130,6 +148,11 @@ impl ChainStore {
             accumulated_work: acc_work,
             block,
         });
+
+        // Store BlockDiff if provided
+        if let Some(d) = diff {
+            self.block_diffs.insert(hash, d);
+        }
 
         Ok(acc_work)
     }

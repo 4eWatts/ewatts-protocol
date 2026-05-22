@@ -75,10 +75,7 @@ pub struct UtxoSet {
     utxos: HashMap<UtxoKey, UtxoEntry>,
     spent_key_images: HashSet<[u8; 32]>,
     total_supply: u64,
-    /// Maps key_image -> (UtxoKey, UtxoEntry) for spent UTXOs (reorg unwinding).
-    /// Populated during apply_block. Used by unwind_block to restore inputs.
-    #[serde(skip)]
-    spend_log: HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
+
 }
 
 /// Build the message to be signed/hashed for a transaction.
@@ -184,7 +181,31 @@ impl UtxoSet {
             utxos: HashMap::new(),
             spent_key_images: HashSet::new(),
             total_supply: 0,
-            spend_log: HashMap::new(),
+
+        }
+    }
+
+    /// Record of changes made by a single block, used for reorg unwinding.
+    #[derive(Debug, Clone)]
+    pub struct BlockDiff {
+        /// UTXOs that were consumed (key_image -> (key, entry) to restore on unwind)
+        pub consumed: std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
+        /// Keys of UTXOs that were created (to remove on unwind)
+        pub created: Vec<UtxoKey>,
+        /// Key images that were spent (to un-mark on unwind)
+        pub key_images: Vec<[u8; 32]>,
+        /// Supply delta (positive = emission added, negative = burned)
+        pub supply_delta: i64,
+    }
+
+    impl BlockDiff {
+        pub fn new() -> Self {
+            BlockDiff {
+                consumed: std::collections::HashMap::new(),
+                created: Vec::new(),
+                key_images: Vec::new(),
+                supply_delta: 0,
+            }
         }
     }
 
@@ -382,14 +403,6 @@ impl UtxoSet {
                 output_index: input.output_index,
             };
             self.utxos.remove(&key);
-            // Record in spend_log so unwind_block can restore this UTXO
-            let spent_key = UtxoKey {
-                tx_hash: input.previous_tx_hash,
-                output_index: input.output_index,
-            };
-            if let Some(entry) = self.utxos.get(&spent_key) {
-                self.spend_log.insert(input.key_image, (spent_key.clone(), entry.clone()));
-            }
             self.spent_key_images.insert(input.key_image);
         }
 
@@ -429,10 +442,7 @@ impl UtxoSet {
         &self.spent_key_images
     }
 
-    /// Access the spend log (key_image -> (UtxoKey, UtxoEntry) for reorg unwinding).
-    pub fn spend_log(&self) -> &std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)> {
-        &self.spend_log
-    }
+
 
 
 
@@ -447,6 +457,17 @@ impl UtxoSet {
     }
 
     pub fn apply_block(&mut self, block: &Block, block_height: u64) -> Result<(), String> {
+        self.apply_block_inner(block, block_height, None)
+    }
+
+    /// Apply a block and return a BlockDiff recording all changes (for reorg).
+    pub fn apply_block_and_track(&mut self, block: &Block, block_height: u64) -> Result<BlockDiff, String> {
+        let mut diff = BlockDiff::new();
+        self.apply_block_inner(block, block_height, Some(&mut diff))?;
+        Ok(diff)
+    }
+
+    fn apply_block_inner(&mut self, block: &Block, block_height: u64, mut diff: Option<&mut BlockDiff>) -> Result<(), String> {
         for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
             let tx_hash = tx.hash();
             if tx_idx == 0 {
@@ -472,18 +493,68 @@ impl UtxoSet {
                 }
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
                 self.add_coinbase_supply(coinbase_amount);
+                if let Some(ref mut d) = diff {
+                    d.supply_delta = d.supply_delta.wrapping_add(coinbase_amount as i64);
+                    for (i, _) in tx.outputs.iter().enumerate() {
+                        d.created.push(UtxoKey { tx_hash, output_index: i as u32 });
+                    }
+                }
             } else {
                 // P0-A: validate inputs >= outputs before spending
                 self.validate_transaction(tx)?;
+                // Track consumed UTXOs BEFORE spending (they get removed)
+                if let Some(ref mut d) = diff {
+                    for input in &tx.inputs {
+                        let key = UtxoKey {
+                            tx_hash: input.previous_tx_hash,
+                            output_index: input.output_index,
+                        };
+                        if !d.consumed.contains_key(&input.key_image) {
+                            if let Some(entry) = self.utxos.get(&key) {
+                                d.consumed.insert(input.key_image, (key.clone(), entry.clone()));
+                            }
+                        }
+                        d.key_images.push(input.key_image);
+                    }
+                }
                 self.spend_transaction_inputs(tx, block_height)?;
+                // Track created UTXOs (outputs just added)
+                if let Some(ref mut d) = diff {
+                    for (i, _) in tx.outputs.iter().enumerate() {
+                        d.created.push(UtxoKey { tx_hash, output_index: i as u32 });
+                    }
+                }
                 self.add_transaction_outputs(&tx_hash, tx, block_height, tx_idx as u32);
             }
         }
         Ok(())
     }
 
+    /// Unwind a block's effects using a BlockDiff (the correct way).
+    /// Reverses exactly what apply_block_and_track recorded.
+    pub fn unwind_with_diff(&mut self, diff: &BlockDiff) -> Result<(), String> {
+        // 1. Restore consumed UTXOs (inputs that were spent)
+        for (_, (key, entry)) in &diff.consumed {
+            self.utxos.insert(key.clone(), entry.clone());
+        }
+        // 2. Remove created UTXOs (outputs that were created)
+        for key in &diff.created {
+            self.utxos.remove(key);
+        }
+        // 3. Un-mark key images
+        for ki in &diff.key_images {
+            self.spent_key_images.remove(ki);
+        }
+        // 4. Reverse supply change
+        if diff.supply_delta > 0 {
+            self.total_supply = self.total_supply.saturating_sub(diff.supply_delta as u64);
+        }
+        Ok(())
+    }
+
     /// Reverse a block's effects (for reorg unwinding).
     /// This is the inverse of apply_block.
+    /// Note: prefer unwind_with_diff when a BlockDiff is available.
     pub fn unwind_block(&mut self, block: &Block, _block_height: u64) -> Result<(), String> {
         // Process transactions in reverse order
         for (tx_idx, tx) in block.body.transactions.iter().enumerate().rev() {

@@ -134,8 +134,9 @@ impl P2pNode {
         // 4. Analyze fork and decide action
         match crate::reorg::analyze_fork(block, store) {
             crate::reorg::ForkDecision::ExtendCanonical => {
-                // Apply to state
-                state.apply_block(block, height)?;
+                // Apply to state and capture diff for reorg
+                let diff = state.apply_block_and_track(block, height)?;
+                store.block_diffs.insert(block.header.hash(), diff);
                 store.set_chain_tip(&block.header.hash()).ok();
                 println!("P2P: Extended canonical chain to #{}", height);
             }
@@ -323,19 +324,20 @@ impl P2pNode {
         chain_store: &mut crate::chain::ChainStore,
     ) {
         match mine_block(prev_hash, height, state) {
-            Ok(block) => {
+            Ok((block, diff)) => {
                 let hash = block.header.hash();
                 let h = block.header.height;
 
-                // Persist locally and add to chain store
+                // Persist locally
                 if let Err(e) = crate::store::save_block(&block) {
                     eprintln!("P2P: Save error: {}", e);
                     return;
                 }
                 println!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
-                // Add to chain store
+
+                // Add to chain store with BlockDiff for reorg safety
                 if chain_store.get_block(&hash).is_none() {
-                    let _ = chain_store.add_block(block.clone());
+                    let _ = chain_store.add_block_with_diff(block.clone(), diff);
                     chain_store.set_chain_tip(&hash).ok();
                 }
 
