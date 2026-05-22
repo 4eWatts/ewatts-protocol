@@ -83,15 +83,11 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
         let utxo_map = state.utxos_map();
         let mut ring_layers: Vec<Vec<curve25519_dalek::ristretto::RistrettoPoint>> = Vec::new();
         for members_for_input in ring_members.iter() {
+            // build_ring_inline returns Vec<Vec<Point>> where each inner vec
+            // contains exactly 1 point (the ring member's pubkey).
+            // Flatten to Vec<Point> by concatenating inner vecs.
             let ring = crate::state::build_ring_inline(utxo_map, members_for_input)?;
-            let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring
-                .into_iter()
-                .map(|v| {
-                    v.into_iter()
-                        .next()
-                        .unwrap_or(curve25519_dalek::traits::Identity::identity())
-                })
-                .collect();
+            let flat: Vec<curve25519_dalek::ristretto::RistrettoPoint> = ring.into_iter().flatten().collect();
             ring_layers.push(flat);
         }
         if ring_layers.is_empty() {
@@ -193,7 +189,41 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
     Ok(())
 }
 
-/// Drain all pending transactions from the mempool (FIFO, highest fee first).
+/// Peek at all pending transactions for mining (does NOT remove them).
+/// If mining fails, no txs are lost — caller just retries.
+/// Note: This clones all txs. For large mempools, use take_for_mining(limit).
+pub fn peek_all() -> Vec<Transaction> {
+    let pool = MEMPOOL.lock().unwrap();
+    pool.pending.iter().map(|pt| pt.tx.clone()).collect()
+}
+
+/// Take up to `limit` highest-fee transactions for mining.
+/// On successful block creation, caller must call confirm_mined() to remove them.
+pub fn take_for_mining(limit: usize) -> Vec<Transaction> {
+    let mut pool = MEMPOOL.lock().unwrap();
+    let take_count = std::cmp::min(limit, pool.pending.len());
+    let txs: Vec<Transaction> = pool.pending.iter().take(take_count).map(|pt| pt.tx.clone()).collect();
+    txs
+}
+
+/// Confirm that a set of transactions has been mined in a block and remove them.
+pub fn confirm_mined(tx_hashes: &[[u8; 32]]) {
+    let mut pool = MEMPOOL.lock().unwrap();
+    let hash_set: std::collections::HashSet<[u8; 32]> = tx_hashes.iter().copied().collect();
+    pool.pending.retain(|pt| !hash_set.contains(&pt.tx_hash));
+    // Rebuild indices
+    pool.key_images.clear();
+    pool.utxo_spends.clear();
+    for pt in &pool.pending {
+        for input in &pt.tx.inputs {
+            pool.key_images.insert(input.key_image, pt.tx_hash);
+            pool.utxo_spends.insert((input.previous_tx_hash, input.output_index), pt.tx_hash);
+        }
+    }
+}
+
+/// Legacy drain: remove and return all pending txs (destructive).
+/// Prefer take_for_mining() + confirm_mined() for non-lossy mining.
 pub fn drain() -> Vec<Transaction> {
     let mut pool = MEMPOOL.lock().unwrap();
     let txs: Vec<Transaction> = pool.pending.drain(..).map(|pt| pt.tx).collect();
