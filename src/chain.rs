@@ -295,7 +295,10 @@ mod tests {
     use super::*;
     use crate::block::*;
 
+    static NEXT_NONCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
     fn make_header(height: u64, prev: [u8; 32]) -> BlockHeader {
+        let nonce = NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         BlockHeader {
             version: 1,
             previous_hash: prev,
@@ -309,7 +312,7 @@ mod tests {
             miner_effective_commit: 0.0,
             vr_block: 0.0,
             coinbase_burn: 0,
-            nonce: height,
+            nonce,
             elapsed_ms: 0,
         }
     }
