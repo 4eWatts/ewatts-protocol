@@ -479,7 +479,7 @@ impl UtxoSet {
 
     /// Reverse a block's effects (for reorg unwinding).
     /// This is the inverse of apply_block.
-    pub fn unwind_block(&mut self, block: &Block, block_height: u64) -> Result<(), String> {
+    pub fn unwind_block(&mut self, block: &Block, _block_height: u64) -> Result<(), String> {
         // Process transactions in reverse order
         for (tx_idx, tx) in block.body.transactions.iter().enumerate().rev() {
             let tx_hash = tx.hash();

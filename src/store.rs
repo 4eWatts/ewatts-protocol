@@ -13,7 +13,7 @@ static BLOCK_CACHE: Mutex<Option<Vec<Block>>> = Mutex::new(None);
 
 /// Invalidate the block cache (call after saving a new block).
 pub fn invalidate_cache() {
-    if let Ok(mut cache) = BLOCK_CACHE.lock() {
+    if let Ok(cache) = BLOCK_CACHE.lock() {
         *cache = None;
     }
 }
@@ -100,7 +100,7 @@ pub fn save_block(block: &Block) -> Result<(), String> {
     fs::rename(&tmp, &path).map_err(|e| format!("rename: {}", e))?;
 
     // Append to cache if it's loaded
-    if let Ok(mut cache) = BLOCK_CACHE.lock() {
+    if let Ok(cache) = BLOCK_CACHE.lock() {
         if let Some(ref mut blocks) = *cache {
             blocks.push(block.clone());
             return Ok(());
@@ -112,7 +112,7 @@ pub fn save_block(block: &Block) -> Result<(), String> {
 
 pub fn load_blocks() -> Result<Vec<Block>, String> {
     // Try cache first
-    if let Ok(mut cache) = BLOCK_CACHE.lock() {
+    if let Ok(cache) = BLOCK_CACHE.lock() {
         if let Some(ref blocks) = *cache {
             return Ok(blocks.clone());
         }
@@ -132,7 +132,7 @@ pub fn load_blocks() -> Result<Vec<Block>, String> {
     }
 
     // Populate cache
-    if let Ok(mut cache) = BLOCK_CACHE.lock() {
+    if let Ok(cache) = BLOCK_CACHE.lock() {
         *cache = Some(blocks.clone());
     }
 

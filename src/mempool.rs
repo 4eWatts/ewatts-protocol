@@ -25,14 +25,28 @@ struct MempoolInner {
     utxo_spends: HashMap<([u8; 32], u32), [u8; 32]>,
 }
 
-static MEMPOOL: Mutex<MempoolInner> = Mutex::new(MempoolInner {
-    pending: Vec::new(),
-    key_images: HashMap::new(),
-    utxo_spends: HashMap::new(),
-});
+/// Initialize an empty mempool inner state.
+fn new_mempool() -> MempoolInner {
+    MempoolInner {
+        pending: Vec::new(),
+        key_images: HashMap::new(),
+        utxo_spends: HashMap::new(),
+    }
+}
+
+static MEMPOOL: Mutex<Option<MempoolInner>> = Mutex::new(None);
 
 /// Maximum pending transactions in the mempool.
 const MAX_MEMPOOL_TXS: usize = 5000;
+
+/// Get the mempool inner, initializing if needed.
+fn get_pool() -> std::sync::MutexGuard<'static, Option<MempoolInner>> {
+    let mut guard = MEMPOOL.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(new_mempool());
+    }
+    guard
+}
 
 /// Compute the fee for a transaction: sum(input amounts) - sum(output amounts).
 /// For coinbase (no inputs), fee is 0.
@@ -110,7 +124,8 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
     }
 
     // 4. Acquire mempool lock for double-spend checks + insertion
-    let mut pool = MEMPOOL.lock().unwrap();
+    let mut pool_opt = get_pool();
+    let pool = pool_opt.as_mut().unwrap();
 
     // 5. Check for key_image double-spend against already-spent (mined) UTXOs
     for input in &tx.inputs {
@@ -193,14 +208,19 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
 /// If mining fails, no txs are lost — caller just retries.
 /// Note: This clones all txs. For large mempools, use take_for_mining(limit).
 pub fn peek_all() -> Vec<Transaction> {
-    let pool = MEMPOOL.lock().unwrap();
-    pool.pending.iter().map(|pt| pt.tx.clone()).collect()
+    let pool_opt = MEMPOOL.lock().unwrap();
+    let pool_ref = match pool_opt.as_ref() {
+        Some(p) => p,
+        None => return vec![],
+    };
+    pool_ref.pending.iter().map(|pt| pt.tx.clone()).collect()
 }
 
 /// Take up to `limit` highest-fee transactions for mining.
 /// On successful block creation, caller must call confirm_mined() to remove them.
 pub fn take_for_mining(limit: usize) -> Vec<Transaction> {
-    let mut pool = MEMPOOL.lock().unwrap();
+    let mut pool_opt = get_pool();
+    let pool = pool_opt.as_mut().unwrap();
     let take_count = std::cmp::min(limit, pool.pending.len());
     let txs: Vec<Transaction> = pool.pending.iter().take(take_count).map(|pt| pt.tx.clone()).collect();
     txs
@@ -208,7 +228,8 @@ pub fn take_for_mining(limit: usize) -> Vec<Transaction> {
 
 /// Confirm that a set of transactions has been mined in a block and remove them.
 pub fn confirm_mined(tx_hashes: &[[u8; 32]]) {
-    let mut pool = MEMPOOL.lock().unwrap();
+    let mut pool_opt = get_pool();
+    let pool = pool_opt.as_mut().unwrap();
     let hash_set: std::collections::HashSet<[u8; 32]> = tx_hashes.iter().copied().collect();
     pool.pending.retain(|pt| !hash_set.contains(&pt.tx_hash));
     // Rebuild indices
@@ -225,7 +246,8 @@ pub fn confirm_mined(tx_hashes: &[[u8; 32]]) {
 /// Legacy drain: remove and return all pending txs (destructive).
 /// Prefer take_for_mining() + confirm_mined() for non-lossy mining.
 pub fn drain() -> Vec<Transaction> {
-    let mut pool = MEMPOOL.lock().unwrap();
+    let mut pool_opt = get_pool();
+    let pool = pool_opt.as_mut().unwrap();
     let txs: Vec<Transaction> = pool.pending.drain(..).map(|pt| pt.tx).collect();
     pool.key_images.clear();
     pool.utxo_spends.clear();
@@ -234,13 +256,15 @@ pub fn drain() -> Vec<Transaction> {
 
 /// Peek at pending transactions (returns first 100 by fee priority).
 pub fn peek() -> Vec<Transaction> {
-    let pool = MEMPOOL.lock().unwrap();
+    let pool_opt = MEMPOOL.lock().unwrap();
+    let pool_ref = pool_opt.as_ref().unwrap();
     pool.pending.iter().take(100).map(|pt| pt.tx.clone()).collect()
 }
 
 /// Number of pending transactions.
 pub fn pending_count() -> usize {
-    let pool = MEMPOOL.lock().unwrap();
+    let pool_opt = MEMPOOL.lock().unwrap();
+    let pool_ref = pool_opt.as_ref().unwrap();
     pool.pending.len()
 }
 

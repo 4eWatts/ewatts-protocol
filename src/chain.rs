@@ -37,7 +37,7 @@ impl ChainStore {
     /// Create a new ChainStore with genesis block.
     pub fn new(genesis: Block) -> Self {
         let genesis_hash = genesis.header.hash();
-        let work = compute_block_work(&genesis.header);
+        let work = compute_block_work(&genesis.header) as u128;
         let mut blocks = HashMap::new();
         blocks.insert(genesis_hash, BlockEntry {
             height: 0,
