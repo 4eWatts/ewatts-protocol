@@ -82,28 +82,23 @@ pub fn load_utxo_set() -> Result<UtxoSet, String> {
 pub fn save_block(block: &Block) -> Result<(), String> {
     ensure_dir().map_err(|e| format!("dir: {}", e))?;
     let json = serde_json::to_string(block).map_err(|e| format!("serializar: {}", e))?;
-
-    // Atomic write: write to tmp then rename
-    let tmp = format!("{}/blocks.jsonl.tmp", DATA_DIR);
     let path = format!("{}/blocks.jsonl", DATA_DIR);
-    {
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&tmp)
-            .map_err(|e| format!("abrir tmp: {}", e))?;
-        writeln!(file, "{}", json).map_err(|e| format!("escrever: {}", e))?;
-        file.flush().map_err(|e| format!("flush: {}", e))?;
-        file.sync_data().map_err(|e| format!("sync: {}", e))?;
-    }
-    // Rename tmp to real path
-    fs::rename(&tmp, &path).map_err(|e| format!("rename: {}", e))?;
+
+    // Append-only write with fsync. No tmp+rename for append logs —
+    // that would overwrite all previous blocks with just the latest one.
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("abrir: {}", e))?;
+    writeln!(file, "{}", json).map_err(|e| format!("escrever: {}", e))?;
+    file.flush().map_err(|e| format!("flush: {}", e))?;
+    file.sync_data().map_err(|e| format!("sync: {}", e))?;
 
     // Append to cache if it's loaded
     if let Ok(mut cache) = BLOCK_CACHE.lock() {
         if let Some(ref mut blocks) = *cache {
             blocks.push(block.clone());
-            return Ok(());
         }
     }
 

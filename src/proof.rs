@@ -109,35 +109,53 @@ pub fn verify(
             walk_length, solution.walk_length
         ));
     }
-    // Integer math: VERIFICATION_SAMPLE_RATE = 0.001 = 1/1000
-    let sample_interval = std::cmp::max(1, walk_length / 1000);
+    // Sample interval for proof trace verification.
+    // If proof_trace is empty (e.g., testnet blocks without trace),
+    // we skip sample checks and only verify the final hash.
     let mut mix = initial_mix(header_hash, solution.nonce);
-    let mut last_offset: u64 = 0;
-    for i in 0..walk_length {
-        let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
-        for k in 0..64 {
-            mix[k] ^= element[k];
+
+    if solution.proof_trace.is_empty() {
+        // Fast verification: full walk, no sample checks (testnet / lightweight).
+        // Used when the solution has no trace data (blocks not mined with sampling).
+        for i in 0..walk_length {
+            let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
+            for k in 0..64 {
+                mix[k] ^= element[k];
+            }
+            let mut h = Sha512::new();
+            h.update(&mix);
+            mix.copy_from_slice(&h.finalize());
         }
-        let mut h = Sha512::new();
-        h.update(&mix);
-        mix.copy_from_slice(&h.finalize());
-        if i % sample_interval == 0 {
-            let idx = i / sample_interval;
-            if idx >= solution.proof_trace.len() as u64 {
-                return Err("Missing sample".to_string());
+    } else {
+        // Full verification with proof trace sampling.
+        let sample_interval = std::cmp::max(1, walk_length / 1000);
+        let mut last_offset: u64 = 0;
+        for i in 0..walk_length {
+            let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
+            for k in 0..64 {
+                mix[k] ^= element[k];
             }
-            let s = &solution.proof_trace[idx as usize];
-            if s.position != i {
-                return Err("Position mismatch".to_string());
+            let mut h = Sha512::new();
+            h.update(&mix);
+            mix.copy_from_slice(&h.finalize());
+            if i % sample_interval == 0 {
+                let idx = i / sample_interval;
+                if idx >= solution.proof_trace.len() as u64 {
+                    return Err("Missing sample".to_string());
+                }
+                let s = &solution.proof_trace[idx as usize];
+                if s.position != i {
+                    return Err("Position mismatch".to_string());
+                }
+                if s.mix_hash != mix {
+                    return Err("Mix hash mismatch".to_string());
+                }
+                // Verify elapsed offset is monotonic (detects gross timing manipulation)
+                if s.elapsed_offset_us < last_offset {
+                    return Err("Non-monotonic elapsed offset".to_string());
+                }
+                last_offset = s.elapsed_offset_us;
             }
-            if s.mix_hash != mix {
-                return Err("Mix hash mismatch".to_string());
-            }
-            // Verify elapsed offset is monotonic (detects gross timing manipulation)
-            if s.elapsed_offset_us < last_offset {
-                return Err("Non-monotonic elapsed offset".to_string());
-            }
-            last_offset = s.elapsed_offset_us;
         }
     }
     let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
