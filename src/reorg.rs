@@ -63,12 +63,13 @@ pub fn analyze_fork(
 
     if new_work > current_work {
         // Heavier chain! Need to reorg.
-        let lca = store.find_lca(&hash, &tip_hash);
+        // Use parent hash for LCA (new block isn't in the store yet)
+        let lca = store.find_lca(&prev_hash, &tip_hash);
         if let Some(fork_point) = lca {
             let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
-            let to_apply_rev = store.get_chain_to_fork(&hash, &fork_point);
-            let mut to_apply = to_apply_rev;
-            to_apply.reverse();
+            let mut to_apply = store.get_chain_to_fork(&prev_hash, &fork_point);
+            to_apply.reverse(); // now fork_point → ... → parent
+            to_apply.push(hash); // add the new block
             return ForkDecision::ReorgToNew { to_unwind, to_apply };
         }
     }
