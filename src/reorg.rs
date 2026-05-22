@@ -225,7 +225,7 @@ mod tests {
     fn test_extend_canonical() {
         let genesis = make_block(0, [0u8; 32]);
         let g_hash = genesis.header.hash();
-        let mut store = ChainStore::new(genesis);
+        let store = ChainStore::new(genesis);
 
         let b1 = make_block(1, g_hash);
         let decision = analyze_fork(&b1, &store);
@@ -236,7 +236,7 @@ mod tests {
     fn test_reorg_detection() {
         let genesis = make_block(0, [0u8; 32]);
         let g_hash = genesis.header.hash();
-        let mut store = ChainStore::new(genesis);
+        let store = ChainStore::new(genesis);
 
         // Chain A: 3 blocks
         let a1 = make_block(1, g_hash);
@@ -268,7 +268,7 @@ mod tests {
         store.add_block(b3).unwrap();
 
         let b4 = make_block(4, b3_hash);
-        let b4_hash = b4.header.hash();
+        let _b4_hash = b4.header.hash();
         store.add_block(b4).unwrap();
 
         // Check: B4 should trigger a reorg since B chain is heavier (4 blocks > 3)
