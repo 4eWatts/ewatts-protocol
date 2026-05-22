@@ -70,7 +70,7 @@ impl<'de> Deserialize<'de> for UtxoKey {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoSet {
     utxos: HashMap<UtxoKey, UtxoEntry>,
     spent_key_images: HashSet<[u8; 32]>,
@@ -183,8 +183,6 @@ impl UtxoSet {
         UtxoSet {
             utxos: HashMap::new(),
             spent_key_images: HashSet::new(),
-            spend_log: HashMap::new(),
-            total_supply: 0,
             spend_log: HashMap::new(),
         }
     }

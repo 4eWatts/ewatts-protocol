@@ -155,7 +155,7 @@ impl ChainStore {
         }
         // Evict oldest if full
         while self.orphans.len() >= MAX_ORPHANS {
-            if let Some(oldest) = self.orphan_order.first().copied() {
+            if let Some(oldest) = self.orphan_order.front().copied() {
                 self.orphans.remove(&oldest);
                 self.orphan_order.pop_front();
             } else {
@@ -163,7 +163,7 @@ impl ChainStore {
             }
         }
         self.orphans.insert(hash, block);
-        self.orphan_order.push(hash);
+        self.orphan_order.push_back(hash);
     }
 
     /// Try to resolve orphans after adding a new block.

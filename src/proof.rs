@@ -64,7 +64,7 @@ pub fn mine(
         let mut mix = initial_mix(header_hash, nonce);
         let start = std::time::Instant::now();
         let mut trace = Vec::new();
-        for i in 0..walk_length {
+        for _i in 0..walk_length {
             let index = read_u64_le(&mix[..8]) % dag.len() as u64;
             let element = dag.get(index as usize);
             for k in 0..64 {
@@ -117,7 +117,7 @@ pub fn verify(
     if solution.proof_trace.is_empty() {
         // Fast verification: full walk, no sample checks (testnet / lightweight).
         // Used when the solution has no trace data (blocks not mined with sampling).
-        for i in 0..walk_length {
+        for _i in 0..walk_length {
             let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
             for k in 0..64 {
                 mix[k] ^= element[k];
@@ -130,7 +130,7 @@ pub fn verify(
         // Full verification with proof trace sampling.
         let sample_interval = std::cmp::max(1, walk_length / 1000);
         let mut last_offset: u64 = 0;
-        for i in 0..walk_length {
+        for _i in 0..walk_length {
             let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
             for k in 0..64 {
                 mix[k] ^= element[k];
