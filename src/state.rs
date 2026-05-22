@@ -75,7 +75,6 @@ pub struct UtxoSet {
     utxos: HashMap<UtxoKey, UtxoEntry>,
     spent_key_images: HashSet<[u8; 32]>,
     total_supply: u64,
-
 }
 
 /// Build the message to be signed/hashed for a transaction.
@@ -175,37 +174,36 @@ pub fn build_ring_inline(
     Ok(ring)
 }
 
+/// Record of changes made by a single block, used for reorg unwinding.
+#[derive(Debug, Clone)]
+pub struct BlockDiff {
+    /// UTXOs that were consumed (key_image -> (key, entry) to restore on unwind)
+    pub consumed: std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
+    /// Keys of UTXOs that were created (to remove on unwind)
+    pub created: Vec<UtxoKey>,
+    /// Key images that were spent (to un-mark on unwind)
+    pub key_images: Vec<[u8; 32]>,
+    /// Supply delta (positive = emission added, negative = burned)
+    pub supply_delta: i64,
+}
+
+impl BlockDiff {
+    pub fn new() -> Self {
+        BlockDiff {
+            consumed: std::collections::HashMap::new(),
+            created: Vec::new(),
+            key_images: Vec::new(),
+            supply_delta: 0,
+        }
+    }
+}
+
 impl UtxoSet {
     pub fn new() -> Self {
         UtxoSet {
             utxos: HashMap::new(),
             spent_key_images: HashSet::new(),
             total_supply: 0,
-
-        }
-    }
-
-    /// Record of changes made by a single block, used for reorg unwinding.
-    #[derive(Debug, Clone)]
-    pub struct BlockDiff {
-        /// UTXOs that were consumed (key_image -> (key, entry) to restore on unwind)
-        pub consumed: std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
-        /// Keys of UTXOs that were created (to remove on unwind)
-        pub created: Vec<UtxoKey>,
-        /// Key images that were spent (to un-mark on unwind)
-        pub key_images: Vec<[u8; 32]>,
-        /// Supply delta (positive = emission added, negative = burned)
-        pub supply_delta: i64,
-    }
-
-    impl BlockDiff {
-        pub fn new() -> Self {
-            BlockDiff {
-                consumed: std::collections::HashMap::new(),
-                created: Vec::new(),
-                key_images: Vec::new(),
-                supply_delta: 0,
-            }
         }
     }
 
