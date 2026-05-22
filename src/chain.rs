@@ -3,7 +3,7 @@
 
 use crate::block::{Block, BlockHeader};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// A lightweight block reference for the index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,7 +26,7 @@ pub struct ChainStore {
     /// Orphan blocks: blocks whose parent is not yet known, keyed by hash.
     orphans: HashMap<[u8; 32], Block>,
     /// Insertion order for orphan eviction (FIFO).
-    orphan_order: Vec<[u8; 32]>,
+    orphan_order: VecDeque<[u8; 32]>,
     /// Height of the current chain tip (cached for fast access).
     tip_height: u64,
     /// Cumulative work of the current chain tip.
@@ -48,7 +48,7 @@ impl ChainStore {
             blocks,
             chain_tip: genesis_hash,
             orphans: HashMap::new(),
-            orphan_order: Vec::new(),
+            orphan_order: VecDeque::new(),
             tip_height: 0,
             tip_work: work,
         }
@@ -60,7 +60,7 @@ impl ChainStore {
             blocks: HashMap::new(),
             chain_tip: [0u8; 32],
             orphans: HashMap::new(),
-            orphan_order: Vec::new(),
+            orphan_order: VecDeque::new(),
             tip_height: 0,
             tip_work: 0,
         }
@@ -157,7 +157,7 @@ impl ChainStore {
         while self.orphans.len() >= MAX_ORPHANS {
             if let Some(oldest) = self.orphan_order.first().copied() {
                 self.orphans.remove(&oldest);
-                self.orphan_order.remove(0);
+                self.orphan_order.pop_front();
             } else {
                 break;
             }
