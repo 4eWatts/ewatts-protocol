@@ -331,14 +331,9 @@ fn cmd_mine() {
         Err(e) => { println!("Error loading state: {}", e); return; }
     };
 
-    // Get last block hash (or genesis zero hash)
-    let blocks = crate::store::load_blocks().unwrap_or_default();
-    let height = blocks.len() as u64;
-    let prev_hash = if height == 0 {
-        [0u8; 32]
-    } else {
-        blocks.last().unwrap().header.hash()
-    };
+    // Get last block hash from cache (fast, no full chain parse)
+    let height = crate::store::cached_block_count() as u64;
+    let prev_hash = crate::store::chain_tip_hash().unwrap_or([0u8; 32]);
 
     println!("Mining block #{}...", height);
 

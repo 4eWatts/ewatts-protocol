@@ -93,29 +93,93 @@ impl P2pNode {
         Ok(P2pNode { peer_id, swarm, peers: HashSet::new() })
     }
 
-    /// Mine a block and gossip it to peers
-    pub async fn mine_and_gossip(&mut self, prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet) {
-        match mine_block(prev_hash, height, state) {
-            Ok(block) => {
-                let hash = block.header.hash();
-                let h = block.header.height;
-                if let Err(e) = crate::store::save_block(&block) {
-                    println!("P2P: Save error: {}", e); return;
-                }
-                println!("P2P: Mined block #{} hash={}", h, hex::encode(&hash[..8]));
+    /// Validate an incoming block: verify PoW proof + apply to UTXO state.
+    /// Returns Ok(()) if the block is valid and extends our chain.
+    /// On success, the block is saved and the UTXO set is updated.
+    fn validate_and_apply_block(
+        block: &Block,
+        state: &mut crate::state::UtxoSet,
+    ) -> Result<(), String> {
+        let height = block.header.height;
 
-                // Gossip to peers
-                if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
-                    self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
-                    println!("P2P: Gossiped block #{}", h);
+        // 1. Verify the block's proof-of-work
+        {
+            let epoch = height / crate::constants::DAG_EPOCH_BLOCKS;
+            let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
+            let header_hash = block.header.hash();
+            let solution = crate::proof::Solution {
+                nonce: block.header.nonce,
+                proof_trace: vec![], // lightweight verify: just check difficulty
+                elapsed_ms: block.header.elapsed_ms as u64,
+                walk_length: crate::proof::difficulty_to_accesses(block.header.difficulty_target),
+            };
+            crate::proof::verify(&header_hash, &solution, block.header.difficulty_target, &dag)?;
+        }
+
+        // 2. Quick height sanity check (must be height we're expecting)
+        let our_height = crate::store::cached_block_count() as u64;
+        if height > our_height + 1 {
+            return Err(format!(
+                "Block height {} too far ahead (we're at {})",
+                height, our_height
+            ));
+        }
+        if height == our_height {
+            // Same height — check if it's a competing fork
+            if let Some(tip_hash) = crate::store::chain_tip_hash() {
+                if block.header.previous_hash == tip_hash {
+                    // Same block, skip
+                    return Err("Already have this block".into());
+                }
+                // Competing fork at same height: log but don't reorg
+                println!("P2P: Competing fork at height {} (ours: {:x}.., theirs: {:x}..), rejecting",
+                    height, tip_hash[0], block.header.hash()[0]);
+                return Err("Competing fork rejected (no reorg yet)".into());
+            }
+        }
+
+        // 3. Verify previous_hash matches our chain tip
+        if height > 0 {
+            if let Some(tip_hash) = crate::store::chain_tip_hash() {
+                if block.header.previous_hash != tip_hash {
+                    // This block doesn't extend our canonical chain — might be a fork
+                    // or a gap. For testnet, reject non-extending blocks.
+                    return Err(format!(
+                        "Previous hash mismatch: expected {:x}.., got {:x}..",
+                        tip_hash[0], block.header.previous_hash[0]
+                    ));
                 }
             }
-            Err(e) => println!("P2P: Mining failed: {}", e),
+            // If we have no tip but height > 0, that means our chain is empty
+            // but the block claims height > 0. Shouldn't happen normally.
+        }
+
+        // 4. Apply to state (runs ALL validation: Pedersen balance, range proofs,
+        //    MLSAG, double-spend, spendable_after, coinbase caps)
+        state.apply_block(block, height)?;
+
+        Ok(())
+    }
+
+    /// Receive a validated block: save, update cache, gossip to peers.
+    fn accept_block(block: &Block, swarm: &mut Swarm<EwattsBehaviour>) {
+        let hash = block.header.hash();
+        let h = block.header.height;
+
+        if let Err(e) = crate::store::save_block(block) {
+            eprintln!("P2P: Store error: {}", e);
+            return;
+        }
+        println!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
+
+        // Gossip to peers
+        if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block.clone())) {
+            swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
         }
     }
 
     pub async fn run(&mut self, mine: bool, state: &mut crate::state::UtxoSet) {
-        let _last_mine = std::time::Instant::now();
+        let mut last_state_save = std::time::Instant::now();
 
         loop {
             tokio::select! {
@@ -129,8 +193,7 @@ impl P2pNode {
                             self.peers.insert(peer_id);
 
                             // Request latest blocks from new peer
-                            let our_blocks = crate::store::load_blocks().unwrap_or_default();
-                            let from = our_blocks.len() as u64;
+                            let from = crate::store::cached_block_count() as u64;
                             self.swarm.behaviour_mut().block_sync.send_request(
                                 &peer_id, P2pMessage::BlockRequest { from_height: from, to_height: from + 100 },
                             );
@@ -139,25 +202,30 @@ impl P2pNode {
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Gossipsub(gossipsub::Event::Message {
-                            propagation_source, message, ..
+                            propagation_source: _source, message, ..
                         })) => {
                             if let Ok(msg) = serde_json::from_slice::<P2pMessage>(&message.data) {
                                 match msg {
                                     P2pMessage::NewBlock(block) => {
                                         let h = block.header.height;
-                                        println!("P2P: Gossip block #{} from {propagation_source}", h);
+                                        println!("P2P: Gossip block #{} received", h);
 
-                                        // Validate and store if we don't have it
-                                        if let Ok(blocks) = crate::store::load_blocks() {
-                                            if h <= blocks.len() as u64 {
-                                                // already have this block, skip
-                                            } else if let Err(e) = crate::store::save_block(&block) {
-                                                println!("P2P: Store error: {}", e);
+                                        match Self::validate_and_apply_block(&block, state) {
+                                            Ok(()) => {
+                                                Self::accept_block(&block, &mut self.swarm);
+                                            }
+                                            Err(e) => {
+                                                println!("P2P: Gossip block #{} rejected: {}", h, e);
                                             }
                                         }
                                     }
-                                    P2pMessage::NewTransaction(_) => {
-                                        println!("P2P: Gossip tx from {propagation_source}");
+                                    P2pMessage::NewTransaction(tx) => {
+                                        // Validate and submit to mempool
+                                        let tx_hash = tx.hash();
+                                        match crate::mempool::submit(tx, state) {
+                                            Ok(()) => println!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
+                                            Err(e) => println!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
+                                        }
                                     }
                                     _ => {}
                                 }
@@ -187,8 +255,14 @@ impl P2pNode {
                                                 P2pMessage::BlockResponse { blocks } => {
                                                     println!("P2P: Synced {} blocks", blocks.len());
                                                     for block in blocks {
-                                                        if let Err(e) = crate::store::save_block(&block) {
-                                                            println!("P2P: Store error: {}", e);
+                                                        let h = block.header.height;
+                                                        match Self::validate_and_apply_block(&block, state) {
+                                                            Ok(()) => {
+                                                                Self::accept_block(&block, &mut self.swarm);
+                                                            }
+                                                            Err(e) => {
+                                                                println!("P2P: Sync block #{} rejected: {}", h, e);
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -211,13 +285,44 @@ impl P2pNode {
                     futures::future::pending::<()>().await;
                 }} => {
                     if mine {
-                        let blocks = crate::store::load_blocks().unwrap_or_default();
-                        let height = blocks.len() as u64;
-                        let prev_hash = if height == 0 { [0u8;32] } else { blocks.last().unwrap().header.hash() };
+                        let height = crate::store::cached_block_count() as u64;
+                        let prev_hash = crate::store::chain_tip_hash().unwrap_or([0u8; 32]);
                         self.mine_and_gossip(prev_hash, height, state).await;
                     }
                 }
             }
+
+            // Periodic UTXO set save (every ~30s to prevent state loss on crash)
+            if last_state_save.elapsed() > std::time::Duration::from_secs(30) {
+                if let Err(e) = crate::store::save_utxo_set(state) {
+                    eprintln!("P2P: State save failed: {}", e);
+                }
+                last_state_save = std::time::Instant::now();
+            }
+        }
+    }
+
+    /// Mine a block and gossip it to peers
+    pub async fn mine_and_gossip(&mut self, prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet) {
+        match mine_block(prev_hash, height, state) {
+            Ok(block) => {
+                let hash = block.header.hash();
+                let h = block.header.height;
+
+                // Persist locally (mine_block already applied to state)
+                if let Err(e) = crate::store::save_block(&block) {
+                    eprintln!("P2P: Save error: {}", e);
+                    return;
+                }
+                println!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
+
+                // Gossip to peers
+                if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
+                    self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
+                    println!("P2P: Gossiped block #{}", h);
+                }
+            }
+            Err(e) => println!("P2P: Mining failed: {}", e),
         }
     }
 
