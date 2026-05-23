@@ -33,7 +33,11 @@ fn main() {
     let cmd = args.get(1).map(|s| s.as_str()).unwrap_or("help");
     match cmd {
         "init" => cmd_init(),
-        "start" => cmd_start(),
+        "start" => {
+            // Run daemon in tokio runtime for async P2P + mining + dashboard
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            rt.block_on(async { cmd_start(&args).await });
+        }
         "mine" => cmd_mine(),
         "simulate" => cmd_simulate(&args),
         "balance" => cmd_balance(&args),
@@ -41,18 +45,49 @@ fn main() {
         "keygen" => cmd_keygen(),
         "wallet" => cmd_wallet(&args),
         "info" => cmd_info(),
-        "dash" => cmd_dashboard(),
+        "dash" => cmd_dashboard_sync(),
         "txhash" => cmd_txhash(),
-        "p2p" => cmd_p2p(&args),
+        "p2p" => {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+            rt.block_on(async { cmd_p2p(&args).await });
+        }
         _ => cmd_help(),
     }
 }
 
-/// Testnet daemon: initialize + mine continuously + serve dashboard.
-pub(crate) fn cmd_start() {
-    use std::fs;
-    use std::io::{Read, Write};
-    use std::time::Duration;
+/// Parse a CLI flag value: `--port 8080` returns Some("8080").
+/// For flags without value (booleans), use `args.iter().any(|s| s == "--flag")`.
+fn parse_arg(args: &[String], flag: &str) -> Option<String> {
+    args.windows(2).find(|w| w[0] == flag).map(|w| w[1].clone())
+}
+
+/// Testnet daemon: initialize + mine + serve dashboard + optional P2P.
+/// Flags:
+///   --dash-port <port>     Dashboard HTTP port (default 8080)
+///   --p2p                  Enable P2P networking
+///   --p2p-port <port>      P2P listen port (default 0 = random)
+///   --bootstrap <multiaddr> Bootstrap peer address
+///   --difficulty <n>        Initial mining difficulty (default 100)
+pub(crate) async fn cmd_start(args: &[String]) {
+
+    let dash_port = parse_arg(args, "--dash-port").unwrap_or_else(|| "8080".to_string());
+    let enable_p2p = args.iter().any(|s| s == "--p2p");
+    let p2p_addr = if enable_p2p {
+        let port = parse_arg(args, "--p2p-port").unwrap_or_else(|| "0".to_string());
+        format!("/ip4/0.0.0.0/tcp/{}", port)
+    } else {
+        String::new()
+    };
+    let bootstrap = parse_arg(args, "--bootstrap")
+        .and_then(|s| s.parse::<libp2p::Multiaddr>().ok());
+    let initial_difficulty: u64 = parse_arg(args, "--difficulty")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(100);
+        
+    println!("Ewatts Testnet Daemon");
+    println!("  Dashboard: http://0.0.0.0:{}/", dash_port);
+    println!("  P2P:       {}", if enable_p2p { "enabled" } else { "disabled (use --p2p to enable)" });
+    if enable_p2p { println!("  P2P addr:  {}", p2p_addr); }
 
     // Initialize if first run
     if !crate::store::has_data() {
@@ -60,68 +95,42 @@ pub(crate) fn cmd_start() {
         cmd_init();
     }
 
-    // Load state
-    let mut state = match crate::store::load_utxo_set() {
-        Ok(s) => s,
+    // Load state (wrapped in Mutex for concurrent access)
+    let state = match crate::store::load_utxo_set() {
+        Ok(s) => std::sync::Mutex::new(s),
         Err(e) => { println!("Error loading state: {}", e); return; }
     };
 
-    // Start dashboard in background thread (uses store directly, no state capture)
-    let _dash_thread = std::thread::spawn(|| {
-        let addr = "0.0.0.0:8080";
-        let listener = std::net::TcpListener::bind(addr).expect("Dashboard bind");
-        listener.set_nonblocking(true).ok();
-        println!("  Dashboard: http://{}/dashboard-v3.html", addr);
-        println!("  API:       http://{}/status", addr);
-        
-        let mut buf = [0u8; 4096];
-        loop {
-            match listener.accept() {
-                Ok((mut stream, _)) => {
-                    if stream.read(&mut buf).is_ok() {
-                        let request = String::from_utf8_lossy(&buf[..]);
-                        let response = if request.contains("/status") {
-                            let blocks = crate::store::load_blocks().unwrap_or_default();
-                            let supply = crate::store::load_utxo_set()
-                                .map(|s| s.total_supply()).unwrap_or(0);
-                            let utxos = crate::store::load_utxo_set()
-                                .map(|s| s.utxo_count()).unwrap_or(0);
-                            let height = blocks.len() as u64 - 1;
-                            let blk: Vec<serde_json::Value> = blocks.iter().rev().take(10).map(|b| serde_json::json!({
-                                "height": b.header.height, "hash": hex::encode(b.header.hash()),
-                                "vr": b.header.vr_block, "reward": b.header.emission_rate,
-                                "time": b.header.timestamp,
-                            })).collect();
-                            let status = serde_json::json!({
-                                "height": height, "supply": supply, "utxos": utxos,
-                                "vr": blocks.last().map(|b| b.header.vr_block).unwrap_or(0.0),
-                                "emission": blocks.last().map(|b| b.header.emission_rate).unwrap_or(0),
-                                "blocks": blk, "node": "ewatts-testnet",
-                            });
-                            json_response(200, &serde_json::to_string(&status).unwrap())
-                        } else {
-                            // Dashboard HTML (optional, graceful fallback)
-                            let html = fs::read_to_string("ewatts_dashboard.html").unwrap_or_default();
-                            if html.is_empty() {
-                                json_response(200, "{\"status\":\"ewatts-node\",\"tip\":\"no dashboard file\"}")
-                            } else {
-                                format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", html.len(), html)
-                            }
-                        };
-                        stream.write_all(response.as_bytes()).ok();
-                    }
-                }
-                Err(_) => {
-                    std::thread::sleep(Duration::from_millis(100));
-                }
-            }
-        }
+    // ── Dashboard HTTP server (tokio task) ──
+    let dash_port_task = dash_port.clone();
+    let _dash_handle = tokio::spawn(async move {
+        serve_dashboard(&dash_port_task).await;
     });
+    
+    // ── P2P node (optional): takes over mining + networking ──
+    if enable_p2p {
+        println!("Starting P2P testnet node...");
+        match crate::p2p::P2pNode::new(&p2p_addr, bootstrap).await {
+            Ok(mut node) => {
+                println!("P2P Node ID: {}", node.peer_id);
+                // P2P.run() handles its own mining loop + state + gossip
+                node.run(true, &mut *state.lock().unwrap()).await;
+            }
+            Err(e) => println!("P2P error: {}", e),
+        }
+        // When P2P exits, daemon stops
+        return;
+    }
 
-    // Main loop: mine blocks continuously
-    println!("Starting testnet miner...");
+    // ── Standalone mining loop (no P2P) ──
+    println!("Starting testnet miner (standalone)...");
     println!("  Ctrl+C to stop");
     
+    let mut difficulty = initial_difficulty;
+    let mut recent_timestamps: Vec<u64> = Vec::new();
+    let target_secs = constants::TESTNET_BLOCK_TIME;
+    let dag_size = constants::TESTNET_DAG_SIZE as usize;
+
     loop {
         let blocks = crate::store::load_blocks().unwrap_or_default();
         let height = blocks.len() as u64;
@@ -131,30 +140,149 @@ pub(crate) fn cmd_start() {
             blocks.last().unwrap().header.hash()
         };
 
-        match mine_block(prev_hash, height, &mut state) {
+        // Dynamic difficulty adjustment
+        if recent_timestamps.len() >= 2 {
+            let actual_time = difficulty::average_block_time(&recent_timestamps);
+            let target_secs_f = target_secs as f64;
+            let ratio = target_secs_f / actual_time.max(1.0);
+            let new_diff = difficulty::adjust_difficulty(difficulty, 1.0 / ratio, 1.0);
+            if new_diff != difficulty {
+                println!("  Difficulty: {} → {} (avg block time {:.1}s, target {}s)",
+                    difficulty, new_diff, actual_time, target_secs);
+                difficulty = new_diff;
+            }
+        }
+
+        match mine_block_with_difficulty(prev_hash, height, &mut *state.lock().unwrap(), difficulty, dag_size) {
             Ok((block, _diff)) => {
-                let _hash = block.header.hash();
+                let timestamp = block.header.timestamp;
+                
                 // Save block
                 if let Err(e) = crate::store::save_block(&block) {
                     println!("  [{}] Error saving: {}", height, e);
                     continue;
                 }
                 // Save UTXO state
-                if let Err(e) = crate::store::save_utxo_set(&state) {
+                if let Err(e) = crate::store::save_utxo_set(&state.lock().unwrap()) {
                     println!("  [{}] Error saving state: {}", height, e);
                 }
+                
+                // Track timestamp for difficulty adjustment
+                recent_timestamps.push(timestamp);
+                if recent_timestamps.len() > constants::DIFFICULTY_WINDOW_BLOCKS as usize {
+                    recent_timestamps.remove(0);
+                }
+
                 let reward_ewatt = block.body.transactions[0].outputs.iter()
                     .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
-                println!("  Block #{} mined — reward {:.6} Ewatt — UTXOs: {}",
-                    height, reward_ewatt, state.utxo_count());
+                println!("  Block #{} mined — reward {:.6} Ewatt — UTXOs: {} — diff={}",
+                    height, reward_ewatt, state.lock().unwrap().utxo_count(), difficulty);
             }
             Err(e) => {
                 println!("  Mining error: {}", e);
-                std::thread::sleep(Duration::from_secs(1));
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
         }
     }
 }
+
+/// Full-featured dashboard HTTP server (tokio task).
+async fn serve_dashboard(port: &str) {
+    use std::io::{Read, Write};
+    use std::fs;
+
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = std::net::TcpListener::bind(&addr).expect("Dashboard bind");
+    listener.set_nonblocking(true).ok();
+    println!("  Dashboard: http://{}/dashboard-v3.html", addr);
+    println!("  API:       http://{}/status", addr);
+    println!("  API:       http://{}/api/status", addr);
+    println!("  API:       http://{}/api/mempool", addr);
+
+    let html = fs::read_to_string("ewatts_dashboard.html").ok();
+
+    loop {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                let mut buf = [0u8; 8192];
+                let n = stream.read(&mut buf).unwrap_or(0);
+                if n == 0 { continue; }
+                let request = String::from_utf8_lossy(&buf[..n]);
+                
+                let response = if request.starts_with("GET /api/status") || request.contains("/status") {
+                    // Full status response
+                    let blocks = crate::store::load_blocks().unwrap_or_default();
+                    let height = if blocks.is_empty() { 0 } else { blocks.len() as u64 - 1 };
+                    let state = crate::store::load_utxo_set().ok();
+                    let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
+                    let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
+                    let mempool = crate::mempool::pending_count();
+                    let last = blocks.last();
+                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+                    let emission = last.map(|b| b.header.emission_rate).unwrap_or(0);
+                    let diff = last.map(|b| b.header.difficulty_target).unwrap_or(0);
+                    let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
+                        "height": b.header.height, "hash": hex::encode(b.header.hash()),
+                        "vr": b.header.vr_block, "reward": b.header.emission_rate,
+                        "diff": b.header.difficulty_target, "time": b.header.timestamp,
+                        "txs": b.body.transactions.len(),
+                    })).collect();
+                    let status = serde_json::json!({
+                        "height": height, "supply": supply, "utxos": utxos,
+                        "vr": vr, "emission": emission, "difficulty": diff,
+                        "mempool": mempool, "blocks": blk,
+                    });
+                    json_response(200, &serde_json::to_string(&status).unwrap())
+                } else if request.starts_with("GET /api/mempool") {
+                    let pool = crate::mempool::peek();
+                    let json = serde_json::json!({
+                        "pending": pool.len(),
+                        "transactions": pool.iter().map(|tx| serde_json::json!({
+                            "hash": hex::encode(tx.hash()),
+                            "inputs": tx.inputs.len(),
+                            "outputs": tx.outputs.len(),
+                            "private": tx.mlsag.is_some(),
+                        })).collect::<Vec<_>>(),
+                    });
+                    json_response(200, &serde_json::to_string(&json).unwrap())
+                } else if request.starts_with("POST /api/submit_tx") {
+                    let body = if let Some(pos) = request.find("\r\n\r\n") {
+                        &request[pos+4..]
+                    } else if let Some(pos) = request.find("\n\n") {
+                        &request[pos+2..]
+                    } else { "" };
+                    match serde_json::from_str::<crate::block::Transaction>(body) {
+                        Ok(tx) => {
+                            match crate::store::load_utxo_set() {
+                                Ok(state) => {
+                                    match crate::mempool::submit(tx, &state) {
+                                        Ok(()) => json_response(200, "{\"status\":\"accepted\"}"),
+                                        Err(e) => json_response(400, &format!("{{\"error\":\"{}\"}}", e)),
+                                    }
+                                }
+                                Err(e) => json_response(500, &format!("{{\"error\":\"{}\"}}", e)),
+                            }
+                        }
+                        Err(e) => json_response(400, &format!("{{\"error\":\"Invalid JSON: {}\"}}", e)),
+                    }
+                } else {
+                    // Dashboard HTML
+                    if let Some(ref h) = html {
+                        format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", h.len(), h)
+                    } else {
+                        json_response(200, "{\"status\":\"ewatts-node\"}")
+                    }
+                };
+                stream.write_all(response.as_bytes()).ok();
+            }
+            Err(_) => {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+    }
+}
+
+fn now_secs() -> u64 {
 
 fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
@@ -175,7 +303,12 @@ fn cmd_help() {
     println!();
     println!("Commands:");
     println!("  init                     Create genesis state");
-    println!("  start                    Testnet daemon: init + continuous mine + dashboard");
+    println!("  start [opts]             Testnet daemon (init + mine + dashboard)");
+    println!("    --dash-port <port>     Dashboard HTTP port (default 8080)");
+    println!("    --p2p                  Enable P2P networking");
+    println!("    --p2p-port <port>       P2P listen port (default random)");
+    println!("    --bootstrap <addr>      Bootstrap peer multiaddr");
+    println!("    --difficulty <n>        Initial mining difficulty (default 100)");
     println!("  mine                     Mine one block (testnet DAG)");
     println!("  simulate <blocks>        Mine N blocks in sequence");
     println!("  balance <pubkey_hex>     Show balance");
@@ -247,18 +380,30 @@ fn miner_keypair() -> ed25519_dalek::SigningKey {
     }
 }
 
+/// Mine a block with default testnet parameters (difficulty=100, DAG=4MB).
 pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::state::UtxoSet)
     -> Result<(block::Block, crate::state::BlockDiff), String>
+{
+    mine_block_with_difficulty(prev_hash, height, state, 100, 4 * 1024 * 1024)
+}
+
+/// Mine a block with configurable difficulty and DAG size.
+pub(crate) fn mine_block_with_difficulty(
+    prev_hash: [u8; 32],
+    height: u64,
+    state: &mut crate::state::UtxoSet,
+    difficulty: u64,
+    dag_size: usize,
+) -> Result<(block::Block, crate::state::BlockDiff), String>
 {
     use crate::block::*;
     use crate::commitment;
 
     let epoch = height / constants::DAG_EPOCH_BLOCKS;
-    let difficulty: u64 = 100; // testnet fixed
 
-    // Generate testnet DAG (4MB)
-    println!("  DAG generation...");
-    let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
+    // Generate DAG
+    println!("  DAG generation ({} MB)...", dag_size / (1024 * 1024));
+    let dag = crate::dag::Dag::generate_with_size(epoch, dag_size);
 
     // Miner setup
     let sk = miner_keypair();
@@ -820,7 +965,7 @@ async fn cmd_p2p(args: &[String]) {
     }
 }
 
-fn cmd_dashboard() {
+fn cmd_dashboard_sync() {
     use std::net::TcpListener;
     use std::io::{Read, Write};
     use std::fs;
