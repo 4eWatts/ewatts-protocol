@@ -156,7 +156,7 @@ mod tests {
     }
     #[test] fn test_reward_honest_more_int() {
         // Honest (100 GB/s effective) vs under-declarer (10 GB/s effective)
-        // Honest gets ~88.5% of total reward
+        // Honest gets 100/110 ≈ 90.9% of total reward (direct proportion)
         let honest_eff: u64 = 100_000_000_000;
         let under_eff: u64 = 10_000_000_000;
         let total_eff = honest_eff + under_eff;
@@ -165,7 +165,7 @@ mod tests {
         let rewards = compute_block_rewards_int(20000, &commits, em);
         assert!(rewards[0].1 > rewards[1].1, "Honest miner earns more");
         let ratio = rewards[0].1 as f64 / (rewards[0].1 + rewards[1].1) as f64;
-        assert!((ratio - 0.885).abs() < 0.05, "Honest share ~88.5%, got {}", ratio);
+        assert!((ratio - 0.909).abs() < 0.01, "Honest share ~90.9%, got {}", ratio);
     }
     #[test] fn test_solo_miner_reward_positive() {
         // Solo miner at ramp-up: should get positive reward
