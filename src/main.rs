@@ -461,28 +461,30 @@ pub(crate) fn mine_block_with_difficulty(
     header.elapsed_ms = sol.elapsed_ms as u32;
     header.proof_merkle_root = sol.merkle_root;
 
-    // Create commitment
-    let declared_gbps = wr.gbps.max(constants::MIN_COMMIT_GBS); // use actual work report
+    // Create commitment (u64 fields: mGB/s, MB, ms)
+    let declared_mgbps = (wr.gbps.max(constants::MIN_COMMIT_GBS) * 1000.0) as u64;
+    let work_mbytes_val = (wr.gb_processed.max(0.0001) * 1000.0) as u64;
+    let time_ms_val = sol.elapsed_ms.max(1);
     let mut commit = commitment::Commitment {
         miner_id: miner_pk,
-        bandwidth_gbps: declared_gbps,
+        bandwidth_mgbps: declared_mgbps.max(1),
         block_number: height,
-        work_gb: wr.gb_processed.max(0.0001), // min work for fast testnet
-        time_seconds: (sol.elapsed_ms.max(1) as f64) / 1000.0,
+        work_mbytes: work_mbytes_val.max(1),
+        time_ms: time_ms_val,
         signature: vec![],
     };
     let msg = commitment::commit_msg(&commit);
     commit.signature = sk.sign(&msg).to_bytes().to_vec();
 
     // Validate commitment against recent bandwidth history
-    let recent: Vec<f64> = {
+    let recent: Vec<u64> = {
         let all_blocks = crate::store::load_blocks().unwrap_or_default();
         let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
         let start = all_blocks.len().saturating_sub(window_len);
         if start < all_blocks.len() {
             all_blocks[start..]
                 .iter()
-                .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_gbps))
+                .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_mgbps))
                 .collect()
         } else {
             vec![]

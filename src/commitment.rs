@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Commitment {
     pub miner_id: [u8; 32],
-    pub bandwidth_gbps: f64,
+    pub bandwidth_mgbps: u64,   // milli-GB/s (1 GB/s = 1000 mGB/s)
     pub block_number: u64,
-    pub work_gb: f64,
-    pub time_seconds: f64,
+    pub work_mbytes: u64,       // mega-bytes (1 GB = 1000 MB)
+    pub time_ms: u64,           // milliseconds
     pub signature: Vec<u8>,
 }
 
@@ -90,36 +90,41 @@ fn median(v: &[f64]) -> f64 {
     }
 }
 
-pub fn min_commitment(r: &[f64]) -> f64 {
+pub fn min_commitment_int(r: &[u64]) -> u64 {
+    // Minimum bandwidth: 1.0 GB/s = 1000 mGB/s
+    // Rolling minimum: 0.1 * median(r)
     if r.is_empty() {
-        1.0
+        1000
     } else {
-        1.0f64.max(0.1 * median(r))
+        let mut s = r.to_vec();
+        s.sort();
+        let med = s[s.len() / 2];
+        1000.max(med / 10) // 0.1 * median
     }
 }
 
 pub fn commit_msg(commit: &Commitment) -> Vec<u8> {
     let mut msg = Vec::new();
     msg.extend_from_slice(&commit.miner_id);
-    msg.extend_from_slice(&commit.bandwidth_gbps.to_le_bytes());
+    msg.extend_from_slice(&commit.bandwidth_mgbps.to_le_bytes());
     msg.extend_from_slice(&commit.block_number.to_le_bytes());
-    msg.extend_from_slice(&commit.work_gb.to_le_bytes());
-    msg.extend_from_slice(&commit.time_seconds.to_le_bytes());
+    msg.extend_from_slice(&commit.work_mbytes.to_le_bytes());
+    msg.extend_from_slice(&commit.time_ms.to_le_bytes());
     msg
 }
 
-pub fn validate_commitment(c: &Commitment, r: &[f64]) -> Result<(), String> {
-    if c.bandwidth_gbps < 1.0 {
+pub fn validate_commitment(c: &Commitment, r: &[u64]) -> Result<(), String> {
+    if c.bandwidth_mgbps < 1000 {
         return Err("abaixo do minimo".into());
     }
-    if c.bandwidth_gbps < min_commitment(r) {
+    if c.bandwidth_mgbps < min_commitment_int(r) {
         return Err("abaixo do minimo rolling".into());
     }
     if c.signature.len() != 64 {
         return Err("assinatura invalida".into());
     }
-    let e = compute_efficiency(c.work_gb, c.bandwidth_gbps, c.time_seconds);
-    if e <= 0.0 {
+    let e = compute_efficiency_int(c.work_mbytes, c.bandwidth_mgbps, c.time_ms);
+    if e == 0 {
         return Err("eficiencia zero".into());
     }
     let pubkey = VerifyingKey::from_bytes(&c.miner_id).map_err(|_| "chave invalida")?;
@@ -159,10 +164,10 @@ mod tests {
         let pk = sk.verifying_key().to_bytes();
         let mut c = Commitment {
             miner_id: pk,
-            bandwidth_gbps: 100.,
+            bandwidth_mgbps: 100_000,
             block_number: 1,
-            work_gb: 100.,
-            time_seconds: 1.,
+            work_mbytes: 100_000,
+            time_ms: 1_000,
             signature: vec![],
         };
         let msg = commit_msg(&c);
@@ -173,10 +178,10 @@ mod tests {
     fn test_bad_sig() {
         let c = Commitment {
             miner_id: [0; 32],
-            bandwidth_gbps: 100.,
+            bandwidth_mgbps: 100_000,
             block_number: 1,
-            work_gb: 100.,
-            time_seconds: 1.,
+            work_mbytes: 100_000,
+            time_ms: 1_000,
             signature: vec![0; 64],
         };
         assert!(validate_commitment(&c, &[]).is_err());
@@ -210,17 +215,17 @@ mod tests {
 
     #[test]
     fn test_min_commitment_empty() {
-        assert!((min_commitment(&[]) - 1.0).abs() < 1e-6);
+        assert_eq!(min_commitment_int(&[]), 1000);
     }
 
     #[test]
     fn test_validate_commitment_short_sig() {
         let c = Commitment {
             miner_id: [0; 32],
-            bandwidth_gbps: 100.,
+            bandwidth_mgbps: 100_000,
             block_number: 1,
-            work_gb: 100.,
-            time_seconds: 1.,
+            work_mbytes: 100_000,
+            time_ms: 1_000,
             signature: vec![0; 32], // too short (should be 64)
         };
         assert!(
