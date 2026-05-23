@@ -21,6 +21,8 @@ pub mod tests;
 pub mod shuffle;
 #[cfg(test)]
 pub mod smoke;
+#[cfg(test)]
+pub mod simulation;
  
  
  
