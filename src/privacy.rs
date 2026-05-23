@@ -338,12 +338,13 @@ pub struct RangeProof {
 }
 
 impl RangeProof {
-    /// Prove that a commitment opens to v ∈ [0, 2^bits).
-    pub fn prove(v: u64, _blinding: Scalar, bits: usize, rng: &mut ThreadRng) -> Self {
-        Self::prove_with_blinding(v, bits, rng).0
+    /// Prove that a commitment opens to v ∈ [0, 2^bits) with a given total blinding.
+    /// The last bit's ai is computed so that Σ(a_i · 2^i) == blinding.
+    pub fn prove(v: u64, blinding: Scalar, bits: usize, rng: &mut ThreadRng) -> Self {
+        Self::prove_with_exact_blinding(v, blinding, bits, rng)
     }
 
-    /// Prove that v ∈ [0, 2^bits) and return the total blinding factor Σ 2^i · a_i.
+    /// Prove v ∈ [0, 2^bits) and return the total blinding factor.
     pub fn prove_with_blinding(v: u64, bits: usize, rng: &mut ThreadRng) -> (Self, Scalar) {
         let bits = bits.min(64);
         let mut total_blinding = Scalar::from(0u64);
@@ -355,8 +356,6 @@ impl RangeProof {
             let a_i = Scalar::random(rng);
             let c_i = Commitment::new_with_blinding(bit, a_i);
 
-            // Ring: {C_i - 0*H, C_i - 1*H} = {a_i*G + bit*H, a_i*G + (bit-1)*H}
-            // Prover knows a_i (discrete log of ring[bit])
             let ring: Vec<Vec<RistrettoPoint>> = (0..2)
                 .map(|b| vec![c_i.0 - Scalar::from(b as u64) * pedersen_h()])
                 .collect();
@@ -381,6 +380,45 @@ impl RangeProof {
             },
             total_blinding,
         )
+    }
+
+    /// Prove with an exact total blinding, so Pedersen balance can be verified.
+    pub fn prove_with_exact_blinding(v: u64, desired: Scalar, bits: usize, rng: &mut ThreadRng) -> Self {
+        let bits = bits.min(64);
+        if bits == 0 {
+            panic!("Range proof needs >= 1 bit");
+        }
+        let mut commitments = Vec::with_capacity(bits);
+        let mut proofs = Vec::with_capacity(bits);
+        let mut partial = Scalar::from(0u64);
+
+        for i in 0..bits - 1 {
+            let bit = (v >> i) & 1;
+            let a_i = Scalar::random(rng);
+            let c_i = Commitment::new_with_blinding(bit, a_i);
+            let ring: Vec<Vec<RistrettoPoint>> = (0..2)
+                .map(|b| vec![c_i.0 - Scalar::from(b as u64) * pedersen_h()])
+                .collect();
+            let sig = MLSAGSignature::sign(&ring, &[a_i], bit as usize, &format!("bit_{}", i).into_bytes(), rng);
+            commitments.push(c_i);
+            proofs.push(sig);
+            partial = partial + a_i * Scalar::from(1u64 << i);
+        }
+
+        // Last bit: compute a_last so total = desired
+        let last_i = bits - 1;
+        let last_bit = (v >> last_i) & 1;
+        let scale = Scalar::from(1u64 << last_i);
+        let a_last = (desired - partial) * scale.invert();
+        let c_last = Commitment::new_with_blinding(last_bit, a_last);
+        let ring_last: Vec<Vec<RistrettoPoint>> = (0..2)
+            .map(|b| vec![c_last.0 - Scalar::from(b as u64) * pedersen_h()])
+            .collect();
+        let sig_last = MLSAGSignature::sign(&ring_last, &[a_last], last_bit as usize, &format!("bit_{}", last_i).into_bytes(), rng);
+        commitments.push(c_last);
+        proofs.push(sig_last);
+
+        RangeProof { bits, commitments, proofs }
     }
 
     /// Verify the range proof against a commitment.
