@@ -293,8 +293,10 @@ pub fn create_private_tx(
             });
         }
         // Insert own UTXO at the FIXED real_index (shared across all layers)
+        // Safeguard: if there aren't enough decoys, insert at end instead
+        let insert_pos = real_index.min(members.len());
         members.insert(
-            real_index,
+            insert_pos,
             UtxoRef {
                 tx_hash: utxo.key.tx_hash,
                 output_index: utxo.key.output_index,
