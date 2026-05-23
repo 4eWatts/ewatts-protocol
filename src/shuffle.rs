@@ -40,6 +40,7 @@ impl ShuffleNode {
         }
     }
 
+    #[allow(dead_code)]
     fn receive_block(&mut self, block: &Block, diff: crate::state::BlockDiff) -> Result<(), String> {
         let hash = block.header.hash();
         // Add to store; if parent known, it extends a chain
@@ -122,7 +123,7 @@ pub fn run_shuffle_test(
     // Blocks are delivered IN ORDER to all nodes (no orphans possible).
     // Chaos is modeled as: variable latency + occasional duplicates.
     // Drop_chance is NOT applied — drops create orphans which is a separate test.
-    for (block_idx, (block, diff)) in all_blocks.iter().enumerate() {
+    for (block_idx, (block, _diff)) in all_blocks.iter().enumerate() {
         let height = (block_idx + 1) as u64;
 
         // Each node independently applies the block to its own state
