@@ -189,7 +189,7 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
         );
     }
 
-    // 10. Insert in fee-sorted position
+    // 10. Insert in fee-sorted position (canonical: fee desc, tx_hash asc as tiebreaker)
     let pending_tx = PendingTx {
         tx,
         fee,
@@ -197,7 +197,12 @@ pub fn submit(tx: Transaction, state: &UtxoSet) -> Result<(), String> {
     };
     let insert_pos = pool
         .pending
-        .binary_search_by(|pt| pt.fee.cmp(&fee).reverse())
+        .binary_search_by(|pt| {
+            // Primary: fee descending
+            pt.fee.cmp(&fee).reverse()
+            // Secondary: tx_hash ascending (canonical tiebreaker)
+                .then_with(|| pt.tx_hash.cmp(&tx_hash))
+        })
         .unwrap_or_else(|e| e);
     pool.pending.insert(insert_pos, pending_tx);
 
