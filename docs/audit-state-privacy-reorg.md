@@ -108,4 +108,57 @@ if !proof.verify(&Commitment(comm_pt)) {
 
 ---
 
-*Audit in progress — structural analysis of state.rs + privacy.rs + reorg.rs by Gustavo. 6 problems identified so far.*
+## 9. Main Architectural Gap
+
+Hoje você tem:
+- local correctness (tx/block level) ✅
+- procedural reorg correctness ✅
+- probabilistic privacy ✅
+
+**Mas falta: ❗️ global state theorem**
+
+Algo como:
+```
+∀ valid execution traces:
+  ΣUTXO + burned + locked = initial_supply + emission
+AND
+  ∀ nodes: state_equivalence(chain_tip)
+AND
+  ∀ adversarial delivery orders: convergence
+```
+
+## 10. Conclusão Honesta
+
+### O que está bom
+- engine de consenso funcional
+- reorg model bem desenhado
+- base de privacy interessante
+- testes já cobrem comportamento real
+
+### O que ainda não está fechado
+- invariantes formais globais ❌
+- privacy model ainda determinístico (não probabilístico) ❌
+- ausência de verificador externo de consistência de supply ❌
+- reorg safety ainda depende de disciplina do diff ❌
+
+## 11. Próximo Passo Lógico
+
+Se quiser evoluir de "engine forte" para "paper-level system", o próximo passo não é código.
+
+**É: Formal System Model**
+
+Definir:
+- state transition function `S(t)`
+- fork-choice function `F(S)`
+- adversarial network model `N(λ, reorder, delay)`
+- invariant set `I(S)`
+
+E provar:
+- convergence
+- safety
+- supply consistency
+- reorg determinism
+
+---
+
+*Audit completed 23 May 2026 by Gustavo. 6 structural problems + missing global invariant model identified.*
