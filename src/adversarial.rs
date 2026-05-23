@@ -99,7 +99,7 @@ impl MinerAgent {
 /// - agents: list of (MinerStrategy, bandwidth_gbps) pairs
 ///
 /// Returns a summary of reward distribution per agent.
-pub fn run_adversarial_simulation(
+pub(crate) fn run_adversarial_simulation(
     num_blocks: u64,
     dag_size: u64,
     difficulty: u64,
