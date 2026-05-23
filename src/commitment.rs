@@ -56,40 +56,6 @@ pub fn effective_commitment_int(bandwidth: u64, efficiency: u64) -> u64 {
     }
 }
 
-pub fn compute_efficiency(w: f64, d: f64, t: f64) -> f64 {
-    if !w.is_finite() || !d.is_finite() || !t.is_finite() || d <= 0.0 || t <= 0.0 {
-        0.0
-    } else {
-        w / (d * t)
-    }
-}
-
-pub fn effective_commitment(d: f64, e: f64) -> f64 {
-    if !d.is_finite() || !e.is_finite() {
-        return 0.0;
-    }
-    if e < 0.7 {
-        d * e
-    } else if e > 1.3 {
-        d * 1.3
-    } else {
-        d
-    }
-}
-
-fn median(v: &[f64]) -> f64 {
-    let mut s = v.to_vec();
-    s.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Less));
-    let l = s.len();
-    if l == 0 {
-        0.0
-    } else if l % 2 == 0 {
-        (s[l / 2 - 1] + s[l / 2]) / 2.0
-    } else {
-        s[l / 2]
-    }
-}
-
 pub fn min_commitment_int(r: &[u64]) -> u64 {
     // Minimum bandwidth: 1.0 GB/s = 1000 mGB/s
     // Rolling minimum: 0.1 * median(r)
@@ -147,16 +113,22 @@ mod tests {
         SigningKey::from_bytes(&b)
     }
     #[test]
-    fn test_eff() {
-        assert!((compute_efficiency(100., 100., 1.) - 1.).abs() < 1e-6);
+    fn test_eff_int() {
+        // work_mbytes=100_000, bw_mgbps=100_000, time_ms=1_000 → eff ≈ 1.0
+        let e = compute_efficiency_int(100_000, 100_000, 1_000);
+        assert!(e >= crate::constants::EFF_PRECISION - 1000, "eff ~1.0, got {}", e);
     }
     #[test]
-    fn test_penalty() {
-        assert!((effective_commitment(100., 0.5) - 50.).abs() < 1e-6);
+    fn test_penalty_int() {
+        // bandwidth=1_000_000_000 (COMMIT_PRECISION), efficiency=500_000 (0.5 * EFF_PRECISION)
+        let ce = effective_commitment_int(1_000_000_000, 500_000);
+        assert_eq!(ce, 500_000_000, "d * e: 1e9 * 0.5 = 5e8");
     }
     #[test]
-    fn test_cap() {
-        assert!((effective_commitment(100., 2.0) - 130.).abs() < 1e-6);
+    fn test_cap_int() {
+        // bandwidth=1_000_000_000, efficiency=2_000_000 (2.0 * EFF_PRECISION, >1.3 cap)
+        let ce = effective_commitment_int(1_000_000_000, 2_000_000);
+        assert_eq!(ce, 1_300_000_000, "d * 1.3: 1e9 * 1.3 = 1.3e9");
     }
     #[test]
     fn test_sign() {
@@ -188,31 +160,6 @@ mod tests {
     }
 
     #[test]
-    fn test_efficiency_nan_guard() {
-        assert_eq!(compute_efficiency(f64::NAN, 100.0, 1.0), 0.0, "NaN w");
-        assert_eq!(compute_efficiency(100.0, f64::NAN, 1.0), 0.0, "NaN d");
-        assert_eq!(compute_efficiency(100.0, 100.0, f64::NAN), 0.0, "NaN t");
-        assert_eq!(
-            compute_efficiency(f64::NAN, f64::NAN, f64::NAN),
-            0.0,
-            "all NaN"
-        );
-    }
-
-    #[test]
-    fn test_effective_commitment_nan_guard() {
-        assert_eq!(effective_commitment(f64::NAN, 1.0), 0.0, "NaN d");
-        assert_eq!(effective_commitment(100.0, f64::NAN), 0.0, "NaN e");
-    }
-
-    #[test]
-    fn test_median_nan_guard() {
-        // With NaN in input, median should not panic and return a finite value
-        let v = vec![1.0, f64::NAN, 3.0];
-        let m = median(&v);
-        assert!(m.is_finite(), "median with NaN should be finite, got {}", m);
-    }
-
     #[test]
     fn test_min_commitment_empty() {
         assert_eq!(min_commitment_int(&[]), 1000);

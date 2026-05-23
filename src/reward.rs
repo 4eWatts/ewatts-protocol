@@ -84,33 +84,6 @@ fn ewatt_to_units(ewatt: f64) -> u64 {
     (ewatt * constants::UNITS_PER_EWATT as f64).round() as u64
 }
 
-pub fn compute_emission_rate(total_effective_gbps: f64, historical_avg_gbps: f64) -> f64 {
-    if historical_avg_gbps <= 0.0 { return constants::BASE_EMISSION; }
-    let rate = constants::BASE_EMISSION * total_effective_gbps / historical_avg_gbps;
-    rate.clamp(constants::BASE_EMISSION * constants::EMISSION_FLOOR_MULTIPLIER,
-               constants::BASE_EMISSION * constants::EMISSION_CEILING_MULTIPLIER)
-}
-
-/// Apply ramp-up cap: no single miner receives >80% of reward during first 10,000 blocks.
-/// Excess goes to coinbase_burn.
-/// Input values are in Ewatt (f64), output burn is in Ewatt (f64) for internal chaining.
-pub fn apply_ramp_up_cap(block_number: u64, rewards: &mut Vec<(Vec<u8>, f64)>) -> f64 {
-    if block_number >= constants::RAMP_UP_BLOCKS {
-        return 0.0;
-    }
-    let total: f64 = rewards.iter().map(|(_, r)| r).sum();
-    let mut burned = 0.0;
-    for (_, reward) in rewards.iter_mut() {
-        let share = *reward / total;
-        if share > constants::RAMP_UP_CAP {
-            let excess = *reward - (total * constants::RAMP_UP_CAP);
-            burned += excess;
-            *reward = total * constants::RAMP_UP_CAP;
-        }
-    }
-    burned
-}
-
 /// Compute founder time-lock: outputs mined before block 10,000
 /// are spendable only after max(50000, current_block + 40000).
 pub fn founder_lock_block(block_number: u64) -> u64 {
@@ -124,22 +97,6 @@ pub fn founder_lock_block(block_number: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn test_emission_stable() { assert!((compute_emission_rate(100.,100.) - constants::BASE_EMISSION).abs() < 1e-6); }
-    #[test] fn test_emission_double() { assert!((compute_emission_rate(200.,100.) - constants::BASE_EMISSION * 2.).abs() < 1e-6); }
-    #[test] fn test_emission_floor() { assert!((compute_emission_rate(1.,100.) - constants::BASE_EMISSION * 0.05).abs() < 1e-6); }
-    #[test] fn test_emission_ceiling() { assert!((compute_emission_rate(2000.,100.) - constants::BASE_EMISSION * 20.).abs() < 1e-6); }
-    #[test] fn test_ramp_up_cap() {
-        let mut rewards = vec![(vec![1u8;32], 100.0), (vec![2u8;32], 0.0)];
-        let burned = apply_ramp_up_cap(5000, &mut rewards);
-        assert!(burned > 0.0);
-        assert!(rewards[0].1 < 100.0);
-    }
-    #[test] fn test_ramp_up_no_cap_after() {
-        let mut rewards = vec![(vec![1u8;32], 100.0)];
-        let burned = apply_ramp_up_cap(10001, &mut rewards);
-        assert_eq!(burned, 0.0);
-        assert_eq!(rewards[0].1, 100.0);
-    }
     #[test] fn test_founder_lock() {
         assert!(founder_lock_block(500) >= 50000);
         assert_eq!(founder_lock_block(15000), 0);
