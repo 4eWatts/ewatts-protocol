@@ -584,17 +584,10 @@ fn integration_emission_bounds() {
 #[test]
 #[ignore]
 fn integration_reward_proportionality() {
-    use crate::reward::compute_block_rewards;
-    use crate::commitment::Commitment;
-    use ed25519_dalek::Signer;
-    let sk = ed25519_dalek::SigningKey::from_bytes(&[1u8;32]);
-    let pk = sk.verifying_key().to_bytes();
-    let mut c1 = Commitment { miner_id: pk, bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
-    let msg1 = crate::commitment::commit_msg(&c1);
-    c1.signature = sk.sign(&msg1).to_bytes().to_vec();
-    let mut c2 = Commitment { miner_id: pk, bandwidth_gbps: 100., block_number: 0, work_gb: 100., time_seconds: 1., signature: vec![] };
-    let msg2 = crate::commitment::commit_msg(&c2);
-    c2.signature = sk.sign(&msg2).to_bytes().to_vec();
-    let r = compute_block_rewards(20000, &[c1, c2], &[100.0], 100.0);
-    assert_eq!(r.miner_rewards[0].1, r.miner_rewards[1].1);
+    use crate::reward::compute_block_rewards_int;
+    let eff: u64 = 100_000_000_000;
+    let em = crate::reward::compute_emission_rate_int(eff * 2, eff * 2);
+    let commits = vec![(eff, [1u8;32]), (eff, [2u8;32])];
+    let rewards = compute_block_rewards_int(20000, &commits, em);
+    assert_eq!(rewards[0].1, rewards[1].1);
 }
