@@ -25,7 +25,7 @@ fn test_dag() -> crate::dag::Dag {
 // range proof where bit commitments use a_i=0, so total blinding is zero
 // and C = v*H (Pedersen balance check passes trivially).
 
-fn range_proof_zero_blinding(v: u64, rng: &mut rand::rngs::ThreadRng) -> crate::privacy::RangeProof {
+pub(crate) fn range_proof_zero_blinding(v: u64, rng: &mut rand::rngs::ThreadRng) -> crate::privacy::RangeProof {
     use crate::privacy::{Commitment, MLSAGSignature, pedersen_h};
     use curve25519_dalek::scalar::Scalar;
     use curve25519_dalek::ristretto::RistrettoPoint;

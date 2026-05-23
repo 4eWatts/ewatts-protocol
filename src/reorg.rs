@@ -279,4 +279,136 @@ mod tests {
             other => panic!("Expected ReorgToNew, got {:?}", other),
         }
     }
+
+    #[test]
+    fn test_full_reorg_state_integrity() {
+        // Full reorg test: create two chains, execute reorg, validate state.
+        // Chain A (height 1-3) vs Chain B (height 1-4, heavier via more blocks).
+        // Each block has a coinbase tx creating a unique UTXO for tracking.
+
+        let mut rng = rand::thread_rng();
+        use crate::privacy::{Commitment, RangeProof};
+        use crate::state::UtxoSet;
+        use rand::RngCore;
+
+        // ── Genesis ──
+        let genesis = make_block(0, [0u8; 32]);
+        let g_hash = genesis.header.hash();
+        let mut store = ChainStore::new(genesis);
+
+        // ── Helper: create a block with one coinbase tx ──
+        let mut seq: u64 = 0;
+        let mut make_coinbase_block = |height: u64, prev: [u8; 32], amount: u64, label: &str| -> Block {
+            seq += 1;
+            let nonce = NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let header = BlockHeader {
+                version: 1, previous_hash: prev, merkle_root: [0u8; 32],
+                timestamp: 1000 + height, height, epoch: 0,
+                difficulty_target: 100, total_effective_commit: 0.0,
+                emission_rate: 0, miner_effective_commit: 0.0,
+                vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+                proof_merkle_root: None,
+            };
+            // Create a range proof with blinding=0 for test stability
+            let rp = crate::tests::range_proof_zero_blinding(amount, &mut rng);
+            let comm = Commitment::new_with_blinding(amount, curve25519_dalek::scalar::Scalar::from(0u64));
+            let tx = Transaction {
+                version: 1, inputs: vec![],
+                outputs: vec![TxOutput {
+                    amount, public_key: vec![], spendable_after: 0,
+                    stealth_dest: None,
+                    commitment_bytes: Some(comm.0.compress().to_bytes()),
+                    range_proof_bytes: Some(serde_json::to_vec(&rp).unwrap()),
+                    ephemeral: None,
+                }],
+                ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
+            };
+            Block { header, body: BlockBody { transactions: vec![tx], commitments: vec![] } }
+        };
+
+        // ── Genesis state ──
+        let mut state = UtxoSet::new();
+
+        // ── Build Chain A (height 1-3) ──
+        let a1 = make_coinbase_block(1, g_hash, 100, "A1");
+        let a1_hash = a1.header.hash();
+        let a1_diff = state.apply_block_and_track(&a1, 1).unwrap();
+        store.add_block_with_diff(a1, a1_diff).unwrap();
+        store.set_chain_tip(&a1_hash).unwrap();
+        let old_supply = state.total_supply();
+
+        let a2 = make_coinbase_block(2, a1_hash, 200, "A2");
+        let a2_hash = a2.header.hash();
+        let a2_diff = state.apply_block_and_track(&a2, 2).unwrap();
+        store.add_block_with_diff(a2, a2_diff).unwrap();
+        store.set_chain_tip(&a2_hash).unwrap();
+
+        let a3 = make_coinbase_block(3, a2_hash, 300, "A3");
+        let a3_hash = a3.header.hash();
+        let a3_diff = state.apply_block_and_track(&a3, 3).unwrap();
+        store.add_block_with_diff(a3, a3_diff).unwrap();
+        store.set_chain_tip(&a3_hash).unwrap();
+
+        let state_after_a = state.total_supply();
+        assert_eq!(state_after_a, 100 + 200 + 300, "Chain A supply should sum coinbases");
+
+        // ── Build Chain B (height 1-4, heavier) ──
+        let b1 = make_coinbase_block(1, g_hash, 50, "B1");
+        let b1_hash = b1.header.hash();
+        store.add_block(b1).unwrap(); // add without diff first (simulating sidechain)
+
+        let b2 = make_coinbase_block(2, b1_hash, 60, "B2");
+        let b2_hash = b2.header.hash();
+        store.add_block(b2).unwrap();
+
+        let b3 = make_coinbase_block(3, b2_hash, 70, "B3");
+        let b3_hash = b3.header.hash();
+        store.add_block(b3).unwrap();
+
+        let b4 = make_coinbase_block(4, b3_hash, 80, "B4");
+        let b4_hash = b4.header.hash();
+        store.add_block(b4).unwrap();
+
+        // Verify fork detection
+        let decision = analyze_fork(
+            &store.get_block(&b4_hash).unwrap(), &store
+        );
+        let (to_unwind, to_apply) = match &decision {
+            ForkDecision::ReorgToNew { to_unwind, to_apply } => (to_unwind, to_apply),
+            other => panic!("Expected ReorgToNew, got {:?}", other),
+        };
+        assert_eq!(to_unwind.len(), 3, "should unwind A3, A2, A1");
+        assert_eq!(to_apply.len(), 4, "should apply B1, B2, B3, B4");
+
+        // ── Execute reorg ──
+        let state_before_reorg = state.clone();
+        let result = execute_reorg(to_unwind, to_apply, &mut store, &mut state);
+        assert!(result.is_ok(), "Reorg should succeed: {:?}", result);
+
+        // ── Verify state after reorg ──
+        let state_after_reorg_supply = state.total_supply();
+        // Chain B coinbases: 50 + 60 + 70 + 80 = 260
+        assert_eq!(state_after_reorg_supply, 50 + 60 + 70 + 80,
+            "State after reorg should match Chain B coinbases, got {} expected {}",
+            state_after_reorg_supply, 50 + 60 + 70 + 80);
+
+        // Verify tip updated
+        assert_eq!(store.chain_tip_hash(), b4_hash, "Tip should be B4");
+        assert_eq!(store.chain_tip_height(), 4, "Tip height should be 4");
+
+        // Verify diffs are stored for the new chain
+        for hash in &[b1_hash, b2_hash, b3_hash, b4_hash] {
+            assert!(store.block_diffs.contains_key(hash),
+                "Diff should exist for {:x}..", hash[0]);
+        }
+
+        // Verify Chain A diffs are GONE (removed by unwind phase via unwind_with_diff)
+        // Actually, they stay in block_diffs — they just weren't re-added.
+        // The unwind phase reads them, the apply phase writes new diffs.
+        // A's diffs should still be in the map (not removed).
+        for hash in &[a1_hash, a2_hash, a3_hash] {
+            assert!(store.block_diffs.contains_key(hash),
+                "Chain A diffs should persist in store for potential re-reorg");
+        }
+    }
 }
