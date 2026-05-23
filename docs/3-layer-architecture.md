@@ -1,0 +1,201 @@
+# Ewatts — 3-Layer Architecture (Formal Spec)
+
+> Core Principle: O sistema é dividido em três camadas não misturáveis, com separação rígida de:
+> - **execução** (engineering reality)
+> - **interpretação** (economic hypothesis)
+> - **validação adversarial** (system robustness)
+
+---
+
+## LAYER 1 — PROTOCOL CORE (Deterministic State Machine)
+
+**Objective:** Definir um sistema único de execução determinística que qualquer nó pode verificar independentemente.
+
+### 1.1 State Model
+
+O sistema é uma máquina de estados:
+
+```
+S_{t+1} = f(S_t, B_t)
+```
+
+Onde:
+- `S_t`: estado global (UTXO + commitments + metadata)
+- `B_t`: bloco válido
+- `f`: função determinística de transição
+
+### 1.2 Block Validity Rules
+
+Um bloco é válido se:
+1. Proof-of-work satisfaz threshold definido pelo difficulty function
+2. Estado anterior existe
+3. Transição de UTXO é consistente
+4. Commitments são verificáveis
+5. Não viola invariantes de emissão
+
+### 1.3 Emission Function (u64 deterministic model)
+
+- Emissão é função do estado + altura
+- Sem input externo
+- Sem discretionary adjustment
+- `E_t = g(height, state)`
+
+### 1.4 Consensus Rule (minimal definition)
+
+Em ausência de rede: a cadeia válida é aquela com maior accumulated work (ou equivalent metric definida na Layer 2).
+
+### 1.5 Security Invariants
+
+- No double spend
+- No inflation beyond schedule
+- Deterministic replay
+- State convergence under valid propagation
+
+**Output of Layer 1:** single canonical ledger rule, deterministic validation engine, cryptographic correctness.
+
+---
+
+## LAYER 2 — ECONOMIC HYPOTHESIS LAYER (Interpretation Layer)
+
+**Objective:** Definir o significado econômico do sistema sem interferir no protocolo.
+
+### 2.1 Core Hypothesis
+
+Monetary systems anchored in physical computation substrates exhibit different long-term stability properties depending on the improvement rate of their underlying physical constraints.
+
+### 2.2 Substrate Classes
+
+**Class A — Energy-bound systems (ASIC-like)**
+- cost ≈ energy consumption
+- fast efficiency improvement
+- competitive hardware arms race
+
+**Class B — Memory-bound systems (DRAM-latency-like)**
+- cost ≈ memory access + latency physics
+- slower improvement curve (~1–2% annual)
+- more stable cost structure
+
+### 2.3 Key Variable: Improvement Rate Differential
+
+Define:
+```
+Δ = rate(substrate improvement)
+```
+
+- ASIC: high Δ
+- DRAM latency: low Δ
+
+**Hypothesis:** lower Δ → more stable monetary emission regime
+
+### 2.4 Falsifiability Conditions
+
+The hypothesis is false if:
+1. Substrate advantage converges quickly (Δ becomes irrelevant)
+2. System becomes economically dominated by secondary abstraction layer
+3. Cost of attack decouples from physical constraint
+
+### 2.5 What this layer does NOT do
+
+- Does NOT define consensus rules
+- Does NOT define validation logic
+- Does NOT affect protocol execution
+
+**Output of Layer 2:** interpretative economic framework, measurable hypothesis space, comparison model between monetary substrates.
+
+---
+
+## LAYER 3 — ADVERSARIAL CONSENSUS LAYER (Robustness Engine)
+
+**Objective:** Model system behavior under strategic, noisy, and adversarial conditions.
+
+### 3.1 Threat Model
+
+Nodes may behave as:
+- honest
+- delayed
+- partitioned
+- selfish
+- conflicting-state
+- withholding-capable
+
+### 3.2 Network Model
+
+System operates under:
+- latency variance
+- message duplication
+- message reordering
+- partial partitions
+- probabilistic loss (optional)
+
+### 3.3 Fork Reality Model
+
+Unlike Layer 1 assumption, here: multiple competing valid chains can exist simultaneously.
+
+### 3.4 Fork Choice Rule (abstract definition)
+
+Each node selects chain C maximizing:
+
+```
+Score(C) = W(C) - C_attack(C)
+```
+
+Where:
+- `W(C)`: accumulated work or equivalent substrate-weighted metric
+- `C_attack(C)`: cost-adjusted adversarial penalty model (defined per experiment)
+
+### 3.5 Adversarial Objectives
+
+Attackers may attempt:
+- maximize reorg probability
+- maximize stale block rate
+- induce divergence between nodes
+- extract value via timing asymmetries
+
+### 3.6 System-Level Properties Tested
+
+- convergence under chaos
+- safety under partition
+- stability under adversarial delay
+- robustness of fork selection rule
+
+**Output of Layer 3:** emergent consensus behavior, adversarial resilience metrics, system stability envelope.
+
+---
+
+## Module-to-Layer Mapping
+
+| Módulo | Layer | O que valida |
+|---|---|---|
+| `smoke.rs` | Layer 1 | Pipeline correctness, round-robin mining |
+| `tests.rs` integração | Layer 1 | Private tx, founder lock, double-spend, reorg |
+| `shuffle.rs` | Layer 3 | Block propagation under network noise |
+| `reorg.rs` | Layer 1 | Fork resolution engine |
+| `commitment.rs` | Layer 1 | Bandwidth commitment validation |
+| `reward.rs` | Layer 1+2 | Emission math (Layer 1) + economic interpretation (Layer 2) |
+| (futuro) adversarial.rs | Layer 3 | Strategic miner competition |
+
+---
+
+## CROSS-LAYER SEPARATION RULE (CRITICAL)
+
+| Layer | Can influence protocol? | Role |
+|---|---|---|
+| Layer 1 | **YES** | execution truth |
+| Layer 2 | **NO** | interpretation only |
+| Layer 3 | **NO** | testing environment only |
+
+## SYSTEM SUMMARY (ONE-LINER)
+
+> Ewatts is a deterministic monetary state machine (Layer 1), evaluated under physical substrate hypotheses (Layer 2), and stress-tested in adversarial distributed environments (Layer 3).
+
+## WHY THIS STRUCTURE MATTERS
+
+Sem essa separação:
+- economia invade protocolo
+- simulação vira verdade
+- narrativa vira regra de consenso
+
+Com essa separação:
+- protocolo é verificável
+- hipótese é falsificável
+- adversarial layer é experimental
