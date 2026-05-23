@@ -8,7 +8,7 @@
 //! Measures over N blocks: reward distribution, emission stability, and whether
 //! any strategy can extract >50% of rewards consistently.
 
-use crate::commitment::Commitment;
+use crate::commitment::{self, Commitment};
 use crate::mine_block_with_difficulty;
 use crate::state::UtxoSet;
 use ed25519_dalek::{Signer, SigningKey};
