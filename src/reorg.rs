@@ -3,7 +3,7 @@
 
 use crate::block::Block;
 use crate::chain::ChainStore;
-use crate::state::UtxoSet;
+use crate::state::{BlockDiff, UtxoKey, UtxoSet};
 
 /// Result of checking a new block against the current chain.
 #[derive(Debug)]
@@ -138,10 +138,29 @@ fn execute_reorg_inner(
             state.unwind_with_diff(diff)?;
             println!("  Unwound block #{} {:x}.. (diff)", height, hash[0]);
         } else {
-            // Fallback for blocks without diffs (disk-loaded or pre-diff era)
-            #[allow(deprecated)]
-            state.unwind_block(block, height)?;
-            println!("  Unwound block #{} {:x}.. (legacy)", height, hash[0]);
+            // Fallback: construct BlockDiff from block data (disk-loaded or pre-diff era)
+            let mut fallback_diff = BlockDiff::new();
+            for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
+                let tx_hash = tx.hash();
+                if tx_idx == 0 {
+                    // Coinbase: track created outputs and supply delta
+                    let coinbase_amount: u64 = tx.outputs.iter().map(|o| o.amount).sum();
+                    fallback_diff.supply_delta = fallback_diff.supply_delta.wrapping_add(coinbase_amount as i64);
+                    for (i, _) in tx.outputs.iter().enumerate() {
+                        fallback_diff.created.push(UtxoKey { tx_hash, output_index: i as u32 });
+                    }
+                } else {
+                    // Regular tx: track created outputs and key images to un-mark
+                    for (i, _) in tx.outputs.iter().enumerate() {
+                        fallback_diff.created.push(UtxoKey { tx_hash, output_index: i as u32 });
+                    }
+                    for input in &tx.inputs {
+                        fallback_diff.key_images.push(input.key_image);
+                    }
+                }
+            }
+            state.unwind_with_diff(&fallback_diff)?;
+            println!("  Unwound block #{} {:x}.. (fallback)", height, hash[0]);
         }
     }
 
