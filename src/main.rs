@@ -554,16 +554,21 @@ pub(crate) fn mine_block_with_difficulty(
         mlsag: None, ring_members: None,
     };
 
-    // Drain mempool and validate pending transactions
-    let pending = crate::mempool::drain();
+    // Take mempool txs for mining (non-lossy: unconfirmed txs stay in pool)
+    let pending = crate::mempool::take_for_mining(constants::MAX_BLOCK_TXS);
     let mut block_txs = vec![coinbase];
+    let mut confirmed_hashes: Vec<[u8; 32]> = Vec::new();
     for tx in pending {
         if let Err(e) = state.spend_transaction_inputs(&tx, height) {
             eprintln!("  Mempool tx rejected: {}", e);
             continue;
         }
+        let tx_hash = tx.hash();
+        confirmed_hashes.push(tx_hash);
         block_txs.push(tx);
     }
+    // Confirm mined txs (remove from mempool)
+    crate::mempool::confirm_mined(&confirmed_hashes);
 
     // Compute merkle root from transaction hashes
     let mut tx_hashes: Vec<[u8; 32]> = block_txs.iter().map(|tx| tx.hash()).collect();
