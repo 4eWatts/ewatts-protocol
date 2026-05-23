@@ -132,8 +132,8 @@ pub(crate) fn cmd_start() {
         };
 
         match mine_block(prev_hash, height, &mut state) {
-            Ok((block, diff)) => {
-                let hash = block.header.hash();
+            Ok((block, _diff)) => {
+                let _hash = block.header.hash();
                 // Save block
                 if let Err(e) = crate::store::save_block(&block) {
                     println!("  [{}] Error saving: {}", height, e);

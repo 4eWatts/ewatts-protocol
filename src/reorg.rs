@@ -196,6 +196,7 @@ fn execute_reorg_inner(
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)] // unwind_block fallback for blocks without diffs
     use super::*;
     use crate::block::*;
 
