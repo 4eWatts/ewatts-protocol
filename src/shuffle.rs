@@ -23,6 +23,7 @@ struct ShuffleNode {
     pub state: UtxoSet,
     pub store: ChainStore,
     pub peer_id: usize,
+    #[allow(dead_code)]
     pub blocks_mined: u64,
 }
 
@@ -106,7 +107,7 @@ pub fn run_shuffle_test(
     num_blocks: u64,
     latency_ms: u64,
     duplicate_chance: f64,
-    shuffle_order: bool,
+    _shuffle_order: bool,
 ) -> Result<(), String> {
     let mut rng = rand::thread_rng();
     let dag_size = 64 * 1024;
