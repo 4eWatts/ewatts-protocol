@@ -242,7 +242,8 @@ impl UtxoSet {
         tx: &Transaction,
         current_block: u64,
     ) -> Result<(), String> {
-        self.spend_transaction_inputs_with_diff(tx, current_block, None)
+        let mut no_diff: Option<&mut crate::state::BlockDiff> = None;
+        self.spend_transaction_inputs_with_diff(tx, current_block, &mut no_diff)
     }
 
     /// Same as spend_transaction_inputs but also populates a BlockDiff for each
