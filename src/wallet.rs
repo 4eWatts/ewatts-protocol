@@ -176,8 +176,10 @@ impl Wallet {
                     }
                 }
             }
-            // Also check legacy (ed25519) public keys (P1-3 fixed: use matching key type)
-            for k in &self.keys {
+            // Also check legacy (ed25519) public keys — SKIP if stealth already matched
+            let stealth_matched = owned.last().map(|o| o.key == *key).unwrap_or(false);
+            if !stealth_matched {
+                for k in &self.keys {
                 if let Some(vk) = k.legacy_verifying_key() {
                     if entry.public_key.len() == 32 && vk.to_bytes() == entry.public_key[..32] {
                         owned.push(OwnedUtxo {

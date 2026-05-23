@@ -233,12 +233,21 @@ async fn serve_dashboard(port: &str) {
                         "diff": b.header.difficulty_target, "time": b.header.timestamp,
                         "txs": b.body.transactions.len(),
                     })).collect();
+                    // Attempt to read peer count from shared status file
+                    let peers = std::fs::read_to_string("p2p_peers.txt")
+                        .ok().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0);
                     let status = serde_json::json!({
                         "height": height, "supply": supply, "utxos": utxos,
                         "vr": vr, "emission": emission, "difficulty": diff,
-                        "mempool": mempool, "blocks": blk,
+                        "mempool": mempool, "peers": peers, "blocks": blk,
+                        "node": "ewatts-testnet",
                     });
                     json_response(200, &serde_json::to_string(&status).unwrap())
+                } else if request.starts_with("GET /api/peers") {
+                    let peers = std::fs::read_to_string("p2p_peers.txt")
+                        .unwrap_or_default();
+                    let json = serde_json::json!({"count": 0, "list": [], "raw": peers});
+                    json_response(200, &serde_json::to_string(&json).unwrap())
                 } else if request.starts_with("GET /api/mempool") {
                     let pool = crate::mempool::peek();
                     let json = serde_json::json!({

@@ -311,6 +311,13 @@ impl P2pNode {
                 }
                     eprintln!("P2P: State save failed: {}", e);
                 }
+                // Write peer list for dashboard API
+                let peer_list: String = self.peers.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let peer_info = format!("{}\n{}", self.peer_id, peer_list);
+                let _ = std::fs::write("p2p_peers.txt", &peer_info);
                 last_state_save = std::time::Instant::now();
             }
         }
