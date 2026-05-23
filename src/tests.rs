@@ -469,19 +469,19 @@ fn integration_reorg_simulation() {
         .expect("Chain A genesis");
     let gen_a_hash = genesis_a.header.hash();
     let mut store = ChainStore::new(genesis_a.clone());
-    store.add_block_with_diff(genesis_a.clone(), diff_a0);
+    let _ = store.add_block_with_diff(genesis_a.clone(), diff_a0);
     store.set_chain_tip(&gen_a_hash).ok();
 
     let (block_a1, diff_a1) = mine_block_with_difficulty(gen_a_hash, 1, &mut state_a, difficulty, dag_size)
         .expect("Chain A block 1");
     let h_a1 = block_a1.header.hash();
-    store.add_block_with_diff(block_a1.clone(), diff_a1);
+    let _ = store.add_block_with_diff(block_a1.clone(), diff_a1);
     store.set_chain_tip(&h_a1).ok();
 
     let (block_a2, diff_a2) = mine_block_with_difficulty(h_a1, 2, &mut state_a, difficulty, dag_size)
         .expect("Chain A block 2");
     let h_a2 = block_a2.header.hash();
-    store.add_block_with_diff(block_a2.clone(), diff_a2);
+    let _ = store.add_block_with_diff(block_a2.clone(), diff_a2);
     store.set_chain_tip(&h_a2).ok();
 
     assert_eq!(store.chain_tip_height(), 2, "Chain A tip at height 2");
@@ -493,22 +493,22 @@ fn integration_reorg_simulation() {
         .expect("Chain B genesis");
     let gen_b_hash = genesis_b.header.hash();
     assert_ne!(gen_a_hash, gen_b_hash, "Genesis blocks must differ (different nonce)");
-    store.add_block_with_diff(genesis_b.clone(), diff_b0);
+    let _ = store.add_block_with_diff(genesis_b.clone(), diff_b0);
 
     let (block_b1, diff_b1) = mine_block_with_difficulty(gen_b_hash, 1, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 1");
     let h_b1 = block_b1.header.hash();
-    store.add_block_with_diff(block_b1.clone(), diff_b1);
+    let _ = store.add_block_with_diff(block_b1.clone(), diff_b1);
 
     let (block_b2, diff_b2) = mine_block_with_difficulty(h_b1, 2, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 2");
     let h_b2 = block_b2.header.hash();
-    store.add_block_with_diff(block_b2.clone(), diff_b2);
+    let _ = store.add_block_with_diff(block_b2.clone(), diff_b2);
 
     let (block_b3, diff_b3) = mine_block_with_difficulty(h_b2, 3, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 3");
     let h_b3 = block_b3.header.hash();
-    store.add_block_with_diff(block_b3.clone(), diff_b3);
+    let _ = store.add_block_with_diff(block_b3.clone(), diff_b3);
 
     let chain_b_hashes = vec![gen_b_hash, h_b1, h_b2, h_b3];
 
