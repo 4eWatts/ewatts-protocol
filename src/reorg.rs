@@ -287,9 +287,8 @@ mod tests {
         // Each block has a coinbase tx creating a unique UTXO for tracking.
 
         let mut rng = rand::thread_rng();
-        use crate::privacy::{Commitment, RangeProof};
+        use crate::privacy::Commitment;
         use crate::state::UtxoSet;
-        use rand::RngCore;
 
         // ── Genesis ──
         let genesis = make_block(0, [0u8; 32]);
@@ -298,7 +297,7 @@ mod tests {
 
         // ── Helper: create a block with one coinbase tx ──
         let mut seq: u64 = 0;
-        let mut make_coinbase_block = |height: u64, prev: [u8; 32], amount: u64, label: &str| -> Block {
+        let mut make_coinbase_block = |height: u64, prev: [u8; 32], amount: u64, _label: &str| -> Block {
             seq += 1;
             let nonce = NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let header = BlockHeader {
@@ -335,7 +334,7 @@ mod tests {
         let a1_diff = state.apply_block_and_track(&a1, 1).unwrap();
         store.add_block_with_diff(a1, a1_diff).unwrap();
         store.set_chain_tip(&a1_hash).unwrap();
-        let old_supply = state.total_supply();
+        let _old_supply = state.total_supply();
 
         let a2 = make_coinbase_block(2, a1_hash, 200, "A2");
         let a2_hash = a2.header.hash();
@@ -381,7 +380,7 @@ mod tests {
         assert_eq!(to_apply.len(), 4, "should apply B1, B2, B3, B4");
 
         // ── Execute reorg ──
-        let state_before_reorg = state.clone();
+        let _state_before_reorg = state.clone();
         let result = execute_reorg(to_unwind, to_apply, &mut store, &mut state);
         assert!(result.is_ok(), "Reorg should succeed: {:?}", result);
 
