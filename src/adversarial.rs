@@ -8,19 +8,16 @@
 //! Measures over N blocks: reward distribution, emission stability, and whether
 //! any strategy can extract >50% of rewards consistently.
 
-use crate::block::*;
-use crate::commitment::{self, Commitment};
+use crate::commitment::Commitment;
 use crate::mine_block_with_difficulty;
-use crate::reward::{self, RewardSummary};
 use crate::state::UtxoSet;
 use ed25519_dalek::{Signer, SigningKey};
 use rand::Rng;
-use std::collections::HashMap;
 
 /// A miner's declared bandwidth in GB/s (for commitment construction).
 /// Honest uses actual, greedy inflates, strategic is honest.
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum MinerStrategy {
+pub(crate) enum MinerStrategy {
     Honest,
     Greedy,
     Strategic,
@@ -28,13 +25,16 @@ enum MinerStrategy {
 
 /// Represents a miner identity and its strategy.
 struct MinerAgent {
+    #[allow(dead_code)]
     key: SigningKey,
     pubkey: [u8; 32],
     strategy: MinerStrategy,
     blocks_mined: u64,
-    total_reward_units: u64,       // in base units
-    total_reward_emission: u64,    // in EMISSION_PRECISION units
-    bandwidth_gbps: f64,           // actual bandwidth this miner can deliver
+    total_reward_units: u64,
+    #[allow(dead_code)]
+    total_reward_emission: u64,
+    #[allow(dead_code)]
+    bandwidth_gbps: f64,
 }
 
 impl MinerAgent {
@@ -53,6 +53,7 @@ impl MinerAgent {
         }
     }
 
+    #[allow(dead_code)]
     /// Create a commitment for a mined block.
     /// Honest: declares actual bandwidth and work.
     /// Greedy: declares 10× bandwidth, does minimal work.
