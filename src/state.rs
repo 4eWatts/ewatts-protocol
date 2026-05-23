@@ -252,7 +252,7 @@ impl UtxoSet {
         &mut self,
         tx: &Transaction,
         current_block: u64,
-        diff: Option<&mut crate::state::BlockDiff>,
+        mut diff: Option<&mut crate::state::BlockDiff>,
     ) -> Result<(), String> {
         // Pre-check: if private mode, verify MLSAG once before spending individual inputs
         if let Some(ref mlsag) = tx.mlsag {
@@ -392,9 +392,6 @@ impl UtxoSet {
         Ok(())
     }
 
-    /// Legacy alias — calls spend_transaction_inputs (no diff tracking).
-    /// Kept for backward compat; prefer spend_transaction_inputs_with_diff.
-    #[deprecated(since = "0.1.0", note = "use apply_block_and_track + unwind_with_diff instead")]
     pub fn total_supply(&self) -> u64 {
         self.total_supply
     }

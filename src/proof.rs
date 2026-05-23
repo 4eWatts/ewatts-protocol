@@ -215,7 +215,7 @@ pub fn verify(
         for &si in &indices {
             let target = &solution.proof_trace[si];
             let mut m = initial_mix(header_hash, solution.nonce);
-            for pos in 0..=target.position {
+            for _pos in 0..=target.position {
                 let el = dag.get(read_u64_le(&m[..8]) as usize % dag.len());
                 for k in 0..64 { m[k] ^= el[k]; }
                 let mut h = Sha512::new();
@@ -230,7 +230,7 @@ pub fn verify(
         // 3) Walk from last sample to end, check final hash meets difficulty
         let last = solution.proof_trace.last().unwrap();
         let mut mix = last.mix_hash;
-        for pos in (last.position + 1)..walk_length {
+        for _pos in (last.position + 1)..walk_length {
             let el = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
             for k in 0..64 { mix[k] ^= el[k]; }
             let mut h = Sha512::new();
