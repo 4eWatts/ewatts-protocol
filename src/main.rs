@@ -50,9 +50,9 @@ fn main() {
 
 /// Testnet daemon: initialize + mine continuously + serve dashboard.
 pub(crate) fn cmd_start() {
+    use std::fs;
     use std::io::{Read, Write};
-    use std::net::TcpListener;
-    use std::time::{Duration, SystemTime};
+    use std::time::Duration;
 
     // Initialize if first run
     if !crate::store::has_data() {
@@ -100,9 +100,13 @@ pub(crate) fn cmd_start() {
                             });
                             json_response(200, &serde_json::to_string(&status).unwrap())
                         } else {
-                            // Dashboard HTML
-                            let html = include_str!("../dashboard-v3.html");
-                            format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", html.len(), html)
+                            // Dashboard HTML (optional, graceful fallback)
+                            let html = fs::read_to_string("ewatts_dashboard.html").unwrap_or_default();
+                            if html.is_empty() {
+                                json_response(200, "{\"status\":\"ewatts-node\",\"tip\":\"no dashboard file\"}")
+                            } else {
+                                format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", html.len(), html)
+                            }
                         };
                         stream.write_all(response.as_bytes()).ok();
                     }
