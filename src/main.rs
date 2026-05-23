@@ -48,8 +48,8 @@ fn main() {
         "dash" => cmd_dashboard_sync(),
         "txhash" => cmd_txhash(),
         "p2p" => {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
-            rt.block_on(async { cmd_p2p(&args).await });
+            // cmd_p2p has #[tokio::main] — it sets up its own runtime internally
+            cmd_p2p(&args);
         }
         _ => cmd_help(),
     }
