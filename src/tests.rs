@@ -428,7 +428,8 @@ fn integration_multi_block_chain() {
 
         // Each block height should be sequential
         if i > 0 {
-            assert_eq!(heights[i], heights[i-1] + 1, "Blocks must be sequential");
+            let idx = i as usize;
+            assert_eq!(heights[idx], heights[idx-1] + 1, "Blocks must be sequential");
         }
         
         // Previous hash must link correctly
@@ -451,7 +452,6 @@ fn integration_multi_block_chain() {
 
 #[test]
 fn integration_reorg_simulation() {
-    use crate::block::*;
     use crate::chain::ChainStore;
     use crate::mine_block_with_difficulty;
     use crate::reorg;

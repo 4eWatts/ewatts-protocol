@@ -18,6 +18,7 @@
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::Identity;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::ThreadRng;
 use rand::RngCore;
