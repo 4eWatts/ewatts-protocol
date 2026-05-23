@@ -17,6 +17,8 @@ pub mod reorg;
 
 #[cfg(test)]
 pub mod tests;
+#[cfg(test)]
+pub mod shuffle;
  
  
  
