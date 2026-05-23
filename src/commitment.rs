@@ -13,6 +13,49 @@ pub struct Commitment {
     pub signature: Vec<u8>,
 }
 
+// ─── Integer math versions (f64→u64 migration) ───────────────────────
+// All values in COMMIT_PRECISION (1e9) units unless otherwise noted.
+
+/// Integer version of compute_efficiency.
+/// work_mbytes: work in megabytes (u64)
+/// bw_mgbps: bandwidth in milli-GB/s (1 GB/s = 1000 mGB/s)
+/// time_ms: time in milliseconds
+/// Returns efficiency in EFF_PRECISION units (1.0 = 1_000_000)
+pub fn compute_efficiency_int(work_mbytes: u64, bw_mgbps: u64, time_ms: u64) -> u64 {
+    if bw_mgbps == 0 || time_ms == 0 {
+        return 0;
+    }
+    // efficiency = work / (bw * time)
+    // work_mbytes / ((bw_mgbps / 1000.0) * (time_ms / 1000.0))
+    // = work_mbytes / (bw_mgbps * time_ms / 1_000_000)
+    // = (work_mbytes * 1_000_000 * EFF_PRECISION) / (bw_mgbps * time_ms * EFF_PRECISION / EFF_PRECISION)
+    // Simplified: (work_mbytes * 1_000_000 * eff_precision) / (bw_mgbps * time_ms)
+    // To avoid overflow: (work_mbytes * 1_000_000 / bw_mgbps) * eff_precision / time_ms
+    let numerator = work_mbytes.saturating_mul(1_000_000);
+    let ratio = numerator / bw_mgbps.max(1);
+    let eff = ratio.saturating_mul(crate::constants::EFF_PRECISION) / time_ms.max(1);
+    eff.min(crate::constants::EFF_PRECISION * 2) // cap at 2.0
+}
+
+/// Integer version of effective_commitment.
+/// bandwidth: bandwidth in COMMIT_PRECISION units (1 GB/s = 1e9)
+/// efficiency: efficiency in EFF_PRECISION units (1.0 = 1e6)
+/// Returns effective commitment in COMMIT_PRECISION units.
+pub fn effective_commitment_int(bandwidth: u64, efficiency: u64) -> u64 {
+    let cap = crate::constants::EFFICIENCY_CAP_THRESHOLD_INT; // 1.3 * 1e6
+    let penalty = crate::constants::EFFICIENCY_PENALTY_THRESHOLD_INT; // 0.7 * 1e6
+    
+    if efficiency < penalty {
+        // d * e: bandwidth * efficiency / EFF_PRECISION
+        bandwidth.saturating_mul(efficiency) / crate::constants::EFF_PRECISION
+    } else if efficiency > cap {
+        // d * 1.3: bandwidth * 1_300_000 / 1_000_000
+        bandwidth.saturating_mul(cap) / crate::constants::EFF_PRECISION
+    } else {
+        bandwidth
+    }
+}
+
 pub fn compute_efficiency(w: f64, d: f64, t: f64) -> f64 {
     if !w.is_finite() || !d.is_finite() || !t.is_finite() || d <= 0.0 || t <= 0.0 {
         0.0

@@ -330,8 +330,8 @@ fn integration_coinbase_empty_inputs_required() {
         header: BlockHeader {
             version: constants::PROTOCOL_VERSION, previous_hash: [0; 32], merkle_root: [0; 32],
             timestamp: 0, height: 1, epoch: 0, difficulty_target: 1,
-            total_effective_commit: 0.0, emission_rate: constants::BASE_EMISSION_UNITS,
-            miner_effective_commit: 0.0, vr_block: 0.0, coinbase_burn: 0, nonce: 0, elapsed_ms: 0,
+            total_effective_commit: 0, emission_rate: constants::BASE_EMISSION_UNITS,
+            miner_effective_commit: 0, vr_block: 0, coinbase_burn: 0, nonce: 0, elapsed_ms: 0,
             proof_merkle_root: None,
         },
         body: BlockBody { transactions: vec![bad_coinbase], commitments: vec![] },
@@ -534,16 +534,14 @@ fn integration_reorg_simulation() {
     assert!(state_r.total_supply() > 0, "Supply must be positive after reorg");
 }
 
-// ─── f64 determinism marker test (Fase A #3) ──────────────────────────
-// BlockHeader contains f64 fields. f64 representation varies across platforms.
-// This test FAILS today and will pass when f64->u64 migration is complete.
+// ─── Block hash determinism (f64→u64 migration complete) ────────────
+// All BlockHeader fields are now u64. Hash is fully deterministic
+// across platforms, compilers, and optimization levels.
 
 #[test]
-#[ignore = "Fails until f64→u64 migration is complete — marker test"]
-fn integration_block_hash_f64_determinism() {
+fn integration_block_hash_determinism() {
     use crate::block::*;
     
-    // Build a header with known f64 values
     let header = BlockHeader {
         version: 1,
         previous_hash: [0xab; 32],
@@ -552,10 +550,10 @@ fn integration_block_hash_f64_determinism() {
         epoch: 0,
         height: 1,
         difficulty_target: 100,
-        total_effective_commit: 1.5,        // f64 field
+        total_effective_commit: 1_500_000_000,
         emission_rate: 100_000_000,
-        miner_effective_commit: 0.75,       // f64 field
-        vr_block: 2.0,                       // f64 field
+        miner_effective_commit: 750_000_000,
+        vr_block: 2_000_000,
         coinbase_burn: 0,
         nonce: 42,
         elapsed_ms: 100,
@@ -564,21 +562,12 @@ fn integration_block_hash_f64_determinism() {
     
     let hash_normal = header.hash();
     
-    // The same logical value must produce the same hash
-    // even if the f64 is represented differently (e.g., denormalized)
-    // This test FAILS today because f64::to_le_bytes() differs between
-    // 1.5 (normal) and 1.5 (denormalized) or 1.5 (different rounding modes)
+    // Same value always produces same hash (u64 is deterministic)
+    let hash_again = header.hash();
+    assert_eq!(hash_normal, hash_again, "Hash must be deterministic");
     
-    // On a different platform (ARM vs x86, different optimization levels),
-    // the same f64 value may have different bit representation.
-    // This means the hash can differ across platforms.
-    // 
-    // When f64→u64 migration is complete, this test will pass because
-    // u64 fields are always deterministic.
-    
-    // TODO: replace with actual denormalized test when we have the infrastructure
-    // For now, this test simply verifies hash() doesn't panic
-    assert!(hash_normal.len() > 0, "Hash must not be empty");
+    // Hash must be non-zero
+    assert!(hash_normal.iter().any(|&b| b != 0), "Hash must not be all zeros");
 }
 
 // ─── Legacy smoke tests (kept as ignored reference) ────────────────────

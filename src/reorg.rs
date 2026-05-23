@@ -227,9 +227,9 @@ mod tests {
         BlockHeader {
             version: 1, previous_hash: prev, merkle_root: [0u8; 32],
             timestamp: 1000 + height, height, epoch: 0,
-            difficulty_target: 100, total_effective_commit: 0.0,
-            emission_rate: 0, miner_effective_commit: 0.0,
-            vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+            difficulty_target: 100, total_effective_commit: 0,
+            emission_rate: 0, miner_effective_commit: 0,
+            vr_block: 0, coinbase_burn: 0, nonce, elapsed_ms: 0,
             proof_merkle_root: None,
         }
     }
@@ -324,9 +324,9 @@ mod tests {
             let header = BlockHeader {
                 version: 1, previous_hash: prev, merkle_root: [0u8; 32],
                 timestamp: 1000 + height, height, epoch: 0,
-                difficulty_target: 100, total_effective_commit: 0.0,
-                emission_rate: 0, miner_effective_commit: 0.0,
-                vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+                difficulty_target: 100, total_effective_commit: 0,
+                emission_rate: 0, miner_effective_commit: 0,
+                vr_block: 0, coinbase_burn: 0, nonce, elapsed_ms: 0,
                 proof_merkle_root: None,
             };
             // Create a range proof with blinding=0 for test stability

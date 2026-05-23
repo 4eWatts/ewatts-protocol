@@ -12,10 +12,10 @@ pub struct BlockHeader {
     pub height: u64,
     pub epoch: u64,
     pub difficulty_target: u64,
-    pub total_effective_commit: f64,
-    pub emission_rate: u64,    // base units per block (1 Ewatt = 1_000_000 units)
-    pub miner_effective_commit: f64,
-    pub vr_block: f64,
+    pub total_effective_commit: u64,  // COMMIT_PRECISION units (1e9 per GB/s)
+    pub emission_rate: u64,           // base units per block (1 Ewatt = 1_000_000 units)
+    pub miner_effective_commit: u64,  // COMMIT_PRECISION units
+    pub vr_block: u64,                // VR_PRECISION units (1e6 per kWh/Ewatt)
     pub coinbase_burn: u64,  // base units burned via ramp-up cap
     pub nonce: u64,
     pub elapsed_ms: u32,
@@ -273,10 +273,10 @@ mod tests {
             height: 0,
             epoch: 0,
             difficulty_target: 1,
-            total_effective_commit: 100.,
+            total_effective_commit: 100_000_000_000,
             emission_rate: 100_000_000,
-            miner_effective_commit: 50.,
-            vr_block: 0.001,
+            miner_effective_commit: 50_000_000_000,
+            vr_block: 1_000,
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
@@ -294,10 +294,10 @@ mod tests {
             height: 0,
             epoch: 0,
             difficulty_target: 1,
-            total_effective_commit: 100.,
+            total_effective_commit: 100_000_000_000,
             emission_rate: 100_000_000,
-            miner_effective_commit: 50.,
-            vr_block: 0.001,
+            miner_effective_commit: 50_000_000_000,
+            vr_block: 1_000,
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,

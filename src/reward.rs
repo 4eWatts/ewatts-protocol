@@ -1,6 +1,79 @@
 use crate::constants;
 use crate::commitment::{self, Commitment};
 
+// ─── Integer math versions (f64→u64 migration) ───────────────────────
+// Emission rates in BASE_EMISSION_UNITS * EMISSION_PRECISION / UNITS_PER_EWATT
+// = 100_000_000 * 1_000_000_000 / 1_000_000 = 100_000_000_000
+// Effective commits in COMMIT_PRECISION (1e9) units.
+
+/// Integer version of compute_emission_rate.
+/// total_eff: total effective commitment in COMMIT_PRECISION units
+/// hist_avg: historical average commitment in COMMIT_PRECISION units
+/// Returns emission rate in EMISSION_PRECISION units (per-block emission).
+pub fn compute_emission_rate_int(total_eff: u64, hist_avg: u64) -> u64 {
+    if hist_avg == 0 { return crate::constants::BASE_EMISSION_INT; }
+    // rate = BASE_EMISSION_INT * total_eff / hist_avg
+    let rate = crate::constants::BASE_EMISSION_INT
+        .saturating_mul(total_eff) / hist_avg;
+    let floor = crate::constants::BASE_EMISSION_INT
+        .saturating_mul(crate::constants::EMISSION_FLOOR_MULTIPLIER_INT) / crate::constants::EMISSION_PRECISION;
+    let ceil = crate::constants::BASE_EMISSION_INT
+        .saturating_mul(crate::constants::EMISSION_CEILING_MULTIPLIER_INT) / crate::constants::EMISSION_PRECISION;
+    rate.clamp(floor, ceil)
+}
+
+/// Integer version of apply_ramp_up_cap.
+/// rewards: (miner_pk, reward_in_EMISSION_PRECISION_units)
+/// Returns burned amount in same precision.
+pub fn apply_ramp_up_cap_int(block_number: u64, rewards: &mut Vec<(Vec<u8>, u64)>) -> u64 {
+    if block_number >= crate::constants::RAMP_UP_BLOCKS {
+        return 0;
+    }
+    let total: u64 = rewards.iter().map(|(_, r)| r).sum();
+    if total == 0 { return 0; }
+    let mut burned = 0u64;
+    for (_, reward) in rewards.iter_mut() {
+        // share = reward / total, compare with RAMP_UP_CAP_INT / CAP_PRECISION
+        // equivalent to: reward * CAP_PRECISION > total * RAMP_UP_CAP_INT
+        let share_exceeds = reward.saturating_mul(crate::constants::CAP_PRECISION)
+            > total.saturating_mul(crate::constants::RAMP_UP_CAP_INT);
+        if share_exceeds {
+            let max_reward = total.saturating_mul(crate::constants::RAMP_UP_CAP_INT)
+                / crate::constants::CAP_PRECISION;
+            let excess = reward.saturating_sub(max_reward);
+            burned = burned.saturating_add(excess);
+            *reward = max_reward;
+        }
+    }
+    burned
+}
+
+/// Integer version of compute_block_rewards.
+/// All commitment values in COMMIT_PRECISION units.
+/// Returns miner rewards in base units (1 Ewatt = 1_000_000 units).
+pub fn compute_block_rewards_int(
+    block_number: u64,
+    commitments: &[(u64, [u8; 32])], // (effective_commit, miner_id)
+    emission_rate_int: u64,           // from compute_emission_rate_int
+) -> Vec<(Vec<u8>, u64)> {
+    let total_eff: u64 = commitments.iter().map(|(c, _)| c).sum();
+    if total_eff == 0 { return vec![]; }
+    
+    let mut rewards: Vec<(Vec<u8>, u64)> = commitments.iter().map(|(c, mid)| {
+        let r = c.saturating_mul(emission_rate_int) / total_eff;
+        (mid.to_vec(), r)
+    }).collect();
+    
+    let _burned = apply_ramp_up_cap_int(block_number, &mut rewards);
+    
+    // Convert from EMISSION_PRECISION units to base units
+    rewards.iter().map(|(pk, r)| {
+        let base_units = r.saturating_mul(crate::constants::UNITS_PER_EWATT)
+            / crate::constants::EMISSION_PRECISION;
+        (pk.clone(), base_units)
+    }).collect()
+}
+
 /// Convert Ewatt (f64) to base units with rounding.
 fn ewatt_to_units(ewatt: f64) -> u64 {
     (ewatt * constants::UNITS_PER_EWATT as f64).round() as u64

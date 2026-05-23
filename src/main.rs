@@ -224,7 +224,7 @@ async fn serve_dashboard(port: &str) {
                     let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
                     let mempool = crate::mempool::pending_count();
                     let last = blocks.last();
-                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
                     let emission = last.map(|b| b.header.emission_rate).unwrap_or(0);
                     let diff = last.map(|b| b.header.difficulty_target).unwrap_or(0);
                     let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
@@ -431,10 +431,10 @@ pub(crate) fn mine_block_with_difficulty(
         epoch,
         height,
         difficulty_target: difficulty,
-        total_effective_commit: 0.0,    // filled after mining
+        total_effective_commit: 0,    // filled after mining
         emission_rate: 0,             // base units, filled after mining
-        miner_effective_commit: 0.0,
-        vr_block: 0.0,
+        miner_effective_commit: 0,
+        vr_block: 0,
         coinbase_burn: 0,
         nonce: 0,
         elapsed_ms: 0,
@@ -487,13 +487,17 @@ pub(crate) fn mine_block_with_difficulty(
     commitment::validate_commitment(&commit, &recent)
         .map_err(|e| format!("Commitment invalid: {}", e))?;
 
-    // Compute effective commitment
-    let eff = commitment::compute_efficiency(commit.work_gb, commit.bandwidth_gbps, commit.time_seconds);
-    let ce = commitment::effective_commitment(commit.bandwidth_gbps, eff);
-    header.miner_effective_commit = ce;
+    // Compute effective commitment (integer math)
+    let work_mbytes = (wr.gb_processed * 1000.0) as u64; // GB → MB (approx)
+    let bw_mgbps = (declared_gbps * 1000.0) as u64; // GB/s → mGB/s
+    let time_ms = sol.elapsed_ms.max(1);
+    let eff_int = commitment::compute_efficiency_int(work_mbytes, bw_mgbps, time_ms);
+    let bw_prec = (declared_gbps * crate::constants::COMMIT_PRECISION as f64) as u64;
+    let ce_int = commitment::effective_commitment_int(bw_prec, eff_int);
+    header.miner_effective_commit = ce_int;
 
-    // Emission rate: compute avg_hist from recent block history
-    let avg_hist = {
+    // Emission rate (integer): avg_hist from recent commit values
+    let avg_hist_int = {
         let all_blocks = crate::store::load_blocks().unwrap_or_default();
         let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
         let window_start = if all_blocks.len() > window_len {
@@ -502,40 +506,41 @@ pub(crate) fn mine_block_with_difficulty(
             0
         };
         if window_start < all_blocks.len() && window_start < height as usize {
-            let window: Vec<f64> = all_blocks[window_start..]
+            let window: Vec<u64> = all_blocks[window_start..]
                 .iter()
                 .map(|b| b.header.total_effective_commit)
                 .collect();
             if window.is_empty() {
-                constants::BASE_EMISSION
+                constants::BASE_EMISSION_INT
             } else {
-                window.iter().sum::<f64>() / window.len() as f64
+                window.iter().sum::<u64>() / window.len() as u64
             }
         } else {
-            constants::BASE_EMISSION
+            constants::BASE_EMISSION_INT
         }
     };
-    let total_eff = ce;
-    let em = crate::reward::compute_emission_rate(total_eff, avg_hist);
-    header.total_effective_commit = total_eff;
-    header.emission_rate = (em * constants::UNITS_PER_EWATT as f64).round() as u64;
+    let em_int = crate::reward::compute_emission_rate_int(ce_int, avg_hist_int);
+    header.total_effective_commit = ce_int;
 
-    // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
-    let miner_reward = ce / total_eff * em; // = em for solo miner
-    let mut reward_list = vec![(miner_pk.to_vec(), miner_reward)];
-    let burned_ewatt = crate::reward::apply_ramp_up_cap(height, &mut reward_list);
-    header.coinbase_burn = (burned_ewatt * constants::UNITS_PER_EWATT as f64).round() as u64;
-    let post_burn_reward = reward_list[0].1;
-    let post_burn_emission = post_burn_reward;
-    header.emission_rate = (post_burn_emission * constants::UNITS_PER_EWATT as f64).round() as u64;
+    // Reward in EMISSION_PRECISION units
+    let miner_reward_int = if ce_int > 0 {
+        ce_int.saturating_mul(em_int) / ce_int  // = em_int for solo miner
+    } else {
+        0
+    };
+    let mut reward_list_int = vec![(miner_pk.to_vec(), miner_reward_int)];
+    let burned_int = crate::reward::apply_ramp_up_cap_int(height, &mut reward_list_int);
+    header.coinbase_burn = burned_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
+    let post_burn_reward_int = reward_list_int[0].1;
+    header.emission_rate = post_burn_reward_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
 
-    // VR (use post-burn reward for accuracy)
-    let vr_result = crate::vr::compute_vr(ce, post_burn_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
-    header.vr_block = vr_result.vr_kwh_per_ewatt;
+    // VR (integer)
+    let vr_int = crate::vr::compute_vr_int(ce_int, em_int, 1, constants::TARGET_BLOCK_TIME_SECS);
+    header.vr_block = vr_int;
 
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
-    let reward_base_units = (post_burn_reward * constants::UNITS_PER_EWATT as f64).round() as u64;
+    let reward_base_units = post_burn_reward_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
@@ -631,7 +636,7 @@ fn cmd_mine() {
             println!("  Hash:   {}", hex::encode(&block_hash[..8]));
             println!("  Reward: {:.6} Ewatt", reward_ewatt);
             println!("  VR:     {}",
-                crate::vr::format_vr(block.header.vr_block));
+                crate::vr::format_vr_int(block.header.vr_block));
             println!("  UTXOs:  {}", state.utxo_count());
             println!("  Supply: {} base units", state.total_supply());
 
@@ -697,7 +702,7 @@ fn cmd_simulate(args: &[String]) {
                 }
 
                 prev_hash = hash;
-                print!("  ✓ VR: {}", crate::vr::format_vr(block.header.vr_block));
+                print!("  ✓ VR: {}", crate::vr::format_vr_int(block.header.vr_block));
                 println!(" | UTXOs: {} | Supply: {}",
                     state.utxo_count(), state.total_supply());
             }
@@ -1133,7 +1138,7 @@ fn cmd_dashboard_sync() {
             let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
             let mempool = crate::mempool::pending_count();
             let last = blocks.last();
-            let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+            let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
             let emission = last.map(|b| b.header.emission_rate).unwrap_or(0) as u64;
             let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
                 "height": b.header.height, "hash": hex::encode(b.header.hash()),
@@ -1174,7 +1179,7 @@ fn cmd_info() {
             println!("  Supply: {}", state.total_supply());
             // Show recent VR if blocks exist
             if let Some(last) = blocks.last() {
-                println!("  VR:     {}", crate::vr::format_vr(last.header.vr_block));
+                println!("  VR:     {}", crate::vr::format_vr_int(last.header.vr_block));
             }
         }
         Err(e) => println!("Error: {}", e),
