@@ -19,6 +19,9 @@ pub struct BlockHeader {
     pub coinbase_burn: u64,  // base units burned via ramp-up cap
     pub nonce: u64,
     pub elapsed_ms: u32,
+    /// Optional Merkle root of the proof trace access samples (Opção B).
+    /// When set, verifiers can run sampled verification instead of full walk.
+    pub proof_merkle_root: Option<[u8; 32]>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,6 +227,9 @@ impl BlockHeader {
         h.update(self.coinbase_burn.to_le_bytes());
         h.update(self.nonce.to_le_bytes());
         h.update(self.elapsed_ms.to_le_bytes());
+        if let Some(root) = self.proof_merkle_root {
+            h.update(root);
+        }
         h.finalize().into()
     }
 }
@@ -274,6 +280,7 @@ mod tests {
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
+            proof_merkle_root: None,
         };
         assert_eq!(h.hash(), h.hash());
     }
@@ -294,6 +301,7 @@ mod tests {
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
+            proof_merkle_root: None,
         };
         let mut b = a.clone();
         b.nonce = 43;

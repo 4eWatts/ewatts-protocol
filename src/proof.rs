@@ -16,6 +16,9 @@ pub struct Solution {
     pub proof_trace: Vec<AccessSample>,
     pub elapsed_ms: u64,
     pub walk_length: u64,
+    /// Optional Merkle root over the proof trace samples (Opção B).
+    /// When Some, verifier can use sampled verification.
+    pub merkle_root: Option<[u8; 32]>,
 }
 
 fn read_u64_le(bytes: &[u8]) -> u64 {
@@ -47,6 +50,55 @@ fn initial_mix(header_hash: &[u8; 32], nonce: u64) -> [u8; 64] {
     let r2: [u8; 64] = hasher2.finalize().into();
     mix[32..].copy_from_slice(&r2[..32]);
     mix
+}
+
+// ─── Merkle tree utilities (Opção B) ──────────────────────────────────
+
+/// Build a binary Merkle root from a list of 32-byte leaf hashes.
+/// Odd-numbered leaves at any level are paired with themselves (duplicated).
+pub fn merkle_root_from_leaves(leaves: &[[u8; 32]]) -> [u8; 32] {
+    if leaves.is_empty() {
+        return [0u8; 32];
+    }
+    let mut level: Vec<[u8; 32]> = leaves.to_vec();
+    while level.len() > 1 {
+        let mut next = Vec::with_capacity((level.len() + 1) / 2);
+        for chunk in level.chunks(2) {
+            let mut h = Keccak256::new();
+            h.update(chunk[0]);
+            if chunk.len() > 1 {
+                h.update(chunk[1]);
+            } else {
+                h.update(chunk[0]); // self-pair
+            }
+            next.push(h.finalize().into());
+        }
+        level = next;
+    }
+    level[0]
+}
+
+/// Compute the leaf hash for a single access sample (position + mix_hash).
+pub fn sample_leaf_hash(position: u64, mix_hash: &[u8; 64]) -> [u8; 32] {
+    let mut h = Keccak256::new();
+    h.update(position.to_le_bytes());
+    h.update(mix_hash);
+    h.finalize().into()
+}
+
+/// Generate a random set of sample indices to check (N indices from 0..total).
+pub fn sample_indices(n: usize, total: usize, rng: &mut impl rand::Rng) -> Vec<usize> {
+    if total == 0 {
+        return vec![];
+    }
+    let n = n.min(total);
+    let mut indices: Vec<usize> = (0..total).collect();
+    // Fisher-Yates partial shuffle: only first N
+    for i in 0..n {
+        let j = rng.gen_range(i..total);
+        indices.swap(i, j);
+    }
+    indices[..n].to_vec()
 }
 
 pub fn mine(
@@ -85,11 +137,22 @@ pub fn mine(
         let elapsed_ms = start.elapsed().as_millis() as u64;
         let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
         if meets_difficulty(&final_hash, difficulty) {
+            // Build Merkle root from proof trace (if any samples collected)
+            let merkle_root = if trace.is_empty() {
+                None
+            } else {
+                let leaf_hashes: Vec<[u8; 32]> = trace
+                    .iter()
+                    .map(|s| sample_leaf_hash(s.position, &s.mix_hash))
+                    .collect();
+                Some(merkle_root_from_leaves(&leaf_hashes))
+            };
             return Some(Solution {
                 nonce,
                 proof_trace: trace,
                 elapsed_ms,
                 walk_length,
+                merkle_root,
             });
         }
     }
@@ -109,53 +172,99 @@ pub fn verify(
             walk_length, solution.walk_length
         ));
     }
-    // Sample interval for proof trace verification.
-    // If proof_trace is empty (e.g., testnet blocks without trace),
-    // we skip sample checks and only verify the final hash.
-    let mut mix = initial_mix(header_hash, solution.nonce);
 
+    let sample_interval = std::cmp::max(1, walk_length / 1000);
+
+    // ── Fast path: empty trace, full walk (no samples to verify) ────
     if solution.proof_trace.is_empty() {
-        // Fast verification: full walk, no sample checks (testnet / lightweight).
-        // Used when the solution has no trace data (blocks not mined with sampling).
+        let mut mix = initial_mix(header_hash, solution.nonce);
         for _i in 0..walk_length {
             let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
-            for k in 0..64 {
-                mix[k] ^= element[k];
-            }
+            for k in 0..64 { mix[k] ^= element[k]; }
             let mut h = Sha512::new();
             h.update(&mix);
             mix.copy_from_slice(&h.finalize());
         }
-    } else {
-        // Full verification with proof trace sampling.
-        let sample_interval = std::cmp::max(1, walk_length / 1000);
-        let mut last_offset: u64 = 0;
-        for i in 0..walk_length {
-            let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
-            for k in 0..64 {
-                mix[k] ^= element[k];
+        let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
+        if !meets_difficulty(&final_hash, difficulty) {
+            return Err("Difficulty not met".to_string());
+        }
+        return Ok(());
+    }
+
+    // ── Verificação amostrada com Merkle root (Opção B) ─────────────
+    //    Usado quando a solução carrega o proof_trace + merkle_root.
+    //    Verifica N=30 amostras aleatórias em vez do walk completo.
+    if let Some(merkle_root) = solution.merkle_root {
+        // 1) Verify the Merkle root commits to the proof trace
+        let leaf_hashes: Vec<[u8; 32]> = solution.proof_trace
+            .iter()
+            .map(|s| sample_leaf_hash(s.position, &s.mix_hash))
+            .collect();
+        let computed_root = merkle_root_from_leaves(&leaf_hashes);
+        if computed_root != merkle_root {
+            return Err("Merkle root mismatch".to_string());
+        }
+
+        // 2) Check N random sample positions against full recompute
+        let total = solution.proof_trace.len();
+        let n = 30usize.min(total);
+        let mut rng = rand::thread_rng();
+        let indices = sample_indices(n, total, &mut rng);
+
+        for &si in &indices {
+            let target = &solution.proof_trace[si];
+            let mut m = initial_mix(header_hash, solution.nonce);
+            for pos in 0..=target.position {
+                let el = dag.get(read_u64_le(&m[..8]) as usize % dag.len());
+                for k in 0..64 { m[k] ^= el[k]; }
+                let mut h = Sha512::new();
+                h.update(&m);
+                m.copy_from_slice(&h.finalize());
             }
+            if m != target.mix_hash {
+                return Err(format!("Sample {} mix hash mismatch", target.position));
+            }
+        }
+
+        // 3) Walk from last sample to end, check final hash meets difficulty
+        let last = solution.proof_trace.last().unwrap();
+        let mut mix = last.mix_hash;
+        for pos in (last.position + 1)..walk_length {
+            let el = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
+            for k in 0..64 { mix[k] ^= el[k]; }
             let mut h = Sha512::new();
             h.update(&mix);
             mix.copy_from_slice(&h.finalize());
-            if i % sample_interval == 0 {
-                let idx = i / sample_interval;
-                if idx >= solution.proof_trace.len() as u64 {
-                    return Err("Missing sample".to_string());
-                }
-                let s = &solution.proof_trace[idx as usize];
-                if s.position != i {
-                    return Err("Position mismatch".to_string());
-                }
-                if s.mix_hash != mix {
-                    return Err("Mix hash mismatch".to_string());
-                }
-                // Verify elapsed offset is monotonic (detects gross timing manipulation)
-                if s.elapsed_offset_us < last_offset {
-                    return Err("Non-monotonic elapsed offset".to_string());
-                }
-                last_offset = s.elapsed_offset_us;
+        }
+        let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
+        if !meets_difficulty(&final_hash, difficulty) {
+            return Err("Difficulty not met".to_string());
+        }
+        return Ok(());
+    }
+
+    // ── Fallback: full walk com verificação do proof trace (legacy) ──
+    let mut mix = initial_mix(header_hash, solution.nonce);
+    let mut last_offset: u64 = 0;
+    for i in 0..walk_length {
+        let element = dag.get(read_u64_le(&mix[..8]) as usize % dag.len());
+        for k in 0..64 { mix[k] ^= element[k]; }
+        let mut h = Sha512::new();
+        h.update(&mix);
+        mix.copy_from_slice(&h.finalize());
+        if i % sample_interval == 0 {
+            let idx = i / sample_interval;
+            if idx >= solution.proof_trace.len() as u64 {
+                return Err("Missing sample".to_string());
             }
+            let s = &solution.proof_trace[idx as usize];
+            if s.position != i { return Err("Position mismatch".to_string()); }
+            if s.mix_hash != mix { return Err("Mix hash mismatch".to_string()); }
+            if s.elapsed_offset_us < last_offset {
+                return Err("Non-monotonic elapsed offset".to_string());
+            }
+            last_offset = s.elapsed_offset_us;
         }
     }
     let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
@@ -207,6 +316,28 @@ mod tests {
         let h = [0xabu8; 32];
         let s = mine(&h, 1, &dag, 100).unwrap();
         assert!(verify(&h, &s, 1, &dag).is_ok());
+        // Merkle root should be present when proof_trace is non-empty
+        assert!(s.merkle_root.is_some(), "mine should produce merkle root");
+    }
+    #[test]
+    fn test_merkle_root_verify() {
+        // Verify that the Merkle root correctly commits to the proof trace
+        let dag = Dag::generate_with_size(0, 64 * 1024);
+        let h = [0xabu8; 32];
+        let s = mine(&h, 1, &dag, 100).unwrap();
+        // Recompute root from trace
+        let leaf_hashes: Vec<[u8; 32]> = s.proof_trace.iter().map(|s|
+            sample_leaf_hash(s.position, &s.mix_hash)
+        ).collect();
+        let computed = merkle_root_from_leaves(&leaf_hashes);
+        assert_eq!(Some(computed), s.merkle_root, "Merkle root should match trace");
+        // Tampered leaf should produce different root
+        let tampered: Vec<[u8; 32]> = s.proof_trace.iter().map(|s| {
+            let mut mix = s.mix_hash;
+            mix[0] ^= 0xff;
+            sample_leaf_hash(s.position, &mix)
+        }).collect();
+        assert_ne!(merkle_root_from_leaves(&tampered), computed, "Tampered trace should differ");
     }
     #[test]
     fn test_walk_length() {

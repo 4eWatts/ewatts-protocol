@@ -332,6 +332,7 @@ fn integration_coinbase_empty_inputs_required() {
             timestamp: 0, height: 1, epoch: 0, difficulty_target: 1,
             total_effective_commit: 0.0, emission_rate: constants::BASE_EMISSION_UNITS,
             miner_effective_commit: 0.0, vr_block: 0.0, coinbase_burn: 0, nonce: 0, elapsed_ms: 0,
+            proof_merkle_root: None,
         },
         body: BlockBody { transactions: vec![bad_coinbase], commitments: vec![] },
     };

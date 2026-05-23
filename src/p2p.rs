@@ -112,6 +112,7 @@ impl P2pNode {
                 proof_trace: vec![],
                 elapsed_ms: block.header.elapsed_ms as u64,
                 walk_length: crate::proof::difficulty_to_accesses(block.header.difficulty_target),
+                merkle_root: block.header.proof_merkle_root,
             };
             crate::proof::verify(&header_hash, &solution, block.header.difficulty_target, &dag)?;
         }

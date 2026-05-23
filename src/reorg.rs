@@ -200,6 +200,7 @@ mod tests {
             difficulty_target: 100, total_effective_commit: 0.0,
             emission_rate: 0, miner_effective_commit: 0.0,
             vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+            proof_merkle_root: None,
         }
     }
 

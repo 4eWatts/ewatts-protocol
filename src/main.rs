@@ -170,6 +170,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
         coinbase_burn: 0,
         nonce: 0,
         elapsed_ms: 0,
+        proof_merkle_root: None,
     };
     let header_hash = header.hash();
 
@@ -186,6 +187,7 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     // Fill header with solution data
     header.nonce = sol.nonce;
     header.elapsed_ms = sol.elapsed_ms as u32;
+    header.proof_merkle_root = sol.merkle_root;
 
     // Create commitment
     let declared_gbps = wr.gbps.max(constants::MIN_COMMIT_GBS); // use actual work report

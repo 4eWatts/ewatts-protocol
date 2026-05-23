@@ -337,6 +337,7 @@ mod tests {
             coinbase_burn: 0,
             nonce,
             elapsed_ms: 0,
+            proof_merkle_root: None,
         }
     }
 
