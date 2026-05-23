@@ -129,7 +129,7 @@ pub(crate) async fn cmd_start(args: &[String]) {
     let mut difficulty = initial_difficulty;
     let mut recent_timestamps: Vec<u64> = Vec::new();
     let target_secs = constants::TESTNET_BLOCK_TIME;
-    let dag_size = constants::TESTNET_DAG_SIZE as usize;
+    let dag_size = constants::TESTNET_DAG_SIZE;
 
     loop {
         let blocks = crate::store::load_blocks().unwrap_or_default();
@@ -397,7 +397,7 @@ pub(crate) fn mine_block_with_difficulty(
     height: u64,
     state: &mut crate::state::UtxoSet,
     difficulty: u64,
-    dag_size: usize,
+    dag_size: u64,
 ) -> Result<(block::Block, crate::state::BlockDiff), String>
 {
     use crate::block::*;
