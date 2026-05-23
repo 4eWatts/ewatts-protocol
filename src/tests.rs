@@ -407,7 +407,7 @@ fn integration_multi_block_chain() {
 
     let genesis_pk = [0x42u8; 32];
     let mut state = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
-    let dag_size = 64 * 1024; // 64KB DAG for fast testing
+    let dag_size = 64 * 1024;
     let difficulty = 1u64;
 
     let mut prev_hash = [0u8; 32];
@@ -422,6 +422,13 @@ fn integration_multi_block_chain() {
         let reward = block.body.transactions[0].outputs.iter()
             .map(|o| o.amount).sum::<u64>();
         
+        // Verify chain link BEFORE updating prev_hash
+        if i == 0 {
+            assert_eq!(block.header.previous_hash, [0u8; 32], "Genesis previous_hash must be zero");
+        } else {
+            assert_eq!(block.header.previous_hash, prev_hash, "Block {} previous_hash must match previous block hash", i);
+        }
+        
         heights.push(block.header.height);
         rewards.push(reward);
         prev_hash = hash;
@@ -431,24 +438,21 @@ fn integration_multi_block_chain() {
             let idx = i as usize;
             assert_eq!(heights[idx], heights[idx-1] + 1, "Blocks must be sequential");
         }
-        
-        // Previous hash must link correctly
-        assert_eq!(block.header.previous_hash, if i == 0 { [0u8; 32] } else { prev_hash }, 
-            "Previous hash must match");
     }
 
     assert_eq!(heights.len(), 5, "Should have mined 5 blocks");
     assert!(state.total_supply() >= 100_000_000, "Supply should include genesis");
     
-    // Coinbase rewards create UTXOs — supply should have grown
     let total_mined: u64 = rewards.iter().sum();
     assert!(state.total_supply() >= 100_000_000 + total_mined.saturating_sub(1000),
         "Supply should approximately match genesis + rewards");
 }
 
 // ─── Reorg simulation (Fase A #2) ────────────────────────────────────
-// Mine chain A (3 blocks), mine heavier chain B (4 blocks at same heights),
-// execute reorg from A -> B, validate UTXO set after reorg.
+// Both chains share the SAME genesis block. They diverge at height 1.
+// Chain A: genesis → A1 → A2  (2 non-genesis blocks)
+// Chain B: genesis → B1 → B2 → B3  (3 non-genesis blocks — heavier)
+// Reorg unwinds A1,A2 and applies B1,B2,B3.
 
 #[test]
 fn integration_reorg_simulation() {
@@ -463,60 +467,63 @@ fn integration_reorg_simulation() {
     let dag_size = 64 * 1024;
     let difficulty = 1u64;
 
-    // ── State A: mine Chain A (3 blocks) ──
-    let mut state_a = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
-    let (genesis_a, diff_a0) = mine_block_with_difficulty([0u8; 32], 0, &mut state_a, difficulty, dag_size)
-        .expect("Chain A genesis");
-    let gen_a_hash = genesis_a.header.hash();
-    let mut store = ChainStore::new(genesis_a.clone());
-    let _ = store.add_block_with_diff(genesis_a.clone(), diff_a0);
-    store.set_chain_tip(&gen_a_hash).ok();
+    // ── Mine shared genesis (one chain store, one genesis block) ──
+    let mut state = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
+    let (genesis, _diff_g) = mine_block_with_difficulty([0u8; 32], 0, &mut state, difficulty, dag_size)
+        .expect("Genesis");
+    let gen_hash = genesis.header.hash();
+    let mut store = ChainStore::new(genesis);
 
-    let (block_a1, diff_a1) = mine_block_with_difficulty(gen_a_hash, 1, &mut state_a, difficulty, dag_size)
+    // ── Chain A: genesis → A1 → A2 ──
+    // Mine A blocks on state, which becomes "Chain A state"
+    let (block_a1, diff_a1) = mine_block_with_difficulty(gen_hash, 1, &mut state, difficulty, dag_size)
         .expect("Chain A block 1");
     let h_a1 = block_a1.header.hash();
-    let _ = store.add_block_with_diff(block_a1.clone(), diff_a1);
+    let _ = store.add_block_with_diff(block_a1, diff_a1);
     store.set_chain_tip(&h_a1).ok();
 
-    let (block_a2, diff_a2) = mine_block_with_difficulty(h_a1, 2, &mut state_a, difficulty, dag_size)
+    let (block_a2, diff_a2) = mine_block_with_difficulty(h_a1, 2, &mut state, difficulty, dag_size)
         .expect("Chain A block 2");
     let h_a2 = block_a2.header.hash();
-    let _ = store.add_block_with_diff(block_a2.clone(), diff_a2);
+    let _ = store.add_block_with_diff(block_a2, diff_a2);
     store.set_chain_tip(&h_a2).ok();
+    assert_eq!(store.chain_tip_height(), 2);
 
-    assert_eq!(store.chain_tip_height(), 2, "Chain A tip at height 2");
-    let chain_a_hashes = vec![gen_a_hash, h_a1, h_a2];
-
-    // ── State B: mine Chain B (4 blocks, different blocks at same heights) ──
+    // ── Chain B: genesis → B1 → B2 → B3 (heavier) ──
+    // Mine on a fresh state so diffs are independent
     let mut state_b = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
-    let (genesis_b, diff_b0) = mine_block_with_difficulty([0u8; 32], 0, &mut state_b, difficulty, dag_size)
-        .expect("Chain B genesis");
-    let gen_b_hash = genesis_b.header.hash();
-    assert_ne!(gen_a_hash, gen_b_hash, "Genesis blocks must differ (different nonce)");
-    let _ = store.add_block_with_diff(genesis_b.clone(), diff_b0);
-
-    let (block_b1, diff_b1) = mine_block_with_difficulty(gen_b_hash, 1, &mut state_b, difficulty, dag_size)
+    let (block_b1, diff_b1) = mine_block_with_difficulty(gen_hash, 1, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 1");
     let h_b1 = block_b1.header.hash();
-    let _ = store.add_block_with_diff(block_b1.clone(), diff_b1);
+    assert_ne!(h_a1, h_b1, "Competing blocks at height 1 must differ");
+    let _ = store.add_block_with_diff(block_b1, diff_b1);
 
     let (block_b2, diff_b2) = mine_block_with_difficulty(h_b1, 2, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 2");
     let h_b2 = block_b2.header.hash();
-    let _ = store.add_block_with_diff(block_b2.clone(), diff_b2);
+    let _ = store.add_block_with_diff(block_b2, diff_b2);
 
     let (block_b3, diff_b3) = mine_block_with_difficulty(h_b2, 3, &mut state_b, difficulty, dag_size)
         .expect("Chain B block 3");
     let h_b3 = block_b3.header.hash();
-    let _ = store.add_block_with_diff(block_b3.clone(), diff_b3);
+    let _ = store.add_block_with_diff(block_b3, diff_b3);
 
-    let chain_b_hashes = vec![gen_b_hash, h_b1, h_b2, h_b3];
+    // ── Prepare: apply Chain A to a fresh genesis state (simulate canonical chain) ──
+    // We use a separate fresh state and manually apply A1, A2 via apply_block_and_track.
+    // This sets up the state as if Chain A was the canonical chain.
+    let mut state_r = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
+    let _ = state_r.apply_block_and_track(
+        store.get_block(&h_a1).expect("A1 in store"), 1
+    ).expect("Apply A1");
+    let _ = state_r.apply_block_and_track(
+        store.get_block(&h_a2).expect("A2 in store"), 2
+    ).expect("Apply A2");
 
-    // ── Execute reorg on state_a: unwind Chain A, apply Chain B ──
-    let to_unwind: Vec<[u8; 32]> = chain_a_hashes.iter().rev().copied().collect();
-    let to_apply: Vec<[u8; 32]> = chain_b_hashes.clone();
+    // ── Execute reorg from Chain A to Chain B ──
+    let to_unwind = vec![h_a2, h_a1];
+    let to_apply = vec![h_b1, h_b2, h_b3];
 
-    let _resurrected = reorg::execute_reorg(&to_unwind, &to_apply, &mut store, &mut state_a)
+    let _resurrected = reorg::execute_reorg(&to_unwind, &to_apply, &mut store, &mut state_r)
         .expect("Reorg should succeed");
 
     // Chain tip must now be Chain B's last block
@@ -524,7 +531,7 @@ fn integration_reorg_simulation() {
     assert_eq!(store.chain_tip_height(), 3, "Chain tip must be height 3 after reorg");
     
     // Supply must be positive
-    assert!(state_a.total_supply() > 0, "Supply must be positive after reorg");
+    assert!(state_r.total_supply() > 0, "Supply must be positive after reorg");
 }
 
 // ─── f64 determinism marker test (Fase A #3) ──────────────────────────
