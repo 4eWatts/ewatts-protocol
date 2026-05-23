@@ -192,9 +192,15 @@ async fn serve_dashboard(port: &str) {
     use std::fs;
 
     let addr = format!("0.0.0.0:{}", port);
-    let listener = std::net::TcpListener::bind(&addr).expect("Dashboard bind");
+    let listener = match std::net::TcpListener::bind(&addr) {
+        Ok(l) => { println!("  Dashboard: http://{}/dashboard-v3.html", addr); l }
+        Err(e) => {
+            println!("  Dashboard bind failed on {}: {}", addr, e);
+            println!("  Use --dash-port <port> to change port");
+            return;
+        }
+    };
     listener.set_nonblocking(true).ok();
-    println!("  Dashboard: http://{}/dashboard-v3.html", addr);
     println!("  API:       http://{}/status", addr);
     println!("  API:       http://{}/api/status", addr);
     println!("  API:       http://{}/api/mempool", addr);
