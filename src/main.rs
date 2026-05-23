@@ -33,6 +33,7 @@ fn main() {
     let cmd = args.get(1).map(|s| s.as_str()).unwrap_or("help");
     match cmd {
         "init" => cmd_init(),
+        "start" => cmd_start(),
         "mine" => cmd_mine(),
         "simulate" => cmd_simulate(&args),
         "balance" => cmd_balance(&args),
@@ -44,6 +45,110 @@ fn main() {
         "txhash" => cmd_txhash(),
         "p2p" => cmd_p2p(&args),
         _ => cmd_help(),
+    }
+}
+
+/// Testnet daemon: initialize + mine continuously + serve dashboard.
+pub(crate) fn cmd_start() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::time::{Duration, SystemTime};
+
+    // Initialize if first run
+    if !crate::store::has_data() {
+        println!("First run — initializing genesis...");
+        cmd_init();
+    }
+
+    // Load state
+    let mut state = match crate::store::load_utxo_set() {
+        Ok(s) => s,
+        Err(e) => { println!("Error loading state: {}", e); return; }
+    };
+
+    // Start dashboard in background thread (uses store directly, no state capture)
+    let _dash_thread = std::thread::spawn(|| {
+        let addr = "0.0.0.0:8080";
+        let listener = std::net::TcpListener::bind(addr).expect("Dashboard bind");
+        listener.set_nonblocking(true).ok();
+        println!("  Dashboard: http://{}/dashboard-v3.html", addr);
+        println!("  API:       http://{}/status", addr);
+        
+        let mut buf = [0u8; 4096];
+        loop {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    if stream.read(&mut buf).is_ok() {
+                        let request = String::from_utf8_lossy(&buf[..]);
+                        let response = if request.contains("/status") {
+                            let blocks = crate::store::load_blocks().unwrap_or_default();
+                            let supply = crate::store::load_utxo_set()
+                                .map(|s| s.total_supply()).unwrap_or(0);
+                            let utxos = crate::store::load_utxo_set()
+                                .map(|s| s.utxo_count()).unwrap_or(0);
+                            let height = blocks.len() as u64 - 1;
+                            let blk: Vec<serde_json::Value> = blocks.iter().rev().take(10).map(|b| serde_json::json!({
+                                "height": b.header.height, "hash": hex::encode(b.header.hash()),
+                                "vr": b.header.vr_block, "reward": b.header.emission_rate,
+                                "time": b.header.timestamp,
+                            })).collect();
+                            let status = serde_json::json!({
+                                "height": height, "supply": supply, "utxos": utxos,
+                                "vr": blocks.last().map(|b| b.header.vr_block).unwrap_or(0.0),
+                                "emission": blocks.last().map(|b| b.header.emission_rate).unwrap_or(0),
+                                "blocks": blk, "node": "ewatts-testnet",
+                            });
+                            json_response(200, &serde_json::to_string(&status).unwrap())
+                        } else {
+                            // Dashboard HTML
+                            let html = include_str!("../dashboard-v3.html");
+                            format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", html.len(), html)
+                        };
+                        stream.write_all(response.as_bytes()).ok();
+                    }
+                }
+                Err(_) => {
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }
+    });
+
+    // Main loop: mine blocks continuously
+    println!("Starting testnet miner...");
+    println!("  Ctrl+C to stop");
+    
+    loop {
+        let blocks = crate::store::load_blocks().unwrap_or_default();
+        let height = blocks.len() as u64;
+        let prev_hash = if height == 0 {
+            [0u8; 32]
+        } else {
+            blocks.last().unwrap().header.hash()
+        };
+
+        match mine_block(prev_hash, height, &mut state) {
+            Ok((block, diff)) => {
+                let hash = block.header.hash();
+                // Save block
+                if let Err(e) = crate::store::save_block(&block) {
+                    println!("  [{}] Error saving: {}", height, e);
+                    continue;
+                }
+                // Save UTXO state
+                if let Err(e) = crate::store::save_utxo_set(&state) {
+                    println!("  [{}] Error saving state: {}", height, e);
+                }
+                let reward_ewatt = block.body.transactions[0].outputs.iter()
+                    .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
+                println!("  Block #{} mined — reward {:.6} Ewatt — UTXOs: {}",
+                    height, reward_ewatt, state.utxo_count());
+            }
+            Err(e) => {
+                println!("  Mining error: {}", e);
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        }
     }
 }
 
@@ -66,6 +171,7 @@ fn cmd_help() {
     println!();
     println!("Commands:");
     println!("  init                     Create genesis state");
+    println!("  start                    Testnet daemon: init + continuous mine + dashboard");
     println!("  mine                     Mine one block (testnet DAG)");
     println!("  simulate <blocks>        Mine N blocks in sequence");
     println!("  balance <pubkey_hex>     Show balance");
