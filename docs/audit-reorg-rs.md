@@ -122,12 +122,70 @@ let all_still_spent = tx.inputs.iter()
 
 ---
 
-## Veredito Final
+## 7. O Que Está Muito Bom (Continuação)
 
-**Engenharia:** 7.5/10 — sólido, bem estruturado, gaps conhecidos
-**Adversarial readiness:** 4/10 — fecha para cenários esperados, vulnerável a edge cases
-**Mainnet readiness:** 3/10 — snapshot clone não escala, falta atomicidade transactional
+- ✅ Fallback diff system (boa engenharia defensiva)
+- ✅ `analyze_fork` (pure decision) separado de `execute_reorg` (state mutation)
+- ✅ Explicit reorg plan (`to_unwind` / `to_apply`)
+
+## Veredito Estrutural
+
+- ✅ Correct-by-construction in normal execution
+- ⚠️ Partially robust under adversarial timing
+- ❌ Not formally consistent under concurrent fork stress
+
+## O Que Falta (O Salto de 
+
+## 7. O Que Está Muito Bom (Continuação)
+
+- ✅ Fallback diff system (boa engenharia defensiva)
+- ✅ `analyze_fork` (pure decision) / `execute_reorg` (state mutation) separation
+- ✅ Explicit reorg plan (`to_unwind` / `to_apply`)
+
+## Veredito Estrutural
+
+- ✅ Correct-by-construction in normal execution
+- ⚠️ Partially robust under adversarial timing
+- ❌ Not formally consistent under concurrent fork stress
+
+## O Que Falta (O Salto de "engine" para "protocol")
+
+1. **Formal fork-choice invariant**
+   ```
+   ∀ nodes, after convergence time T:
+     chain_tip = f(DAG_prefix, cumulative_work)
+   ```
+   Hoje isso não está explicitado formalmente.
+
+2. **Reorg atomicity model**
+   State transition deve ser `(unwind ⊕ apply)` como single atomic function, não duas fases com rollback.
+
+3. **ChainStore graph completeness guarantee**
+   Hoje implícito. Precisa ser: ChainStore must represent a closed prefix tree.
+
+4. **Deterministic reorg result proof**
+   Mesmo input → mesmo `to_unwind`, `to_apply`, final state.
+
+## Insight Arquitetural
+
+> O problema não é "bugs". O problema é "falta de axiomatização do consenso".
+
+## Próximo Passo
+
+Formal Spec of Layer 3 Consensus:
+- state machine definition
+- fork-choice as partial order function
+- invariants
+- failure conditions
+- adversarial model (network + equivocation + latency)
+
+Isso é o que separa "engine" de "protocol".
 
 ---
 
-*Audit completed 23 May 2026 by Gustavo. 6 structural problems identified + 3 scores.*
+**Scores finais:**
+- Engenharia: 7.5/10
+- Adversarial readiness: 4/10
+- Mainnet readiness: 3/10
+
+*Audit completed 23 May 2026 by Gustavo. 6 structural problems + closing insight.*
