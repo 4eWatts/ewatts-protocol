@@ -20,7 +20,7 @@ pub mod tests;
 #[cfg(test)]
 pub mod shuffle;
 #[cfg(test)]
-pub mod adversarial;
+pub mod smoke;
  
  
  
