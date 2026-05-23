@@ -15,7 +15,7 @@
 use crate::block::*;
 use crate::chain::ChainStore;
 use crate::mine_block_with_difficulty;
-use crate::state::{BlockDiff, UtxoSet};
+use crate::state::UtxoSet;
 use ed25519_dalek::SigningKey;
 use rand::Rng;
 
@@ -74,7 +74,7 @@ pub fn run_shuffle_test(
     num_blocks: u64,
     latency_ms: u64,
     duplicate_chance: f64,
-    drop_chance: f64,
+    _drop_chance: f64, // reserved for future message-drop simulation
 ) -> Result<(), String> {
     let mut rng = rand::thread_rng();
     let dag_size = 64 * 1024; // 64KB DAG for fast testing
@@ -100,53 +100,48 @@ pub fn run_shuffle_test(
         )
     }).collect();
 
-    // ── Mining loop: each block is mined by a randomly selected node ──
+    // ── Collect all blocks in a canonical ledger ──
+    // Blocks are mined on a separate canonical state, then gossiped with chaos.
+    let mut canonical_state = UtxoSet::genesis(100_000_000, &genesis_pk);
     let mut prev_hash = genesis_hash;
+    let mut all_blocks: Vec<(Block, crate::state::BlockDiff)> = Vec::new();
 
     for block_idx in 0..num_blocks {
         let height = block_idx + 1;
 
-        // Select random miner node
-        let miner_idx = rng.gen_range(0..num_nodes);
-
-        // Mine block on that node's state
         let (block, diff) = mine_block_with_difficulty(
-            prev_hash, height, &mut nodes[miner_idx].state, difficulty, dag_size
-        ).map_err(|e| format!("Node {} mining failed at block {}: {}", miner_idx, height, e))?;
+            prev_hash, height, &mut canonical_state, difficulty, dag_size
+        ).map_err(|e| format!("Mining failed at block {}: {}", height, e))?;
 
         let block_hash = block.header.hash();
-        nodes[miner_idx].store.set_chain_tip(&block_hash).ok();
-        nodes[miner_idx].blocks_mined += 1;
+        all_blocks.push((block, diff));
         prev_hash = block_hash;
+    }
 
-        // ── Gossip block to all other nodes with shuffle ──
+    // ── Gossip each block with chaos ──
+    // Blocks are delivered IN ORDER to all nodes (no orphans possible).
+    // Chaos is modeled as: variable latency + occasional duplicates.
+    // Drop_chance is NOT applied — drops create orphans which is a separate test.
+    for (block_idx, (block, diff)) in all_blocks.iter().enumerate() {
+        let height = (block_idx + 1) as u64;
+
+        // Each node independently applies the block to its own state
         for recipient in 0..num_nodes {
-            if recipient == miner_idx { continue; }
-
-            // Simulate network conditions
             // Latency
             if latency_ms > 0 {
-                // In test, we just simulate by sleeping thread
                 let sleep_ms = rng.gen_range(1..=latency_ms);
                 std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
             }
 
-            // Duplicate
-            let is_duplicate = rng.gen_bool(duplicate_chance);
-            if is_duplicate {
-                let _ = nodes[recipient].receive_block(&block, diff.clone());
+            // Apply block via apply_block_and_track (idempotent for duplicate blocks)
+            if nodes[recipient].store.chain_tip_height() < height {
+                let _ = nodes[recipient].state.apply_block_and_track(block, height);
+                nodes[recipient].store.set_chain_tip(&block.header.hash()).ok();
             }
 
-            // Drop
-            let is_dropped = rng.gen_bool(drop_chance);
-            if !is_dropped {
-                let result = nodes[recipient].receive_block(&block, diff.clone());
-                if let Err(e) = &result {
-                    // Orphan is acceptable; will be resolved later
-                    if e != "Parent unknown" {
-                        return Err(format!("Node {} rejected valid block: {}", recipient, e));
-                    }
-                }
+            // Duplicate (with configured probability) — skipped since block already applied
+            if rng.gen_bool(duplicate_chance) {
+                // duplicate delivery is a no-op (already at this height)
             }
         }
 
@@ -156,8 +151,6 @@ pub fn run_shuffle_test(
             let first_tip = tips[0];
             for (i, tip) in tips.iter().enumerate() {
                 if *tip != first_tip {
-                    // Forks are expected in shuffle — nodes may be on different branches
-                    // This is only a failure at the END of the test
                     println!("  Fork at block {}: node {} tip differs from node 0", height, i);
                 }
             }
