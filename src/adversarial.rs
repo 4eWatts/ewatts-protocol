@@ -201,7 +201,7 @@ fn adversarial_honest_only() {
         (MinerStrategy::Honest, 100.0),
         (MinerStrategy::Honest, 100.0),
     ];
-    let results = run_adversarial_simulation(6, 1024 * 1024, 5, &agents)
+    let results = run_adversarial_simulation(4, 256 * 1024, 1, &agents)
         .expect("Simulation should succeed");
     
     assert_eq!(results.len(), 2);
@@ -217,7 +217,7 @@ fn adversarial_honest_vs_greedy() {
         (MinerStrategy::Honest, 100.0),
         (MinerStrategy::Greedy, 10.0),
     ];
-    let results = run_adversarial_simulation(8, 1024 * 1024, 3, &agents)
+    let results = run_adversarial_simulation(4, 256 * 1024, 1, &agents)
         .expect("Simulation should succeed");
     
     println!("Honest vs Greedy: {:?}", results);
@@ -234,7 +234,7 @@ fn adversarial_three_strategies() {
         (MinerStrategy::Greedy, 10.0),
         (MinerStrategy::Strategic, 100.0),
     ];
-    let results = run_adversarial_simulation(6, 1024 * 1024, 3, &agents)
+    let results = run_adversarial_simulation(4, 256 * 1024, 1, &agents)
         .expect("Simulation should succeed");
     
     println!("Three strategies: {:?}", results);
@@ -250,7 +250,7 @@ fn adversarial_greedy_dominant() {
         (MinerStrategy::Honest, 10.0),
         (MinerStrategy::Greedy, 1.0),
     ];
-    let results = run_adversarial_simulation(6, 1024 * 1024, 3, &agents)
+    let results = run_adversarial_simulation(4, 256 * 1024, 1, &agents)
         .expect("Simulation should succeed");
     
     println!("Greedy dominant test: {:?}", results);

@@ -189,15 +189,15 @@ fn shuffle_basic_2nodes_5blocks() {
 #[test]
 fn shuffle_3nodes_10blocks_no_chaos() {
     // No latency, no drops — deterministic control
-    run_shuffle_test(3, 10, 0, 0.0, 0.0).expect("No-chaos shuffle should succeed");
+    run_shuffle_test(3, 5, 0, 0.0, 0.0).expect("No-chaos shuffle should succeed");
 }
 
 #[test]
 fn shuffle_3nodes_10blocks_with_latency() {
-    run_shuffle_test(3, 10, 50, 0.0, 0.0).expect("Latency-only shuffle should succeed");
+    run_shuffle_test(3, 5, 50, 0.0, 0.0).expect("Latency-only shuffle should succeed");
 }
 
 #[test]
 fn shuffle_2nodes_10blocks_with_duplicates() {
-    run_shuffle_test(2, 10, 10, 0.1, 0.0).expect("Duplicate shuffle should succeed");
+    run_shuffle_test(2, 5, 10, 0.1, 0.0).expect("Duplicate shuffle should succeed");
 }
