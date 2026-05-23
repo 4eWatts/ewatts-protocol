@@ -494,11 +494,12 @@ pub(crate) fn mine_block_with_difficulty(
         .map_err(|e| format!("Commitment invalid: {}", e))?;
 
     // Compute effective commitment (integer math)
-    let work_mbytes = (wr.gb_processed * 1000.0) as u64; // GB → MB (approx)
-    let bw_mgbps = (declared_gbps * 1000.0) as u64; // GB/s → mGB/s
-    let time_ms = sol.elapsed_ms.max(1);
-    let eff_int = commitment::compute_efficiency_int(work_mbytes, bw_mgbps, time_ms);
-    let bw_prec = (declared_gbps * crate::constants::COMMIT_PRECISION as f64) as u64;
+    let work_mb = (wr.gb_processed * 1000.0) as u64; // GB → MB (approx)
+    let time_msec = sol.elapsed_ms.max(1);
+    let bw_mgb = declared_mgbps.max(1);
+    let eff_int = commitment::compute_efficiency_int(work_mb, bw_mgb, time_msec);
+    // Convert mGB/s to COMMIT_PRECISION units: 1 mGB/s = 1_000_000 precision units
+    let bw_prec = bw_mgb.saturating_mul(crate::constants::COMMIT_PRECISION / 1000);
     let ce_int = commitment::effective_commitment_int(bw_prec, eff_int);
     header.miner_effective_commit = ce_int;
 
