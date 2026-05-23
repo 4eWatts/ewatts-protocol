@@ -112,15 +112,14 @@ impl ChainStore {
     /// Add a block to the tree. Does NOT change the chain tip.
     /// Returns the parent's accumulated work so the caller can compute the fork's total work.
     pub fn add_block(&mut self, block: Block) -> Result<u128, String> {
-        let hash = block.header.hash();
+        let _hash = block.header.hash();
         self.add_block_inner(block, None)
     }
 
     /// Add a block and store its BlockDiff for reorg unwinding.
     pub fn add_block_with_diff(&mut self, block: Block, diff: crate::state::BlockDiff) -> Result<u128, String> {
-        let hash = block.header.hash();
-        let result = self.add_block_inner(block, Some(diff));
-        result
+        let _hash = block.header.hash();
+        self.add_block_inner(block, Some(diff))
     }
 
     fn add_block_inner(&mut self, block: Block, diff: Option<crate::state::BlockDiff>) -> Result<u128, String> {

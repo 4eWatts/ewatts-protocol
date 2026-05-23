@@ -252,7 +252,7 @@ impl UtxoSet {
         &mut self,
         tx: &Transaction,
         current_block: u64,
-        mut diff: Option<&mut crate::state::BlockDiff>,
+        diff: &mut Option<&mut crate::state::BlockDiff>,
     ) -> Result<(), String> {
         // Pre-check: if private mode, verify MLSAG once before spending individual inputs
         if let Some(ref mlsag) = tx.mlsag {
@@ -440,17 +440,19 @@ impl UtxoSet {
     }
 
     pub fn apply_block(&mut self, block: &Block, block_height: u64) -> Result<(), String> {
-        self.apply_block_inner(block, block_height, None)
+        let mut no_diff: Option<&mut BlockDiff> = None;
+        self.apply_block_inner(block, block_height, &mut no_diff)
     }
 
     /// Apply a block and return a BlockDiff recording all changes (for reorg).
     pub fn apply_block_and_track(&mut self, block: &Block, block_height: u64) -> Result<BlockDiff, String> {
         let mut diff = BlockDiff::new();
-        self.apply_block_inner(block, block_height, Some(&mut diff))?;
+        let mut opt_diff: Option<&mut BlockDiff> = Some(&mut diff);
+        self.apply_block_inner(block, block_height, &mut opt_diff)?;
         Ok(diff)
     }
 
-    fn apply_block_inner(&mut self, block: &Block, block_height: u64, mut diff: Option<&mut BlockDiff>) -> Result<(), String> {
+    fn apply_block_inner(&mut self, block: &Block, block_height: u64, diff: &mut Option<&mut BlockDiff>) -> Result<(), String> {
         for (tx_idx, tx) in block.body.transactions.iter().enumerate() {
             let tx_hash = tx.hash();
             if tx_idx == 0 {
