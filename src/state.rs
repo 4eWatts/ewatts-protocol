@@ -242,6 +242,18 @@ impl UtxoSet {
         tx: &Transaction,
         current_block: u64,
     ) -> Result<(), String> {
+        self.spend_transaction_inputs_with_diff(tx, current_block, None)
+    }
+
+    /// Same as spend_transaction_inputs but also populates a BlockDiff for each
+    /// individual mutation, ensuring that if a later input spend fails, the partial
+    /// diff is consistent for rollback (atomicity).
+    pub fn spend_transaction_inputs_with_diff(
+        &mut self,
+        tx: &Transaction,
+        current_block: u64,
+        diff: Option<&mut crate::state::BlockDiff>,
+    ) -> Result<(), String> {
         // Pre-check: if private mode, verify MLSAG once before spending individual inputs
         if let Some(ref mlsag) = tx.mlsag {
             let ring_members = tx
@@ -358,12 +370,21 @@ impl UtxoSet {
             }
         }
 
-        // Apply spends
+        // Apply spends (atomic tracking: record in diff BEFORE each mutation)
         for input in &tx.inputs {
             let key = UtxoKey {
                 tx_hash: input.previous_tx_hash,
                 output_index: input.output_index,
             };
+            // Track in diff BEFORE removing (so partial rollback knows what to restore)
+            if let Some(ref mut d) = diff {
+                if !d.consumed.contains_key(&input.key_image) {
+                    if let Some(entry) = self.utxos.get(&key) {
+                        d.consumed.insert(input.key_image, (key.clone(), entry.clone()));
+                    }
+                }
+                d.key_images.push(input.key_image);
+            }
             self.utxos.remove(&key);
             self.spent_key_images.insert(input.key_image);
         }
@@ -371,6 +392,9 @@ impl UtxoSet {
         Ok(())
     }
 
+    /// Legacy alias — calls spend_transaction_inputs (no diff tracking).
+    /// Kept for backward compat; prefer spend_transaction_inputs_with_diff.
+    #[deprecated(since = "0.1.0", note = "use apply_block_and_track + unwind_with_diff instead")]
     pub fn total_supply(&self) -> u64 {
         self.total_supply
     }
@@ -464,22 +488,10 @@ impl UtxoSet {
             } else {
                 // P0-A: validate inputs >= outputs before spending
                 self.validate_transaction(tx)?;
-                // Track consumed UTXOs BEFORE spending (they get removed)
-                if let Some(ref mut d) = diff {
-                    for input in &tx.inputs {
-                        let key = UtxoKey {
-                            tx_hash: input.previous_tx_hash,
-                            output_index: input.output_index,
-                        };
-                        if !d.consumed.contains_key(&input.key_image) {
-                            if let Some(entry) = self.utxos.get(&key) {
-                                d.consumed.insert(input.key_image, (key.clone(), entry.clone()));
-                            }
-                        }
-                        d.key_images.push(input.key_image);
-                    }
-                }
-                self.spend_transaction_inputs(tx, block_height)?;
+                // Spend inputs with atomic diff tracking inside the function.
+                // Each mutation is recorded BEFORE it happens, so partial rollback
+                // (via diff) is consistent even if a later input spend fails.
+                self.spend_transaction_inputs_with_diff(tx, block_height, diff)?;
                 // Track created UTXOs (outputs just added)
                 if let Some(ref mut d) = diff {
                     for (i, _) in tx.outputs.iter().enumerate() {
@@ -515,8 +527,9 @@ impl UtxoSet {
     }
 
     /// Reverse a block's effects (for reorg unwinding).
-    /// This is the inverse of apply_block.
-    /// Note: prefer unwind_with_diff when a BlockDiff is available.
+    /// Legacy block-level unwind. Does not restore MLSAG-hidden spent UTXOs.
+    /// Prefer unwind_with_diff when a BlockDiff is available (P2P path).
+    #[deprecated(since = "0.1.0", note = "use unwind_with_diff instead")]
     pub fn unwind_block(&mut self, block: &Block, _block_height: u64) -> Result<(), String> {
         // Process transactions in reverse order
         for (tx_idx, tx) in block.body.transactions.iter().enumerate().rev() {

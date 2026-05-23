@@ -133,16 +133,25 @@ fn execute_reorg_inner(
         let block = store.get_block(hash)
             .ok_or_else(|| "Block not found during unwind".to_string())?;
         let height = block.header.height;
-        state.unwind_block(block, height)?;
-        println!("  Unwound block #{} {:x}..", height, hash[0]);
+        // Use BlockDiff unwind when available (P2P path), fallback to legacy unwind
+        if let Some(diff) = store.block_diffs.get(hash) {
+            state.unwind_with_diff(diff)?;
+            println!("  Unwound block #{} {:x}.. (diff)", height, hash[0]);
+        } else {
+            // Fallback for blocks without diffs (disk-loaded or pre-diff era)
+            state.unwind_block(block, height)?;
+            println!("  Unwound block #{} {:x}.. (legacy)", height, hash[0]);
+        }
     }
 
-    // Phase 2: Apply new chain (fork_point -> new tip)
+    // Phase 2: Apply new chain (fork_point -> new tip), tracking diffs
     for hash in to_apply {
         let block = store.get_block(hash)
             .ok_or_else(|| "Block not found during reorg apply".to_string())?;
         let height = block.header.height;
-        state.apply_block(block, height)?;
+        // Capture diff for future unwinds
+        let diff = state.apply_block_and_track(block, height)?;
+        store.block_diffs.insert(*hash, diff);
         println!("  Applied block #{} {:x}..", height, hash[0]);
     }
 
