@@ -1,5 +1,3 @@
-use crate::constants;
-
 // ─── Integer math versions (f64→u64 migration) ───────────────────────
 // All effective GB/s values in COMMIT_PRECISION (1e9) units.
 // Final VR in VR_PRECISION (1e6) units = milli-VR.

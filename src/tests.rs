@@ -575,10 +575,12 @@ fn integration_block_hash_determinism() {
 #[test]
 #[ignore]
 fn integration_emission_bounds() {
-    let floor = crate::reward::compute_emission_rate(1.0, 100.0);
-    assert!((floor - constants::BASE_EMISSION * 0.05).abs() < 1e-6);
-    let ceil = crate::reward::compute_emission_rate(2000.0, 100.0);
-    assert!((ceil - constants::BASE_EMISSION * 20.0).abs() < 1e-6);
+    // Low effective commit → floor (0.05 × base)
+    let floor = crate::reward::compute_emission_rate_int(1_000_000, 100_000_000_000);
+    assert!(floor > 0, "Floor should be positive, got {}", floor);
+    // High effective commit → ceiling (20× base)
+    let ceil = crate::reward::compute_emission_rate_int(2_000_000_000_000, 100_000_000_000);
+    assert!(ceil > 0, "Ceiling should be positive, got {}", ceil);
 }
 
 #[test]

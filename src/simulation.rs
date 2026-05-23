@@ -13,8 +13,6 @@ use crate::mine_block_with_difficulty;
 use crate::state::UtxoSet;
 use crate::vr;
 use ed25519_dalek::SigningKey;
-use rand::Rng;
-
 /// A single block's VR measurement.
 pub struct VrSample {
     pub height: u64,

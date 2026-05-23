@@ -160,7 +160,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn test_min_commitment_empty() {
         assert_eq!(min_commitment_int(&[]), 1000);
     }
