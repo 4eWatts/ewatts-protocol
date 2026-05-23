@@ -289,8 +289,6 @@ async fn serve_dashboard(port: &str) {
 }
 
 fn now_secs() -> u64 {
-
-fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
 
