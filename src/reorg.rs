@@ -364,20 +364,21 @@ mod tests {
         let b3_hash = b3.header.hash();
         store.add_block(b3).unwrap();
 
+        // B4 is NOT added to the store (analyze_fork checks the block before adding)
         let b4 = make_coinbase_block(4, b3_hash, 80, "B4");
         let b4_hash = b4.header.hash();
-        store.add_block(b4).unwrap();
 
-        // Verify fork detection
-        let decision = analyze_fork(
-            &store.get_block(&b4_hash).unwrap(), &store
-        );
+        // Verify fork detection on the NEW block
+        let decision = analyze_fork(&b4, &store);
         let (to_unwind, to_apply) = match &decision {
             ForkDecision::ReorgToNew { to_unwind, to_apply } => (to_unwind, to_apply),
             other => panic!("Expected ReorgToNew, got {:?}", other),
         };
         assert_eq!(to_unwind.len(), 3, "should unwind A3, A2, A1");
         assert_eq!(to_apply.len(), 4, "should apply B1, B2, B3, B4");
+
+        // Add B4 to store so execute_reorg can find it
+        store.add_block(b4).unwrap();
 
         // ── Execute reorg ──
         let _state_before_reorg = state.clone();
