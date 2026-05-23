@@ -13,6 +13,24 @@ pub const DAG_ACCELERATION_THRESHOLD_BANDWIDTH: f64 = 100.0;
 pub const DAG_ACCELERATION_YEARS: u32 = 2;
 pub const DECIMAL_PLACES: u32 = 6;
 pub const UNITS_PER_EWATT: u64 = 1_000_000;
+
+// ─── Fixed-point precision constants (f64→u64 migration) ──────────────
+pub const EMISSION_PRECISION: u64 = 1_000_000_000;        // 1e9 for emission rates
+pub const COMMIT_PRECISION: u64 = 1_000_000_000;          // 1e9 for effective commit
+pub const VR_PRECISION: u64 = 1_000_000;                  // 1e6 for VR (kWh/Ewatt)
+pub const EFF_PRECISION: u64 = 1_000_000;                 // 1e6 for efficiency (0-1)
+pub const CAP_PRECISION: u64 = 1_000_000;                 // 1e6 for ramp-up cap (0-1)
+pub const RATE_PRECISION: u64 = 1_000_000;                // 1e6 for rate ratios
+
+// Integer versions of previously f64 constants (in precision units)
+pub const BASE_EMISSION_INT: u64 = 100_000_000 * EMISSION_PRECISION / UNITS_PER_EWATT;  // 100 Ewatt
+pub const EMISSION_FLOOR_MULTIPLIER_INT: u64 = 50_000_000;  // 0.05 * 1e9
+pub const EMISSION_CEILING_MULTIPLIER_INT: u64 = 20_000_000_000_000;  // 20.0 * 1e12 (overflows u64? no, 20e12 fits in u64: 20,000,000,000,000 < 18e18)
+pub const RAMP_UP_CAP_INT: u64 = 800_000;                  // 0.80 * 1e6
+pub const MIN_COMMIT_GBS_INT: u64 = 1_000_000_000;         // 1.0 GB/s in milli-GB/s
+pub const EFFICIENCY_PENALTY_THRESHOLD_INT: u64 = 700_000; // 0.7 * 1e6
+pub const EFFICIENCY_CAP_THRESHOLD_INT: u64 = 1_300_000;   // 1.3 * 1e6
+pub const TESTNET_RAMP_UP_CAP_INT: u64 = 800_000;          // 0.80 * 1e6
 pub const BASE_EMISSION: f64 = 100.0;
 pub const BASE_EMISSION_UNITS: u64 = 100_000_000;   // 100 Ewatt em base units
 pub const EMISSION_FLOOR_MULTIPLIER: f64 = 0.05;     // v27: 5 Ewatt min (was 0.1)
