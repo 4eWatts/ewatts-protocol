@@ -59,7 +59,13 @@ pub fn compute_block_rewards_int(
     if total_eff == 0 { return vec![]; }
     
     let mut rewards: Vec<(Vec<u8>, u64)> = commitments.iter().map(|(c, mid)| {
-        let r = c.saturating_mul(emission_rate_int) / total_eff;
+        // Use u128 intermediate to avoid overflow: r = c * emission_rate_int / total_eff
+        let r = if total_eff > 0 {
+            let num = (*c as u128).saturating_mul(emission_rate_int as u128);
+            (num / total_eff as u128) as u64
+        } else {
+            0
+        };
         (mid.to_vec(), r)
     }).collect();
     
