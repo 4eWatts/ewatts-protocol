@@ -139,6 +139,7 @@ fn execute_reorg_inner(
             println!("  Unwound block #{} {:x}.. (diff)", height, hash[0]);
         } else {
             // Fallback for blocks without diffs (disk-loaded or pre-diff era)
+            #[allow(deprecated)]
             state.unwind_block(block, height)?;
             println!("  Unwound block #{} {:x}.. (legacy)", height, hash[0]);
         }
