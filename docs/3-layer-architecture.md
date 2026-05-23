@@ -199,3 +199,203 @@ Com essa separação:
 - protocolo é verificável
 - hipótese é falsificável
 - adversarial layer é experimental
+
+---
+
+# LAYER 3 — FORMAL ADVERSARIAL MODEL (v1.0)
+
+> Definição matemática de sistema distribuído sob adversário econômico + network stochasticity.
+
+## 0. Objective
+
+Definir um sistema onde:
+- múltiplos nós observam estados inconsistentes
+- mensagens sofrem atraso, duplicação e perda
+- adversários podem explorar timing e fork space
+- ainda assim existe convergência probabilística ou determinística
+
+## 1. Network Model
+
+### 1.1 Graph Definition
+
+Sistema é um grafo dinâmico:
+
+```
+G_t = (V, E_t)
+```
+
+- `V`: nós honestos + adversariais
+- `E_t`: conectividade estocástica no tempo
+
+### 1.2 Message Delivery Function
+
+Cada mensagem `m` enviada em tempo `t`:
+
+```
+D(m, t) ~ P(τ, δ, ρ)
+```
+
+Onde:
+- `τ`: delay distribution (latência)
+- `δ`: duplication probability
+- `ρ`: drop probability
+
+### 1.3 Adversarial Control
+
+Adversário controla:
+- scheduling de mensagens
+- subset de delays
+- selective propagation of blocks
+- fork visibility manipulation
+
+**Constraint:** adversary não quebra criptografia, apenas timing e topology.
+
+## 2. Blockchain State Space
+
+### 2.1 Global State
+
+Cada nó mantém:
+
+```
+S_i^t = (C_i^t, U_i^t)
+```
+
+- `C_i^t`: chain view (DAG parcial ou linear)
+- `U_i^t`: UTXO set local
+
+### 2.2 Valid State Set
+
+Define:
+
+```
+S = {S : valid_transition(S)}
+```
+
+### 2.3 Transition Function
+
+```
+S_{t+1}^i = f(S_t^i, M_t^i)
+```
+
+Onde `M_t^i` = mensagens recebidas no nó i.
+
+## 3. Fork Space Model
+
+### 3.1 Fork Set
+
+Em vez de uma única chain:
+
+```
+F_t = {C_1, C_2, ..., C_n}
+```
+
+Cada fork tem:
+- work accumulated
+- propagation delay
+- local visibility set
+
+### 3.2 Fork Weight Function
+
+Definimos peso:
+
+```
+W(C) = Σ_{b ∈ C} w(b)
+```
+
+### 3.3 Network Adjusted Score
+
+```
+S(C) = W(C) - λ · D(C)
+```
+
+Onde:
+- `D(C)`: delay penalty (propagation disadvantage)
+- `λ`: sensitivity parameter
+
+## 4. Fork Choice Rule (Core Contribution)
+
+Cada nó escolhe:
+
+```
+C* = argmax_{C ∈ F_t} S(C)
+```
+
+**Interpretation:** Isso transforma consenso em **otimização sob informação parcial + atraso estocástico**.
+
+## 5. Adversarial Objectives
+
+Adversário tenta maximizar:
+
+- **(A) Reorg probability:** `P(reorg)`
+- **(B) Stale rate:** `R_stale = orphan_blocks / total_blocks`
+- **(C) State divergence:** `ΔS = max_{i,j} distance(S_i, S_j)`
+
+## 6. System Invariants (CRITICAL)
+
+**I1 — Safety (No double spend)**
+
+```
+∀ i,t: U_i^t is consistent under valid transitions
+```
+
+**I2 — Bounded divergence**
+
+```
+E[ΔS] < ε
+```
+
+**I3 — Convergence under finite delay**
+
+Se:
+- network eventual connectivity holds
+- adversary does not censor indefinitely
+
+Então:
+
+```
+lim_{t→∞} C_i^t = C_j^t
+```
+
+**I4 — Work monotonicity**
+
+```
+W(C_{t+1}) ≥ W(C_t)
+```
+
+## 7. Failure Conditions (ESSENTIAL FOR PAPER)
+
+Sistema falha se qualquer um ocorrer:
+
+- **F1 — Permanent partition:** `G_t → disconnected components`
+- **F2 — Delay domination attack:** `D(C_honest) >> D(C_adversary)` → adversário controla fork selection sem mais hashpower
+- **F3 — State desynchronization explosion:** `lim ΔS → ∞`
+- **F4 — Incentive inversion:** se `cost_to_produce < reward_signal` sem correção estrutural → inflação implícita do sistema
+
+## 8. Key Insight
+
+**Bitcoin model clássico:** adversário compete por hashpower.
+
+**Aqui:** adversário compete por **informação temporal + visibility topology**.
+
+Isso é mais próximo de:
+- real-world distributed markets
+- high-frequency settlement systems
+- fragmented monetary regimes
+
+## 9. Experimental Mapping
+
+Seu código atual já implementa:
+- ✅ delay stochasticity
+- ✅ duplication
+- ✅ partial convergence
+- ✅ state divergence check
+
+O que falta para fechar Layer 3 formal:
+1. Explicit adversarial scheduler model
+2. Fork-choice scoring function implemented in simulation
+3. Measurable ΔS metric (formal distance function)
+4. Failure condition triggers (F1–F4 instrumented)
+
+## 10. One-Line Formal Definition
+
+> Ewatts is a monetary state machine whose fork-choice rule optimizes for network-adjusted work under partial information, with adversarial convergence bounded by delay topology.
