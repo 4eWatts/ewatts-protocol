@@ -1,6 +1,15 @@
 use crate::constants;
 use sha2::Sha512;
 use sha3::{Digest, Keccak256};
+use std::sync::{Mutex, OnceLock};
+
+/// Global DAG cache: avoids regenerating the same DAG in test.
+/// Key: (epoch, size_bytes). Only caches the most recent entry.
+static DAG_CACHE: OnceLock<Mutex<Option<(u64, u64, Dag)>>> = OnceLock::new();
+
+fn get_dag_cache() -> &'static Mutex<Option<(u64, u64, Dag)>> {
+    DAG_CACHE.get_or_init(|| Mutex::new(None))
+}
 
 fn fnv_hash(a: u64, b: &[u8]) -> u64 {
     let mut h: u64 = 0xcbf29ce484222325;
@@ -32,6 +41,21 @@ impl Dag {
         Self::generate_with_size(epoch, total)
     }
     pub fn generate_with_size(epoch: u64, size_bytes: u64) -> Self {
+        // Check cache first
+        {
+            let cache = get_dag_cache().lock().unwrap();
+            if let Some((ref e, ref s, ref dag)) = *cache {
+                if *e == epoch && *s == size_bytes {
+                    // Clone the cached DAG's elements
+                    return Dag {
+                        elements: dag.elements.clone(),
+                        epoch: dag.epoch,
+                        size_bytes: dag.size_bytes,
+                    };
+                }
+            }
+        }
+        
         if size_bytes < 64 {
             panic!("DAG size_bytes must be >= 64 (got {})", size_bytes);
         }
@@ -67,11 +91,22 @@ impl Dag {
             }
             elems.push(d);
         }
-        Dag {
+        let dag = Dag {
             elements: elems,
             epoch,
             size_bytes,
+        };
+        // Cache for future calls (clone elements into cache)
+        let cached_dag = Dag {
+            elements: dag.elements.clone(),
+            epoch,
+            size_bytes,
+        };
+        {
+            let mut cache = get_dag_cache().lock().unwrap();
+            *cache = Some((epoch, size_bytes, cached_dag));
         }
+        dag
     }
     pub fn get(&self, i: usize) -> &[u8; 64] {
         &self.elements[i % self.elements.len()]
