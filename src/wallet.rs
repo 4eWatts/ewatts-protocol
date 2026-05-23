@@ -193,7 +193,8 @@ impl Wallet {
                 }
             }
         }
-        owned
+    }
+    owned
     }
 
     /// List all wallet keys.
