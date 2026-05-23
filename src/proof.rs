@@ -202,7 +202,8 @@ mod tests {
     }
     #[test]
     fn test_mine_and_verify() {
-        let dag = Dag::generate(0, false);
+        // Use a small DAG (64KB) to avoid 8GB generation during tests
+        let dag = Dag::generate_with_size(0, 64 * 1024);
         let h = [0xabu8; 32];
         let s = mine(&h, 1, &dag, 100).unwrap();
         assert!(verify(&h, &s, 1, &dag).is_ok());

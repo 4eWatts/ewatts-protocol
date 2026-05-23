@@ -508,6 +508,10 @@ mod tests {
         utxo_set.spend_transaction_inputs(&tx, 1)
             .expect("State accepts private tx");
 
+        // Add outputs to UTXO set (spend_transaction_inputs only removes inputs)
+        let tx_hash = tx.hash();
+        utxo_set.add_transaction_outputs(&tx_hash, &tx, 1, 0);
+
         // Bob scans and finds his UTXO
         let bob_owned = bob_w.scan_utxos(&utxo_set);
         let bob_balance: u64 = bob_owned.iter().map(|o| o.entry.amount).sum();
