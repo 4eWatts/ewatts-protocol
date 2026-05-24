@@ -192,10 +192,43 @@ pub(crate) async fn cmd_start(args: &[String]) {
     }
 }
 
+/// Simple rate limiter per IP address.
+struct RateLimiter {
+    requests: std::collections::HashMap<String, Vec<std::time::Instant>>,
+    max_requests: usize,
+    window_secs: u64,
+}
+
+impl RateLimiter {
+    fn new(max_requests: usize, window_secs: u64) -> Self {
+        RateLimiter {
+            requests: std::collections::HashMap::new(),
+            max_requests,
+            window_secs,
+        }
+    }
+
+    fn check(&mut self, ip: &str) -> bool {
+        let now = std::time::Instant::now();
+        let cutoff = now - std::time::Duration::from_secs(self.window_secs);
+        let timestamps = self.requests.entry(ip.to_string()).or_default();
+        timestamps.retain(|t| *t > cutoff);
+        if timestamps.len() >= self.max_requests {
+            false
+        } else {
+            timestamps.push(now);
+            true
+        }
+    }
+}
+
 /// Full-featured dashboard HTTP server (tokio task).
 async fn serve_dashboard(port: &str) {
     use std::io::{Read, Write};
     use std::fs;
+
+    let mut rate_limiter = RateLimiter::new(30, 60); // 30 req/min per IP
+    const MAX_BODY_SIZE: usize = 256 * 1024; // 256KB max POST body
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = match std::net::TcpListener::bind(&addr) {
@@ -215,10 +248,19 @@ async fn serve_dashboard(port: &str) {
 
     loop {
         match listener.accept() {
-            Ok((mut stream, _)) => {
+            Ok((mut stream, peer_addr)) => {
+                let client_ip = peer_addr.ip().to_string();
+                if !rate_limiter.check(&client_ip) {
+                    let _ = stream.write_all(b"HTTP/1.1 429 Too Many Requests\r\nContent-Length: 0\r\n\r\n");
+                    continue;
+                }
                 let mut buf = [0u8; 8192];
                 let n = stream.read(&mut buf).unwrap_or(0);
                 if n == 0 { continue; }
+                if n > MAX_BODY_SIZE {
+                    let _ = stream.write_all(b"HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n");
+                    continue;
+                }
                 let request = String::from_utf8_lossy(&buf[..n]);
                 
                 let response = if request.starts_with("GET /api/status") || request.contains("/status") {
