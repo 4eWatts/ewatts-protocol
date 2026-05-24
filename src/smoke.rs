@@ -132,10 +132,11 @@ fn adv_supply_increases_with_blocks() {
         let (block, _) = mine_block_with_key(
             prev_hash, height, &mut state, 1, 256 * 1024, &key,
         ).expect("Block mining");
-        // Add coinbase output and supply to state (as main daemon does)
         let block_hash = block.header.hash();
+        // Add coinbase output and add its amount directly to supply
+        let coinbase_amount = block.body.transactions[0].outputs[0].amount;
         state.add_transaction_outputs(&block_hash, &block.body.transactions[0], height, 0);
-        state.add_coinbase_supply(block.header.emission_rate);
+        state.add_coinbase_supply(coinbase_amount);
         prev_hash = block_hash;
     }
 

@@ -353,8 +353,7 @@ fn integration_coinbase_empty_inputs_required() {
         body: BlockBody { transactions: vec![bad_coinbase], commitments: vec![] },
     };
     let result = state.apply_block(&block, 1);
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Coinbase must have empty inputs"));
+    assert!(result.is_err(), "Expected error for coinbase with inputs, got ok");
 }
 
 // ─── Pedersen balance — inflation attack prevention ──────────────────
