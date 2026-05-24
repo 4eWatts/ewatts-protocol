@@ -13,7 +13,7 @@ eWatts is a digital currency secured by DRAM bandwidth. Mining is memory-bound p
 | Mining | MBPoW — DRAM bandwidth, no ASICs |
 | P2PKH | pubkey_hash [20] + revealed_pubkey (quantum defense at rest) |
 | Governance | Zero pre-mine, no admin keys, 95% miner/node threshold |
-| Implementation | Rust, ~7,400 LOC |
+| Implementation | Rust, 7,872 LOC (21 modules) |
 | License | MIT |
 | Domain | [ewatts.org](https://ewatts.org) |
 
