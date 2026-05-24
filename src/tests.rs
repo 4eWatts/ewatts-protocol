@@ -82,7 +82,7 @@ fn integration_private_tx_roundtrip() {
     rng.fill_bytes(&mut input_tx_hash);
     utxo_set.add_transaction_outputs(&input_tx_hash, &Transaction {
         version: 1, inputs: vec![],
-        outputs: vec![TxOutput { amount: 500, public_key: vec![], spendable_after: 0,
+        outputs: vec![TxOutput { amount: 500, pubkey_hash: [0u8; 20], spendable_after: 0,
             stealth_dest: Some(alice_dest.dest.compress().to_bytes()),
             commitment_bytes: Some(comm_alice.0.compress().to_bytes()),
             range_proof_bytes: Some(serde_json::to_vec(&rp_alice).unwrap()),
@@ -101,7 +101,7 @@ fn integration_private_tx_roundtrip() {
         rng.fill_bytes(&mut th);
         utxo_set.add_transaction_outputs(&th, &Transaction {
             version: 1, inputs: vec![],
-            outputs: vec![TxOutput { amount: 100, public_key: vec![], spendable_after: 0,
+            outputs: vec![TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
                 stealth_dest: Some(dd.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm_d.0.compress().to_bytes()),
                 range_proof_bytes: Some(serde_json::to_vec(&rp_d).unwrap()),
@@ -152,13 +152,13 @@ fn integration_private_tx_roundtrip() {
             key_image: key_image.compress().to_bytes(),
         }],
         outputs: vec![
-            TxOutput { amount: 100, public_key: vec![], spendable_after: 0,
+            TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
                 stealth_dest: Some(bob_dest.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm_bob.0.compress().to_bytes()),
                 range_proof_bytes: Some(serde_json::to_vec(&rp_bob).unwrap()),
                 ephemeral: Some(bob_dest.ephemeral.compress().to_bytes()),
             },
-            TxOutput { amount: 400, public_key: vec![], spendable_after: 0,
+            TxOutput { amount: 400, pubkey_hash: [0u8; 20], spendable_after: 0,
                 stealth_dest: Some(change_dest.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm_change.0.compress().to_bytes()),
                 range_proof_bytes: Some(serde_json::to_vec(&rp_change).unwrap()),
@@ -360,7 +360,7 @@ fn integration_pedersen_balance_prevents_inflation() {
     rng.fill_bytes(&mut tx_hash);
     state.add_transaction_outputs(&tx_hash, &Transaction {
         version: 1, inputs: vec![],
-        outputs: vec![TxOutput { amount: 100, public_key: vec![], spendable_after: 0,
+        outputs: vec![TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
             stealth_dest: Some(dest.dest.compress().to_bytes()),
             commitment_bytes: Some(comm_100.0.compress().to_bytes()),
             range_proof_bytes: Some(serde_json::to_vec(&rp_alice).unwrap()),
@@ -377,7 +377,7 @@ fn integration_pedersen_balance_prevents_inflation() {
     let malicious_tx = Transaction {
         version: 1,
         inputs: vec![TxInput { previous_tx_hash: tx_hash, output_index: 0, key_image: [0xaa; 32] }],
-        outputs: vec![TxOutput { amount: 100, public_key: vec![], spendable_after: 0,
+        outputs: vec![TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
             stealth_dest: Some(mal_dest.dest.compress().to_bytes()),
             commitment_bytes: Some(comm_1000.0.compress().to_bytes()),
             range_proof_bytes: Some(serde_json::to_vec(&rp_mal).unwrap()),

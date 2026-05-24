@@ -61,3 +61,17 @@ pub const TESTNET_RAMP_UP_CAP: f64 = 0.80;
 pub const TESTNET_FOUNDER_LOCK: u64 = 500;
 pub const MAX_PEERS: usize = 125;
 pub const PROTOCOL_VERSION: u32 = 0x0003;
+
+// ─── P2PKH & Quantum Migration ─────────────────────────────────────
+/// P2PKH hash output size (SHA256 truncated to 20 bytes).
+pub const PUBKEY_HASH_SIZE: usize = 20;
+
+/// Block height at which quantum migration activates (~10 years).
+pub const QUANTUM_ACTIVATION_BLOCK: u64 = 3_153_600;
+
+/// Supermajority of miners required to activate PQ signature scheme.
+pub const PQ_MINER_SUPERMAJORITY: f64 = 0.90;
+
+/// Post-quantum signature scheme placeholder: FALCON-1024.
+/// Migration plan: hard fork at QUANTUM_ACTIVATION_BLOCK requires 90% miner consensus.
+pub const PQ_SIG_SCHEME: &str = "FALCON-1024";

@@ -181,7 +181,8 @@ impl Wallet {
             if !stealth_matched {
                 for k in &self.keys {
                 if let Some(vk) = k.legacy_verifying_key() {
-                    if entry.public_key.len() == 32 && vk.to_bytes() == entry.public_key[..32] {
+                    let pk_hash = crate::block::TxOutput::hash_pubkey(&vk.to_bytes());
+                    if entry.pubkey_hash != [0u8; 20] && entry.pubkey_hash == pk_hash {
                         owned.push(OwnedUtxo {
                             key: key.clone(),
                             entry: entry.clone(),
@@ -465,7 +466,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![TxOutput {
                 amount,
-                public_key: vec![],
+                pubkey_hash: [0u8; 20],
                 spendable_after: 0,
                 stealth_dest: Some(dest.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm.0.compress().to_bytes()),

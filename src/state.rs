@@ -11,7 +11,8 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
     pub amount: u64,
-    pub public_key: Vec<u8>,
+    /// P2PKH: hash of public key (20 bytes). Empty for private outputs.
+    pub pubkey_hash: [u8; 20],
     pub spendable_after: u64,
     pub block_height: u64,
     pub tx_index: u32,
@@ -87,8 +88,8 @@ pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     }
     for o in &tx.outputs {
         msg.extend_from_slice(&o.amount.to_le_bytes());
-        if !o.public_key.is_empty() {
-            msg.extend_from_slice(&o.public_key);
+        if o.pubkey_hash != [0u8; 20] {
+            msg.extend_from_slice(&o.pubkey_hash);
         }
         if let Some(d) = &o.stealth_dest {
             msg.extend_from_slice(d);
@@ -216,7 +217,7 @@ impl UtxoSet {
                 },
                 UtxoEntry {
                     amount: o.amount,
-                    public_key: o.public_key.to_vec(),
+                    pubkey_hash: o.pubkey_hash,
                     spendable_after: o.spendable_after,
                     block_height: bh,
                     tx_index: ti,
@@ -309,9 +310,18 @@ impl UtxoSet {
                 return Err("UTXO time-locked".into());
             }
 
-            // Legacy sig verification (only if not using MLSAG for this tx)
+            // P2PKH sig verification (only if not using MLSAG for this tx)
             if tx.mlsag.is_none() {
-                verify_tx_signature(tx, &utxo.public_key)?;
+                // P2PKH: reveal public key in input, verify hash matches
+                let revealed = &input.revealed_pubkey;
+                if revealed.is_empty() {
+                    return Err("P2PKH spend requires revealed public key".into());
+                }
+                let computed_hash = crate::block::TxOutput::hash_pubkey(revealed);
+                if computed_hash != utxo.pubkey_hash {
+                    return Err("P2PKH hash mismatch: revealed key does not match output".into());
+                }
+                verify_tx_signature(tx, revealed)?;
             }
 
             // For private mode, also check amount conservation via commitments (TODO)
@@ -398,9 +408,10 @@ impl UtxoSet {
     }
 
     pub fn get_balance(&self, pk: &[u8]) -> u64 {
+        let ph = crate::block::TxOutput::hash_pubkey(pk);
         self.utxos
             .values()
-            .filter(|u| u.public_key == pk)
+            .filter(|u| u.pubkey_hash == ph)
             .map(|u| u.amount)
             .sum()
     }
@@ -410,9 +421,10 @@ impl UtxoSet {
     }
 
     pub fn utxo_keys_for(&self, pk: &[u8]) -> Vec<UtxoKey> {
+        let ph = crate::block::TxOutput::hash_pubkey(pk);
         self.utxos
             .iter()
-            .filter(|(_, e)| e.public_key.as_slice() == pk)
+            .filter(|(_, e)| e.pubkey_hash == ph)
             .map(|(k, _)| k.clone())
             .collect()
     }
@@ -600,15 +612,7 @@ impl UtxoSet {
         let tx = Transaction {
             version: 1,
             inputs: vec![],
-            outputs: vec![TxOutput {
-                amount: a,
-                public_key: pk.try_into().unwrap(),
-                spendable_after: 0,
-                stealth_dest: None,
-                commitment_bytes: None,
-                range_proof_bytes: None,
-                ephemeral: None,
-            }],
+            outputs: vec![TxOutput::new(a, pk.to_vec())],
             ring_size: 1,
             signatures: vec![],
             mlsag: None,
@@ -628,15 +632,7 @@ mod tests {
 
     fn out(v: &[u64], pk: &[u8]) -> Vec<TxOutput> {
         v.iter()
-            .map(|&a| TxOutput {
-                amount: a,
-                public_key: pk.try_into().unwrap(),
-                spendable_after: 0,
-                stealth_dest: None,
-                commitment_bytes: None,
-                range_proof_bytes: None,
-                ephemeral: None,
-            })
+            .map(|&a| TxOutput::new(a, pk.to_vec()))
             .collect()
     }
 

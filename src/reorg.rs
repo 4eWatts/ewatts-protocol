@@ -335,7 +335,7 @@ mod tests {
             let tx = Transaction {
                 version: 1, inputs: vec![],
                 outputs: vec![TxOutput {
-                    amount, public_key: vec![], spendable_after: crate::reward::founder_lock_block(height),
+                    amount, pubkey_hash: [0u8; 20], spendable_after: crate::reward::founder_lock_block(height),
                     stealth_dest: None,
                     commitment_bytes: Some(comm.0.compress().to_bytes()),
                     range_proof_bytes: Some(serde_json::to_vec(&rp).unwrap()),

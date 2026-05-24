@@ -553,7 +553,7 @@ pub(crate) fn mine_block_with_difficulty(
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
+        outputs: vec![TxOutput::new_locked(reward_base_units, miner_pk.to_vec(), height)],
         ring_size: 1,
         signatures: vec![],
         mlsag: None, ring_members: None,
@@ -792,13 +792,9 @@ fn cmd_send(args: &[String]) {
         if total_input >= amount { break; }
     }
 
-    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }];
+    let mut outputs = vec![crate::block::TxOutput::new(amount, to_pk)];
     if total_input > amount {
-        outputs.push(crate::block::TxOutput {
-            amount: total_input - amount,
-            public_key: from_pk, spendable_after: 0,
-            stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
-        });
+        outputs.push(crate::block::TxOutput::new(total_input - amount, from_pk));
     }
 
     let mut tx = crate::block::Transaction {

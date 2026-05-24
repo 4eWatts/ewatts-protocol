@@ -127,14 +127,18 @@ pub struct TxInput {
     pub previous_tx_hash: [u8; 32],
     pub output_index: u32,
     pub key_image: [u8; 32], // 32 bytes = compressed RistrettoPoint for MLSAG
+    /// P2PKH: revealed public key when spending a hash-locked output.
+    /// Empty for MLSAG/private spends.
+    pub revealed_pubkey: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxOutput {
     /// Legacy: amount in plaintext (public mode / coinbase).
     pub amount: u64,
-    /// Legacy: P2PKH public key (public mode).
-    pub public_key: Vec<u8>,
+    /// P2PKH: hash of public key (20 bytes, SHA256 truncated).
+    /// Empty for private/stealth outputs.
+    pub pubkey_hash: [u8; 20],
     /// Founder time-lock: 0 = immediate.
     pub spendable_after: u64,
     /// Private mode: one-time stealth destination (compressed RistrettoPoint).
@@ -148,11 +152,23 @@ pub struct TxOutput {
 }
 
 impl TxOutput {
-    /// Create a public P2PKH output (coinbase / legacy).
-    pub fn new(amount: u64, public_key: Vec<u8>) -> Self {
+    /// Hash a public key into 20 bytes (SHA256, truncated).
+    pub fn hash_pubkey(pk: &[u8]) -> [u8; 20] {
+        use sha3::Digest;
+        let mut h = sha3::Keccak256::new();
+        h.update(pk);
+        let full = h.finalize();
+        let mut out = [0u8; 20];
+        out.copy_from_slice(&full[..20]);
+        out
+    }
+
+    /// Create a public P2PKH output (coinbase).
+    pub fn new(amount: u64, pubkey: Vec<u8>) -> Self {
+        let ph = Self::hash_pubkey(&pubkey);
         TxOutput {
             amount,
-            public_key,
+            pubkey_hash: ph,
             spendable_after: 0,
             stealth_dest: None,
             commitment_bytes: None,
@@ -169,8 +185,8 @@ impl TxOutput {
         range_proof: Vec<u8>,
     ) -> Self {
         TxOutput {
-            amount, // kept for supply tracking
-            public_key: vec![],
+            amount,
+            pubkey_hash: [0u8; 20],
             spendable_after: 0,
             stealth_dest: Some(dest),
             commitment_bytes: Some(commitment),
@@ -180,7 +196,8 @@ impl TxOutput {
     }
 
     /// Create a founder time-locked output.
-    pub fn new_locked(amount: u64, public_key: Vec<u8>, block_number: u64) -> Self {
+    pub fn new_locked(amount: u64, pubkey: Vec<u8>, block_number: u64) -> Self {
+        let ph = Self::hash_pubkey(&pubkey);
         let lock = if block_number < constants::RAMP_UP_BLOCKS {
             std::cmp::max(
                 constants::FOUNDER_LOCK_BLOCKS,
@@ -191,7 +208,7 @@ impl TxOutput {
         };
         TxOutput {
             amount,
-            public_key,
+            pubkey_hash: ph,
             spendable_after: lock,
             stealth_dest: None,
             commitment_bytes: None,
@@ -245,8 +262,8 @@ impl Transaction {
         }
         for o in &self.outputs {
             h.update(o.amount.to_le_bytes());
-            if !o.public_key.is_empty() {
-                h.update(&o.public_key);
+            if o.pubkey_hash != [0u8; 20] {
+                h.update(&o.pubkey_hash);
             }
             if let Some(d) = &o.stealth_dest {
                 h.update(d);
@@ -318,7 +335,7 @@ mod tests {
             }],
             outputs: vec![TxOutput {
                 amount: 1000,
-                public_key: vec![0u8; 32],
+                pubkey_hash: TxOutput::hash_pubkey(&[0u8; 32]),
                 spendable_after: 0,
                 stealth_dest: None,
                 commitment_bytes: None,
@@ -343,7 +360,7 @@ mod tests {
             }],
             outputs: vec![TxOutput {
                 amount: 0,
-                public_key: vec![],
+                pubkey_hash: [0u8; 20],
                 spendable_after: 0,
                 stealth_dest: Some([2u8; 32]),
                 commitment_bytes: Some([3u8; 32]),
@@ -378,7 +395,7 @@ mod tests {
                 }],
                 outputs: vec![TxOutput {
                     amount: 0,
-                    public_key: vec![],
+                    pubkey_hash: [0u8; 20],
                     spendable_after: 0,
                     stealth_dest: Some([9u8; 32]),
                     commitment_bytes: Some([3u8; 32]),
