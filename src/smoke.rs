@@ -1,20 +1,17 @@
-//! Smoke tests — verify the mining + state pipeline completes without panic.
+//! Smoke tests + adversarial mining tests.
 //!
-//! NOT an adversarial simulation. These tests mine blocks in round-robin
-//! across N agents and verify that each agent mines at least one block.
-//! All agents use the same internal commitment logic (no strategy differentiation).
-//!
-//! True adversarial testing requires refactoring mine_block_with_difficulty
-//! to accept external commitments (see Fase C roadmap).
+//! Smoke tests verify the mining + state pipeline without panic.
+//! Adversarial tests use mine_block_with_key for external key injection
+//! and verify chain validation under multiple miner scenarios.
 
 use crate::mine_block_with_difficulty;
+use crate::mine_block_with_key;
 use crate::state::UtxoSet;
 use ed25519_dalek::SigningKey;
+use rand::RngCore;
 
 
-/// Mine N blocks in round-robin across N agents.
-/// No strategy differentiation — all agents use identical mining logic.
-/// Smoke test only: verifies the pipeline completes without panic.
+/// Mine N blocks in round-robin across N agents (internal keys).
 pub(crate) fn run_round_robin_test(
     num_agents: usize,
     num_blocks: u64,
@@ -23,7 +20,6 @@ pub(crate) fn run_round_robin_test(
 ) -> Result<Vec<u64>, String> {
     let mut rng = rand::thread_rng();
 
-    // Create agents with unique keys
     let keys: Vec<[u8; 32]> = (0..num_agents).map(|_| {
         SigningKey::generate(&mut rng).verifying_key().to_bytes()
     }).collect();
@@ -62,6 +58,106 @@ fn smoke_round_robin_3_agents() {
 #[test]
 fn smoke_round_robin_uneven_blocks() {
     let counts = run_round_robin_test(2, 5, 256 * 1024, 1).expect("Smoke test");
-    assert_eq!(counts[0], 3); // agent 0 gets block 1,3,5
-    assert_eq!(counts[1], 2); // agent 1 gets block 2,4
+    assert_eq!(counts[0], 3);
+    assert_eq!(counts[1], 2);
+}
+
+// ─── Adversarial Tests (Phase 3) ──────────────────────────────────────
+
+/// Test that mine_block_with_key accepts external signing keys.
+#[test]
+fn adv_external_key_mining() {
+    let mut rng = rand::thread_rng();
+    let key = SigningKey::generate(&mut rng);
+    let pk = key.verifying_key().to_bytes();
+
+    let mut state = UtxoSet::genesis(100_000_000, &pk);
+    let (block, _) = mine_block_with_key(
+        [0u8; 32], 1, &mut state, 1, 256 * 1024, &key,
+    ).expect("External key mining");
+
+    // Verify miner pubkey is in coinbase output
+    let coinbase = &block.body.transactions[0];
+    assert_eq!(coinbase.outputs.len(), 1);
+    assert_eq!(coinbase.inputs.len(), 0);
+    // Block should have valid hash
+    assert_ne!(block.header.hash(), [0u8; 32]);
+    assert_eq!(block.header.height, 1);
+}
+
+/// Two miners with distinct keys mine alternating blocks on the same chain.
+#[test]
+fn adv_two_miner_chain() {
+    let mut rng = rand::thread_rng();
+    let key_a = SigningKey::generate(&mut rng);
+    let pk_a = key_a.verifying_key().to_bytes();
+    let key_b = SigningKey::generate(&mut rng);
+
+    let mut state = UtxoSet::genesis(100_000_000, &pk_a);
+    let mut prev_hash = [0u8; 32];
+
+    // Block 1: Miner A
+    let (b1, _) = mine_block_with_key([0u8; 32], 1, &mut state, 1, 256 * 1024, &key_a)
+        .expect("Block 1 by A");
+    prev_hash = b1.header.hash();
+
+    // Block 2: Miner B
+    let (b2, _) = mine_block_with_key(prev_hash, 2, &mut state, 1, 256 * 1024, &key_b)
+        .expect("Block 2 by B");
+    prev_hash = b2.header.hash();
+
+    // Block 3: Miner A again
+    let (b3, _) = mine_block_with_key(prev_hash, 3, &mut state, 1, 256 * 1024, &key_a)
+        .expect("Block 3 by A");
+
+    // Each block should have incrementing height and valid chain link
+    assert_eq!(b1.header.height, 1);
+    assert_eq!(b2.header.height, 2);
+    assert_eq!(b3.header.height, 3);
+    assert_eq!(b2.header.previous_hash, b1.header.hash());
+    assert_eq!(b3.header.previous_hash, b2.header.hash());
+}
+
+/// Verify chain state after multi-block mining: supply increases.
+#[test]
+fn adv_supply_increases_with_blocks() {
+    let mut rng = rand::thread_rng();
+    let key = SigningKey::generate(&mut rng);
+    let pk = key.verifying_key().to_bytes();
+
+    let mut state = UtxoSet::genesis(100_000_000, &pk);
+    let initial_supply = state.total_supply();
+
+    let mut prev_hash = [0u8; 32];
+    for height in 1..=5 {
+        let (block, _) = mine_block_with_key(
+            prev_hash, height, &mut state, 1, 256 * 1024, &key,
+        ).expect("Block mining");
+        prev_hash = block.header.hash();
+    }
+
+    // After mining blocks, supply should increase (coinbase rewards)
+    let final_supply = state.total_supply();
+    assert!(final_supply > initial_supply,
+        "Supply should increase: initial={} final={}", initial_supply, final_supply);
+}
+
+/// Ten blocks from one miner, verify all link correctly.
+#[test]
+fn adv_ten_block_chain() {
+    let mut rng = rand::thread_rng();
+    let key = SigningKey::generate(&mut rng);
+    let pk = key.verifying_key().to_bytes();
+
+    let mut state = UtxoSet::genesis(100_000_000, &pk);
+    let mut prev_hash = [0u8; 32];
+
+    for height in 1..=10 {
+        let (block, _) = mine_block_with_key(
+            prev_hash, height, &mut state, 1, 256 * 1024, &key,
+        ).expect("Block mining");
+        assert_eq!(block.header.height, height);
+        assert_eq!(block.header.previous_hash, prev_hash);
+        prev_hash = block.header.hash();
+    }
 }

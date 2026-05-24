@@ -448,6 +448,9 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
     mine_block_with_difficulty(prev_hash, height, state, 100, 4 * 1024 * 1024)
 }
 
+/// Maximum number of mining attempts per block (used internally).
+const MAX_MINING_ATTEMPTS: u64 = 50000;
+
 /// Mine a block with configurable difficulty and DAG size.
 pub(crate) fn mine_block_with_difficulty(
     prev_hash: [u8; 32],
@@ -455,6 +458,20 @@ pub(crate) fn mine_block_with_difficulty(
     state: &mut crate::state::UtxoSet,
     difficulty: u64,
     dag_size: u64,
+) -> Result<(block::Block, crate::state::BlockDiff), String>
+{
+    let sk = miner_keypair();
+    mine_block_with_key(prev_hash, height, state, difficulty, dag_size, &sk)
+}
+
+/// Mine a block with an externally provided signing key (for adversarial tests).
+pub fn mine_block_with_key(
+    prev_hash: [u8; 32],
+    height: u64,
+    state: &mut crate::state::UtxoSet,
+    difficulty: u64,
+    dag_size: u64,
+    sk: &ed25519_dalek::SigningKey,
 ) -> Result<(block::Block, crate::state::BlockDiff), String>
 {
     use crate::block::*;
@@ -466,8 +483,6 @@ pub(crate) fn mine_block_with_difficulty(
     println!("  DAG generation ({} MB)...", dag_size / (1024 * 1024));
     let dag = crate::dag::Dag::generate_with_size(epoch, dag_size);
 
-    // Miner setup
-    let sk = miner_keypair();
     let miner_pk = sk.verifying_key().to_bytes();
 
     // Build header to mine
