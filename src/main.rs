@@ -107,6 +107,26 @@ pub(crate) async fn cmd_start(args: &[String]) {
         Err(e) => { println!("Error loading state: {}", e); return; }
     };
 
+    // Reconstruct BlockDiffs from disk-loaded blocks (for reorg safety)
+    {
+        let blocks = crate::store::load_blocks().unwrap_or_default();
+        if blocks.len() > 1 {
+            let mut s = crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new());
+            let mut store = crate::store::load_chain_store();
+            for block in &blocks {
+                if block.header.height == 0 { continue; } // genesis handled by ChainStore::new
+                let hash = block.header.hash();
+                if store.block_diffs.get(&hash).is_none() {
+                    if let Ok(diff) = s.apply_block_and_track(block, block.header.height) {
+                        store.block_diffs.insert(hash, diff);
+                    }
+                }
+            }
+            // Write back updated store with diffs
+            let _ = crate::store::save_chain_store(&store);
+        }
+    }
+
     // ── Dashboard HTTP server (tokio task) ──
     let dash_port_task = dash_port.clone();
     let _dash_handle = tokio::spawn(async move {
