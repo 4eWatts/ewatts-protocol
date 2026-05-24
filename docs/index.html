@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>eWatts — Democratized digital gold</title>
-<meta name="description" content="Democratized digital gold — PoW with stable memory. Private. Fair. Permissionless.">
+<title>eWatts: Democratized digital gold</title>
+<meta name="description" content="Democratized digital gold: PoW with stable memory. Private. Fair. Permissionless.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -84,7 +84,7 @@ footer a:hover { color:#c8c8cc; }
 
 <div class="hero">
   <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
-    <span style="color:#3b82f6;">Phase 1 — Foundation</span>
+    <span style="color:#3b82f6;">Phase 1: Foundation</span>
     <span style="color:#2a2a3a;">|</span>
     <span>local testnet</span>
     <span style="color:#2a2a3a;">|</span>
@@ -100,8 +100,8 @@ footer a:hover { color:#c8c8cc; }
     No speculation required. No peg needed. <strong style="color:#3b82f6;">No token sale.</strong>
   </p>
   <p style="margin-top:12px; font-size:13px; color:#6b6b8a;">
-    Supply is expandable at cost — like gold. More coins require more energy. 
-    Dual-purpose: mine with DRAM bandwidth, transact with ultra-fast private settlements — <strong style="color:#8b8baa;">&lt;3ms</strong> per transaction.
+    Supply is forever expandable at cost replicating gold's price anchor, while using the only commodity available in every country. 
+    Dual-purpose: mine with DRAM bandwidth, transact with ultra-fast private settlements (<strong style="color:#8b8baa;">&lt;3ms</strong> per transaction).
   </p>
   <div class="links">
     <a href="MINING.md" class="btn btn-primary">Mine a block</a>
@@ -124,7 +124,7 @@ footer a:hover { color:#c8c8cc; }
         private by default, and anchored to a real cost of production rather than to the policy of 
         any country. Like gold, it has a production cost floor (energy). Unlike gold, it is perfectly 
         divisible, transmissible at the speed of light, storable as a 32-byte key, and mineable on 
-        standard memory — leveraging computing infrastructure already in any country. Both parties 
+        standard memory, leveraging computing infrastructure already in any country. Both parties 
         to a transaction can independently arbitrage its value against local energy costs.
       </p>
     </div>
@@ -133,7 +133,7 @@ footer a:hover { color:#c8c8cc; }
       <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Why DRAM?</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
         Most proof-of-work currencies use hash functions (SHA-256, Ethash) that improve ~25-30% per year 
-        with each new ASIC generation. eWatts uses random access to DRAM — a bottleneck that has not 
+        with each new ASIC generation. eWatts uses random access to DRAM, a bottleneck that has not 
         improved in 20 years.
       </p>
       <div style="margin-top:12px;padding:12px 14px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;line-height:1.8;">
@@ -149,7 +149,7 @@ footer a:hover { color:#c8c8cc; }
       </div>
       <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
         The result: eWatts' energy anchor drifts ~1-2% per year; Bitcoin's drifts ~25-30%. 
-        The difference is structural and permanent — DRAM latency is bounded by the speed of 
+        The difference is structural and permanent. DRAM latency is bounded by the speed of 
         light in silicon; no ASIC can shortcut it.
       </p>
       <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Full technical derivation</a></p>
@@ -173,7 +173,7 @@ footer a:hover { color:#c8c8cc; }
       <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
         Every transaction protects sender (ring signatures), recipient (stealth addresses), and amount 
         (Pedersen commitments). Privacy is the only mode. Changing it requires 95% of miners and 95% 
-        of nodes — near-unanimous consent, enforced by code.
+        of nodes, near-unanimous consent enforced by code.
       </p>
     </div>
 
@@ -185,7 +185,7 @@ footer a:hover { color:#c8c8cc; }
 <section class="section" id="protocol">
   <div class="section-label">Protocol</div>
   <h2>Architecture</h2>
-  <p class="intro">eWatts is built around a simple idea: make mining accessible to anyone with a computer. The algorithm is designed to run fastest on standard RAM — not on specialized hardware. Transactions are private by default, and the network has no central authority, no admin keys, and no foundation.</p>
+  <p class="intro">eWatts is built around a simple idea: make mining accessible to anyone with a computer. The algorithm is designed to run fastest on standard RAM, not on specialized hardware. Transactions are private by default, and the network has no central authority, no admin keys, and no foundation.</p>
 
   <div class="cards">
     <div class="card">
@@ -206,13 +206,13 @@ footer a:hover { color:#c8c8cc; }
     </div>
     <div class="card">
       <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. One eWatt represents approximately one kilowatt-hour (kWh) of mining energy at equilibrium — a universal physical unit, not a dollar peg. At 2026 global average electricity costs, this corresponds to roughly 1 USD for intuition. Each eWatt divides 
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. One eWatt represents approximately one kilowatt-hour (kWh) of mining energy at equilibrium, a universal physical unit not tied to any dollar peg. At 2026 global average electricity costs, this corresponds to roughly 1 USD for intuition. Each eWatt divides 
         into 100 ecents (eWatt-cents). No satoshis. No mental math.
     </div>
     <div class="card">
       <h3>Governance designed for stability</h3>
       <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. No token sale. Mining starts at block 1 with all early coinbase outputs time-locked on-chain.</p>
-      <p style="margin-top:8px; font-size:13px; color:#6b6b8a;">The protocol launches with intentionally minimal governance — the same model Bitcoin used in its early years. Major changes require 95% of miners and 95% of nodes. As the community grows, governance evolves from founder-led to technical maintainers to community stewardship. This is documented in the project's governance manifesto.</p>
+      <p style="margin-top:8px; font-size:13px; color:#6b6b8a;">The protocol launches with intentionally minimal governance, the same model Bitcoin used in its early years. Major changes require 95% of miners and 95% of nodes. As the community grows, governance evolves from founder-led to technical maintainers to community stewardship. This is documented in the project's governance manifesto.</p>
     </div>
   </div>
 </section>
@@ -229,7 +229,7 @@ footer a:hover { color:#c8c8cc; }
         <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
         <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
           eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
-          Mining is the only way to acquire coins. This is intentional — it aligns incentives with
+          Mining is the only way to acquire coins. This is intentional: it aligns incentives with
           energy contribution, not speculation.
         </p>
       </div>
@@ -341,7 +341,7 @@ $ ./target/release/ewatts-protocol dash</pre>
   <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
   <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
   <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 1 (Foundation) — pre-mainnet, local testnet. 80+ tests passing, 0 warnings. MIT License. Code is auditable and runnable today. See README for known limitations.</p>
+  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 1 (Foundation), pre-mainnet local testnet. 80+ tests passing, 0 warnings. MIT License. Code is auditable and runnable today. See README for known limitations.</p>
 </section>
 
 <footer>
@@ -352,7 +352,7 @@ $ ./target/release/ewatts-protocol dash</pre>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     MIT License
   </div>
-  <div>Democratized digital gold — PoW with stable memory. Private. Fair.</div>
+  <div>Democratized digital gold: PoW with stable memory. Private. Fair.</div>
 </footer>
 
 </div>
