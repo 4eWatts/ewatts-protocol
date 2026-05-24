@@ -87,7 +87,23 @@ impl P2pNode {
         swarm.listen_on(listen_addr.parse()?)?;
 
         if let Some(addr) = bootstrap {
-            swarm.dial(addr).ok();
+            // Retry dial a few times with backoff in case peer hasn't finished init
+            for attempt in 1..=3 {
+                match swarm.dial(addr.clone()) {
+                    Ok(()) => {
+                        println!("P2P: Dialing bootstrap {} (attempt {})", addr, attempt);
+                        break;
+                    }
+                    Err(e) => {
+                        if attempt < 3 {
+                            eprintln!("P2P: Bootstrap dial failed ({}), retrying in {}s...", e, attempt);
+                            tokio::time::sleep(std::time::Duration::from_secs(attempt)).await;
+                        } else {
+                            eprintln!("P2P: Bootstrap dial failed after 3 attempts: {}", e);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(P2pNode { peer_id, swarm, peers: HashSet::new() })
