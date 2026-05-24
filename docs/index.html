@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eWatts  Memory-Bound Proof of Work</title>
-<meta name="description" content="eWatts is a digital currency protocol secured by DRAM bandwidth. Memory-bound proof of work. Privacy by default. No governance.">
+<meta name="description" content="eWatts is a digital currency protocol where mining produces useful ML work. Memory-bound proof of work. Privacy by default. Minimal progressive governance.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -77,6 +77,7 @@ footer a:hover { color:#c8c8cc; }
   <div class="nav-links">
     <a href="#protocol">Protocol</a>
     <a href="#mine">Mine</a>
+    <a href="#roadmap">Roadmap</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
@@ -89,13 +90,13 @@ footer a:hover { color:#c8c8cc; }
     <span style="color:#2a2a3a;">|</span>
     <span>0 warnings</span>
   </div>
-  <h1>A fair means of exchange.<br><span style="color:#5a5a72;font-weight:400;">Backed by energy, secured by memory.</span></h1>
-  <p>eWatts is a digital currency designed to be fair by default. Fair to mine (any computer can do it). Fair to value (backed by the energy cost of production). Fair to transact (private from the start, not as an afterthought).</p>
+  <h1>Mining that builds, not burns.<br><span style="color:#5a5a72;font-weight:400;">Productive Proof of Work, anchored to energy.</span></h1>
+  <p>eWatts is a digital currency where mining produces useful machine-learning work instead of wasted hash computation. Fair to mine (any computer with RAM can do it). Fair to value (backed by the energy cost of production). Private by default, not as an afterthought.</p>
   <p style="margin-top:12px; font-size:14px; color:#6b6b8a;">The name comes from <strong style="color:#8b8baa;">Watt</strong>, the unit of power — because each coin is referenced to the energy cost of mining it. Not arbitrary. Physics-based.</p>
   <p style="margin-top:16px; font-size:13px; color:#6b6b8a;">
     An eWatt is a <strong style="color:#8b8baa;">ruler</strong>, not a bet. 
     Each coin is measurable energy — you can verify the cost of mining it. 
-    No speculation required.
+    No speculation required. <strong style="color:#3b82f6;">No token sale.</strong>
   </p>
   <div class="links">
     <a href="MINING.md" class="btn btn-primary">Mine a block</a>
@@ -204,8 +205,9 @@ footer a:hover { color:#c8c8cc; }
         into 100 ecents (eWatt-cents). No satoshis. No mental math.
     </div>
     <div class="card">
-      <h3>No one controls the network</h3>
-      <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. Mining starts at block 1 with all early coinbase outputs time-locked on-chain (max 50,000 blocks or current + 40,000 blocks). Protocol changes require 95% of miners and 95% of nodes. The rules are enforced by code, not by people.</p>
+      <h3>Governance designed for stability</h3>
+      <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. No token sale. Mining starts at block 1 with all early coinbase outputs time-locked on-chain.</p>
+      <p style="margin-top:8px; font-size:13px; color:#6b6b8a;">The protocol launches with intentionally minimal governance — the same model Bitcoin used in its early years. Major changes require 95% of miners and 95% of nodes. As the community grows, governance evolves from benevolent dictator to technical maintainers to community stewardship. This is documented in the project's governance manifesto, not improvised.</p>
     </div>
   </div>
 </section>
@@ -215,6 +217,20 @@ footer a:hover { color:#c8c8cc; }
 <section class="section">
   <div class="section-label">Specifications</div>
   <h2>Parameters</h2>
+  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1e6e3a;border-radius:5px;">
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:#3b82f6;font-size:16px;">&#9432;</span>
+      <div>
+        <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
+        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
+          eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
+          Mining is the only way to acquire coins. This is intentional — it aligns incentives with
+          energy contribution, not speculation.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <table class="specs">
     <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
     <tr><td>Target block time</td><td>600 seconds</td></tr>
@@ -231,6 +247,50 @@ footer a:hover { color:#c8c8cc; }
     <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
     <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
   </table>
+</section>
+
+<hr>
+
+<section class="section" id="roadmap">
+  <div class="section-label">Roadmap</div>
+  <h2>Phases</h2>
+  <p class="intro">eWatts is in active development. These are the planned phases toward a self-sustaining network.</p>
+
+  <div class="cards">
+    <div class="card" style="border-color:#3b82f6;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 1 &mdash; Foundation</h3>
+        <span style="font-size:10px;color:#3b82f6;font-weight:600;">NOW</span>
+      </div>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Protocol implementation in Rust, MBPoW mining, privacy layer (stealth addresses, ring signatures,
+        Pedersen commitments). Local testnet. Full code audit and formal verification of critical paths.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 2 &mdash; Testnet</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Public testnet with incentivized mining. Community of Rust contributors forming around the
+        codebase. Mining pool support. Basic wallet and exchange integration. Governance discussion
+        begins with early contributors.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Mainnet launch. Decentralized governance via lazy consensus and technical maintainers.
+        Security audit results published. Reference wallet with GUI. DEX and CEX listings.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 4 &mdash; Maturity</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Community-driven governance with constitutional framework. Academic papers published.
+        Cross-chain bridges. Hardware wallet support. Focus on adoption in trade finance and
+        remittance corridors.
+      </p>
+    </div>
+  </div>
 </section>
 
 <hr>
@@ -255,8 +315,9 @@ $ ./target/release/ewatts-protocol mine
 <span class="cm"># Start dashboard on port 8080</span>
 $ ./target/release/ewatts-protocol dash</pre>
 
-  <div style="margin-top:16px;">
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
     <a href="MINING.md" class="btn btn-primary">Mining guide</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Dev tasks (good first issue)</a>
   </div>
 </section>
 
@@ -275,7 +336,7 @@ $ ./target/release/ewatts-protocol dash</pre>
   <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
   <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
   <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: testnet — see README for current implementation maturity and known limitations.</p>
+  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 1 (Foundation) — pre-mainnet. MIT License. Code is auditable and runnable today. See README for current implementation maturity and known limitations.</p>
 </section>
 
 <footer>
@@ -286,7 +347,7 @@ $ ./target/release/ewatts-protocol dash</pre>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     MIT License
   </div>
-  <div>Energy from memory, not machines.</div>
+  <div>Productive mining from memory, not waste.</div>
 </footer>
 
 </div>
