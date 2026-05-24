@@ -461,8 +461,14 @@ impl UtxoSet {
     pub fn apply_block_and_track(&mut self, block: &Block, block_height: u64) -> Result<BlockDiff, String> {
         let mut diff = BlockDiff::new();
         let mut opt_diff: Option<&mut BlockDiff> = Some(&mut diff);
-        self.apply_block_inner(block, block_height, &mut opt_diff)?;
-        Ok(diff)
+        match self.apply_block_inner(block, block_height, &mut opt_diff) {
+            Ok(()) => Ok(diff),
+            Err(e) => {
+                // Rollback partial changes using the diff we built before the failure
+                let _ = self.unwind_with_diff(&diff);
+                Err(e)
+            }
+        }
     }
 
     fn apply_block_inner(&mut self, block: &Block, block_height: u64, diff: &mut Option<&mut BlockDiff>) -> Result<(), String> {
