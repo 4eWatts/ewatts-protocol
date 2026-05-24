@@ -449,8 +449,6 @@ pub(crate) fn mine_block(prev_hash: [u8; 32], height: u64, state: &mut crate::st
 }
 
 /// Maximum number of mining attempts per block (used internally).
-const MAX_MINING_ATTEMPTS: u64 = 50000;
-
 /// Mine a block with configurable difficulty and DAG size.
 pub(crate) fn mine_block_with_difficulty(
     prev_hash: [u8; 32],

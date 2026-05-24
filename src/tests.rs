@@ -150,7 +150,7 @@ fn integration_private_tx_roundtrip() {
         inputs: vec![TxInput { previous_tx_hash: alice_utxo.key.tx_hash,
             output_index: alice_utxo.key.output_index,
             key_image: key_image.compress().to_bytes(),
-            revealed_pubkey: pk.to_vec(),
+            revealed_pubkey: vec![],
         }],
         outputs: vec![
             TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
@@ -249,7 +249,12 @@ fn integration_founder_lock_rejects_early_spend() {
     fn build_spend_tx(tx_hash: [u8; 32], pk: Vec<u8>, sk: &ed25519_dalek::SigningKey) -> Transaction {
         let unsigned = Transaction {
             version: 1,
-            revealed_pubkey: pk.to_vec(),
+            inputs: vec![TxInput {
+                previous_tx_hash: tx_hash,
+                output_index: 0,
+                key_image: [0xaa; 32],
+                revealed_pubkey: pk.clone(),
+            }],
             outputs: vec![TxOutput::new(50_000_000, pk)],
             ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
         };
@@ -291,7 +296,12 @@ fn integration_double_spend_rejected() {
     let spend_tx = {
         let mut tx = Transaction {
             version: 1,
-            revealed_pubkey: pk.to_vec(),
+            inputs: vec![TxInput {
+                previous_tx_hash: ch,
+                output_index: 0,
+                key_image: [0xab; 32],
+                revealed_pubkey: pk.clone(),
+            }],
             outputs: vec![TxOutput::new(3000, pk.clone())],
             ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
         };
@@ -305,7 +315,12 @@ fn integration_double_spend_rejected() {
     let double_tx = {
         let mut tx = Transaction {
             version: 1,
-            revealed_pubkey: pk.to_vec(),
+            inputs: vec![TxInput {
+                previous_tx_hash: ch,
+                output_index: 0,
+                key_image: [0xcd; 32],
+                revealed_pubkey: pk.clone(),
+            }],
             outputs: vec![TxOutput::new(3000, pk.clone())],
             ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
         };
@@ -323,7 +338,6 @@ fn integration_coinbase_empty_inputs_required() {
     let mut state = UtxoSet::new();
     let bad_coinbase = Transaction {
         version: 1,
-        revealed_pubkey: pk.to_vec(),
         outputs: vec![TxOutput::new(100_000_000, vec![1u8; 32])],
         ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
     };
@@ -377,7 +391,12 @@ fn integration_pedersen_balance_prevents_inflation() {
 
     let malicious_tx = Transaction {
         version: 1,
-        revealed_pubkey: pk.to_vec(),
+        inputs: vec![TxInput {
+            previous_tx_hash: tx_hash,
+            output_index: 0,
+            key_image: [0xff; 32],
+            revealed_pubkey: vec![],
+        }],
         outputs: vec![TxOutput { amount: 100, pubkey_hash: [0u8; 20], spendable_after: 0,
             stealth_dest: Some(mal_dest.dest.compress().to_bytes()),
             commitment_bytes: Some(comm_1000.0.compress().to_bytes()),
@@ -390,11 +409,8 @@ fn integration_pedersen_balance_prevents_inflation() {
     let result = state.spend_transaction_inputs(&malicious_tx, 1);
     assert!(result.is_err(), "Inflation must be rejected");
     let err = result.unwrap_err();
-    // The Pedersen balance check requires consistent blindings (blinding storage pending).
-    // For now, plaintext amount check catches the mismatch.
-    // Also accept signature/mlsag errors since the malicious tx has no valid sig.
     assert!(
-        err.contains("inflation") || err.contains("signature") || err.contains("chave") || err.contains("assinatura"),
+        err.contains("P2PKH") || err.contains("inflation") || err.contains("signature") || err.contains("chave") || err.contains("assinatura"),
         "Expected inflation/sig error, got: {}", err
     );
 }
