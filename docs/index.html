@@ -101,7 +101,7 @@ footer a:hover { color:#c8c8cc; }
   </p>
   <p style="margin-top:12px; font-size:13px; color:#6b6b8a;">
     Supply is forever expandable at cost replicating gold's price anchor, while using the only commodity available in every country. 
-    Dual-purpose: mine with DRAM bandwidth, transact with ultra-fast private settlements (<strong style="color:#8b8baa;">&lt;3ms</strong> per transaction).
+    Dual-purpose: mine with DRAM bandwidth, transact with ultra-fast private settlements (<strong style="color:#8b8baa;">&lt;3ms</strong> per signature verification).
   </p>
   <p style="margin-top:12px; font-size:13px; color:#6b6b8a;">
     Bitcoin and gold solved problems eWatts doesn't need to solve again. eWatts aims at the one they can't: a transactable physical cost anchor that scales. Different tools, different roles, building on existing knowledge.
@@ -208,7 +208,7 @@ footer a:hover { color:#c8c8cc; }
     </div>
     <div class="card">
       <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. One eWatt represents approximately one kilowatt-hour (kWh) of mining energy at equilibrium, a universal physical unit not tied to any dollar peg. At 2026 global average electricity costs, this corresponds to roughly 1 USD for intuition. Each eWatt divides 
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The emission formula anchors each eWatt to the energy cost of production, a universal physical unit not tied to any dollar peg. Full block validation is heavier than a single signature check. Each eWatt divides 
         into 100 ecents (eWatt-cents). No satoshis. No mental math.
     </div>
     <div class="card">
@@ -241,7 +241,7 @@ footer a:hover { color:#c8c8cc; }
   <table class="specs">
     <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
     <tr><td>Target block time</td><td>600 seconds</td></tr>
-    <tr><td>Fast tx verification</td><td>&lt;3 ms (MLSAG ring of 11)</td></tr>
+    <tr><td>Signature verification</td><td>&lt;3 ms per MLSAG signature (ring of 11)</td></tr>
     <tr><td>Ring size</td><td>11</td></tr>
     <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
     <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
