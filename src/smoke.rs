@@ -130,7 +130,7 @@ fn adv_supply_increases_with_blocks() {
     let mut prev_hash = [0u8; 32];
     for height in 1..=5 {
         let (block, _) = mine_block_with_key(
-            prev_hash, height, &mut state, 1, 256 * 1024, &key,
+            prev_hash, height, &mut state, 10, 4 * 1024 * 1024, &key,
         ).expect("Block mining");
         let block_hash = block.header.hash();
         // Add coinbase output and add its amount directly to supply
