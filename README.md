@@ -6,10 +6,14 @@ eWatts is a digital currency secured by DRAM bandwidth. Mining is memory-bound p
 
 | Status | Value |
 |--------|-------|
-| Testnet | Live |
-| Tests | 52 passing |
-| Warnings | 0 |
-| Implementation | Rust, ~3,300 LOC |
+| Release | **v6** (24/mai/2026) |
+| Testnet | Live (84/84 tests) |
+| P2P | 2-node connected, gossip sync |
+| Privacy | MLSAG ring sigs, stealth addresses, Pedersen commitments |
+| Mining | MBPoW — DRAM bandwidth, no ASICs |
+| P2PKH | pubkey_hash [20] + revealed_pubkey (quantum defense at rest) |
+| Governance | Zero pre-mine, no admin keys, 95% miner/node threshold |
+| Implementation | Rust, ~7,400 LOC |
 | License | MIT |
 | Domain | [ewatts.org](https://ewatts.org) |
 
@@ -76,7 +80,6 @@ This is testnet software. The following are known limitations:
 - **Single executable** — no separate wallet daemon, no hardware wallet support
 - **No DDoS protection** on the public API endpoint
 - **Testnet DAG** is 4 MB (mainnet target: ~40 GB)
-- **No seed phrase backup** — wallet keys are stored as raw bytes on disk
 
 ## Threat Model
 
