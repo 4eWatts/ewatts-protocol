@@ -338,6 +338,7 @@ fn integration_coinbase_empty_inputs_required() {
     let mut state = UtxoSet::new();
     let bad_coinbase = Transaction {
         version: 1,
+        inputs: vec![],
         outputs: vec![TxOutput::new(100_000_000, vec![1u8; 32])],
         ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
     };
