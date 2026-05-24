@@ -129,10 +129,15 @@ fn adv_supply_increases_with_blocks() {
 
     let mut prev_hash = [0u8; 32];
     for height in 1..=5 {
-        let (block, _) = mine_block_with_key(
+        let (block, diff) = mine_block_with_key(
             prev_hash, height, &mut state, 1, 256 * 1024, &key,
         ).expect("Block mining");
-        prev_hash = block.header.hash();
+        // Add coinbase output and supply to state (as main daemon does)
+        let block_hash = block.header.hash();
+        state.add_transaction_outputs(&block_hash, &block.body.transactions[0], height, 0);
+        state.add_coinbase_supply(block.header.emission_rate);
+        state.add_block_diff(diff);
+        prev_hash = block_hash;
     }
 
     // After mining blocks, supply should increase (coinbase rewards)

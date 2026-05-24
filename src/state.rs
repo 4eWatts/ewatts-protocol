@@ -673,7 +673,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xab; 32], revealed_pubkey: vec![] }],
+                        key_image: [0xab; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),
@@ -705,7 +705,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xcd; 32], revealed_pubkey: vec![] }],
+                        key_image: [0xcd; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &wrong
                 ),
@@ -736,7 +736,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xab; 32], revealed_pubkey: vec![] }],
+                        key_image: [0xab; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),
@@ -749,7 +749,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xcd; 32], revealed_pubkey: vec![] }],
+                        key_image: [0xcd; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),
