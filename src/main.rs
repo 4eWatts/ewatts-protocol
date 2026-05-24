@@ -845,6 +845,7 @@ fn cmd_send(args: &[String]) {
             previous_tx_hash: key.tx_hash,
             output_index: key.output_index,
             key_image: ki,
+            revealed_pubkey: vec![],
         });
         if total_input >= amount { break; }
     }
