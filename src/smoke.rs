@@ -8,7 +8,6 @@ use crate::mine_block_with_difficulty;
 use crate::mine_block_with_key;
 use crate::state::UtxoSet;
 use ed25519_dalek::SigningKey;
-use rand::RngCore;
 
 
 /// Mine N blocks in round-robin across N agents (internal keys).

@@ -332,6 +332,7 @@ mod tests {
                 previous_tx_hash: [0; 32],
                 output_index: 0,
                 key_image: [0; 32],
+            revealed_pubkey: vec![],
             }],
             outputs: vec![TxOutput {
                 amount: 1000,
@@ -357,6 +358,7 @@ mod tests {
                 previous_tx_hash: [0; 32],
                 output_index: 0,
                 key_image: [1u8; 32],
+            revealed_pubkey: vec![],
             }],
             outputs: vec![TxOutput {
                 amount: 0,
@@ -391,8 +393,7 @@ mod tests {
                 inputs: vec![TxInput {
                     previous_tx_hash: [0; 32],
                     output_index: 0,
-                    key_image: [1u8; 32]
-                }],
+                    key_image: [1u8; 32], revealed_pubkey: vec![] }],
                 outputs: vec![TxOutput {
                     amount: 0,
                     pubkey_hash: [0u8; 20],

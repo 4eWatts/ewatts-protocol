@@ -329,6 +329,7 @@ pub fn create_private_tx(
             previous_tx_hash: utxo.key.tx_hash,
             output_index: utxo.key.output_index,
             key_image: key_image.compress().to_bytes(),
+            revealed_pubkey: vec![],
         });
         secret_keys.push(utxo.one_time_key);
         ring_members.push(members);
@@ -661,7 +662,7 @@ pub fn mnemonic_to_entropy(words: &[String]) -> Result<[u8; 32], String> {
     for word_str in words {
         let idx = word_map.get(word_str.as_str())
             .ok_or_else(|| format!("Unknown BIP39 word: {}", word_str))?;
-        bit_buffer = (bit_buffer << 11) | idx as u64;
+        bit_buffer = (bit_buffer << 11) | *idx as u64;
         bits_in_buffer += 11;
         while bits_in_buffer >= 8 {
             bits_in_buffer -= 8;
