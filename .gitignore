@@ -1,3 +1,8 @@
 /target
 target/
 target/
+ewatts_data/
+ewatts_data_peer/
+liblinks/
+p2p_peers.txt
+*.real
