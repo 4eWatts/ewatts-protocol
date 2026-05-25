@@ -90,6 +90,10 @@ pub(crate) async fn cmd_start(args: &[String]) {
         .and_then(|s| s.parse().ok())
         .unwrap_or(100);
     let enable_mining = !args.iter().any(|s| s == "--no-mine");
+    let dag_size_mb: u64 = parse_arg(args, "--dag-size-mb")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(256);
+    let dag_size = dag_size_mb * 1024 * 1024;
         
     println!("Ewatts Testnet Daemon");
     println!("  Dashboard: http://0.0.0.0:{}/", dash_port);
