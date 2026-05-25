@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  bootstrap:
+    build: .
+    container_name: ewatts-bootstrap
+    ports:
+      - "9000:9000"
+      - "8080:8080"
+    volumes:
+      - ewatts_data_bootstrap:/data
+    environment:
+      - MODE=bootstrap
+      - P2P_PORT=9000
+      - DASH_PORT=8080
+      - DIFFICULTY=100
+      - PEER_ID_FILE=/data/peer_id.txt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  peer:
+    build: .
+    container_name: ewatts-peer-1
+    ports:
+      - "9001:9000"
+      - "8081:8080"
+    volumes:
+      - ewatts_data_peer1:/data
+    depends_on:
+      - bootstrap
+    environment:
+      - MODE=peer
+      - P2P_PORT=9000
+      - DASH_PORT=8080
+      - DIFFICULTY=100
+      - BOOTSTRAP_ADDR=/ip4/bootstrap/tcp/9000
+    restart: unless-stopped
+    profiles:
+      - all
+
+  # Additional peers (add more services or use --scale)
+  peer2:
+    build: .
+    container_name: ewatts-peer-2
+    ports:
+      - "9002:9000"
+      - "8082:8080"
+    volumes:
+      - ewatts_data_peer2:/data
+    depends_on:
+      - bootstrap
+    environment:
+      - MODE=peer
+      - P2P_PORT=9000
+      - DASH_PORT=8080
+      - DIFFICULTY=100
+      - BOOTSTRAP_ADDR=/ip4/bootstrap/tcp/9000
+    restart: unless-stopped
+    profiles:
+      - all
+
+volumes:
+  ewatts_data_bootstrap:
+  ewatts_data_peer1:
+  ewatts_data_peer2:
