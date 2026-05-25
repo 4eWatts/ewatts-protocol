@@ -32,6 +32,10 @@ pub struct BlockBody {
 pub struct Block {
     pub header: BlockHeader,
     pub body: BlockBody,
+    /// Hash of the header fields used for the PoW proof (excludes nonce/proof fields).
+    /// Set during mining; used by verifiers to validate against the same header hash
+    /// that the miner solved, even after post-mine fields are filled.
+    pub proof_hash: [u8; 32],
 }
 
 /// UTXO reference: (tx_hash, output_index)
@@ -228,6 +232,26 @@ impl BlockHeader {
         if let Some(root) = self.proof_merkle_root {
             h.update(root);
         }
+        h.finalize().into()
+    }
+
+    /// Hash used for PoW proof: excludes nonce and proof-related fields.
+    /// Returns the SAME value before and after mining, ensuring verifiers
+    /// validate against the hash that the miner actually solved.
+    pub fn proof_hash(&self) -> [u8; 32] {
+        let mut h = Keccak256::new();
+        h.update(self.version.to_le_bytes());
+        h.update(self.previous_hash);
+        h.update(self.merkle_root);
+        h.update(self.timestamp.to_le_bytes());
+        h.update(self.height.to_le_bytes());
+        h.update(self.epoch.to_le_bytes());
+        h.update(self.difficulty_target.to_le_bytes());
+        h.update(self.total_effective_commit.to_le_bytes());
+        h.update(self.emission_rate.to_le_bytes());
+        h.update(self.miner_effective_commit.to_le_bytes());
+        h.update(self.vr_block.to_le_bytes());
+        h.update(self.coinbase_burn.to_le_bytes());
         h.finalize().into()
     }
 }

@@ -334,9 +334,11 @@ mod tests {
     }
 
     fn make_block(height: u64, prev: [u8; 32]) -> Block {
+        let hdr = make_header(height, prev);
         Block {
-            header: make_header(height, prev),
+            header: hdr,
             body: BlockBody { transactions: vec![], commitments: vec![] },
+            proof_hash: [0u8; 32],
         }
     }
 

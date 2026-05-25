@@ -449,9 +449,11 @@ fn cmd_init() {
             transactions: vec![],
             commitments: vec![],
         };
+        let genesis_ph = genesis_header.proof_hash();
         let genesis_block = crate::block::Block {
             header: genesis_header,
             body: genesis_body,
+            proof_hash: genesis_ph,
         };
         if let Err(e) = crate::store::save_block(&genesis_block) {
             println!("Error saving genesis block: {}", e);
@@ -554,11 +556,13 @@ pub fn mine_block_with_key(
         elapsed_ms: 0,
         proof_merkle_root: None,
     };
-    let header_hash = header.hash();
+    // Compute proof hash BEFORE mining (excludes nonce/proof fields)
+    // so verifiers get the same hash that the miner actually solved.
+    let proof_hash = header.proof_hash();
 
     // Mine
     println!("  Mining (difficulty={})...", difficulty);
-    let sol = crate::proof::mine(&header_hash, difficulty, &dag, 50000)
+    let sol = crate::proof::mine(&proof_hash, difficulty, &dag, 50000)
         .ok_or("No solution found")?;
 
     // Work report
@@ -711,6 +715,7 @@ pub fn mine_block_with_key(
             transactions: block_txs,
             commitments: vec![commit],
         },
+        proof_hash,
     };
 
     // Apply to UTXO set with tracking

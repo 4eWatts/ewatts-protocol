@@ -351,6 +351,7 @@ fn integration_coinbase_empty_inputs_required() {
             proof_merkle_root: None,
         },
         body: BlockBody { transactions: vec![bad_coinbase], commitments: vec![] },
+        proof_hash: [0u8; 32],
     };
     let result = state.apply_block(&block, 1);
     assert!(result.is_err(), "Expected error for coinbase with inputs, got ok");
