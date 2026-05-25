@@ -25,9 +25,6 @@ pub fn analyze_fork(
     let height = block.header.height;
     let prev_hash = block.header.previous_hash;
 
-    if store.get_block(&hash).is_some() {
-        return ForkDecision::Reject("Duplicate block".into());
-    }
     if store.get_block(&prev_hash).is_none() {
         if height == 0 {
             return ForkDecision::Reject("Genesis already exists".into());
@@ -209,9 +206,11 @@ mod tests {
     }
 
     fn make_block(height: u64, prev: [u8; 32]) -> Block {
+        let hdr = make_header(height, prev);
         Block {
-            header: make_header(height, prev),
+            header: hdr,
             body: BlockBody { transactions: vec![], commitments: vec![] },
+            proof_hash: [0u8; 32],
         }
     }
 
@@ -317,7 +316,7 @@ mod tests {
                 }],
                 ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
             };
-            Block { header, body: BlockBody { transactions: vec![tx], commitments: vec![] } }
+            Block { header: header.clone(), body: BlockBody { transactions: vec![tx], commitments: vec![] }, proof_hash: header.proof_hash() }
         };
 
         // ── Genesis state ──

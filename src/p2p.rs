@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use libp2p::{
     identity, PeerId, Multiaddr, Swarm,
-    noise, yamux, tcp,
+    noise, yamux, tcp, ping,
     swarm::{SwarmEvent, NetworkBehaviour, Config as SwarmConfig},
     request_response::{self, ProtocolSupport},
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
@@ -32,12 +32,14 @@ type SyncBehaviour = request_response::json::Behaviour<P2pMessage, P2pMessage>;
 pub struct EwattsBehaviour {
     pub gossipsub: gossipsub::Behaviour,
     pub block_sync: SyncBehaviour,
+    pub ping: ping::Behaviour,
 }
 
 #[derive(Debug)]
 pub enum P2pEvent {
     Gossipsub(gossipsub::Event),
     BlockSync(request_response::Event<P2pMessage, P2pMessage>),
+    Ping(ping::Event),
 }
 
 impl From<gossipsub::Event> for P2pEvent {
@@ -45,6 +47,9 @@ impl From<gossipsub::Event> for P2pEvent {
 }
 impl From<request_response::Event<P2pMessage, P2pMessage>> for P2pEvent {
     fn from(e: request_response::Event<P2pMessage, P2pMessage>) -> Self { P2pEvent::BlockSync(e) }
+}
+impl From<ping::Event> for P2pEvent {
+    fn from(e: ping::Event) -> Self { P2pEvent::Ping(e) }
 }
 
 pub struct P2pNode {
@@ -81,8 +86,9 @@ impl P2pNode {
             request_response::Config::default().with_request_timeout(Duration::from_secs(30)),
         );
 
-        let behaviour = EwattsBehaviour { gossipsub, block_sync };
-        let config = SwarmConfig::with_tokio_executor();
+        let behaviour = EwattsBehaviour { gossipsub, block_sync, ping: ping::Behaviour::default() };
+        let mut config = SwarmConfig::with_tokio_executor();
+        config = config.with_idle_connection_timeout(std::time::Duration::from_secs(60));
         let mut swarm = Swarm::new(transport, behaviour, peer_id, config);
         swarm.listen_on(listen_addr.parse()?)?;
 
@@ -120,7 +126,7 @@ impl P2pNode {
         {
             let epoch = height / crate::constants::DAG_EPOCH_BLOCKS;
             let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
-            let header_hash = block.header.hash();
+            let header_hash = block.proof_hash;
             let solution = crate::proof::Solution {
                 nonce: block.header.nonce,
                 proof_trace: vec![],
@@ -214,9 +220,11 @@ impl P2pNode {
                                 &peer_id, P2pMessage::BlockRequest { from_height: from, to_height: from + 100 },
                             );
                         }
-                        SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                        SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
+                            println!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peers.remove(&peer_id);
                         }
+                        SwarmEvent::Behaviour(P2pEvent::Ping(_)) => {}
                         SwarmEvent::Behaviour(P2pEvent::Gossipsub(gossipsub::Event::Message {
                             propagation_source: _source, message, ..
                         })) => {
