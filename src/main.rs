@@ -89,6 +89,7 @@ pub(crate) async fn cmd_start(args: &[String]) {
     let initial_difficulty: u64 = parse_arg(args, "--difficulty")
         .and_then(|s| s.parse().ok())
         .unwrap_or(100);
+    let enable_mining = !args.iter().any(|s| s == "--no-mine");
         
     println!("Ewatts Testnet Daemon");
     println!("  Dashboard: http://0.0.0.0:{}/", dash_port);
@@ -140,7 +141,7 @@ pub(crate) async fn cmd_start(args: &[String]) {
             Ok(mut node) => {
                 println!("P2P Node ID: {}", node.peer_id);
                 // P2P.run() handles its own mining loop + state + gossip
-                node.run(true, &mut *state.lock().unwrap()).await;
+                node.run(enable_mining, &mut *state.lock().unwrap()).await;
             }
             Err(e) => println!("P2P error: {}", e),
         }
