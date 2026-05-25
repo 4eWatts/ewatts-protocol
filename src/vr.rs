@@ -1,13 +1,4 @@
-// ─── Integer math versions (f64→u64 migration) ───────────────────────
-// All effective GB/s values in COMMIT_PRECISION (1e9) units.
-// Final VR in VR_PRECISION (1e6) units = milli-VR.
-
-/// Integer version of compute_vr.
-/// avg_eff: average effective commitment in COMMIT_PRECISION units
-/// total_ewatts: total Ewatt mined in EMISSION_PRECISION units
-/// window_blocks: number of blocks in window
-/// block_time_secs: target block time in seconds
-/// Returns VR in VR_PRECISION units (1e6 = 1.0 kWh/Ewatt)
+/// VR = avg_eff * block_time * window / (360M * total_ewatts) in VR_PRECISION units
 pub fn compute_vr_int(
     avg_eff: u64,
     total_ewatts: u64,
@@ -17,18 +8,6 @@ pub fn compute_vr_int(
     if total_ewatts == 0 || window_blocks == 0 || avg_eff == 0 {
         return 0;
     }
-    // total_gb = (avg_effective_gbps * total_secs) / 8
-    // total_joules = total_gb * J_PER_GB
-    // total_kwh = total_joules / J_PER_KWH
-    // vr = total_kwh / total_ewatts_mined
-    //
-    // J_PER_GB = 0.08 = 8/100, J_PER_KWH = 3,600,000
-    //
-    // vr = (avg_eff * block_time * window / 8 * 0.08 / 3,600,000) / total_ewatts
-    //   = (avg_eff * block_time * window * 0.01) / (3,600,000 * total_ewatts)
-    //   = (avg_eff * block_time * window) / (360,000,000 * total_ewatts)
-    //
-    // Precision: multiply by VR_PRECISION first
     let total_secs = window_blocks.saturating_mul(block_time_secs);
     let numerator = avg_eff
         .saturating_mul(total_secs)
@@ -39,7 +18,6 @@ pub fn compute_vr_int(
 }
 
 pub fn format_vr_int(vr: u64) -> String {
-    // vr is in VR_PRECISION units (1e6 = 1.0 kWh/Ewatt)
     if vr == 0 { return "0.000 kWh/Ewatt".to_string(); }
     let kwh = vr as f64 / crate::constants::VR_PRECISION as f64;
     if kwh < 1e-6 {

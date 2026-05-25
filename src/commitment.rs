@@ -13,43 +13,24 @@ pub struct Commitment {
     pub signature: Vec<u8>,
 }
 
-// ─── Integer math versions (f64→u64 migration) ───────────────────────
-// All values in COMMIT_PRECISION (1e9) units unless otherwise noted.
-
-/// Integer version of compute_efficiency.
-/// work_mbytes: work in megabytes (u64)
-/// bw_mgbps: bandwidth in milli-GB/s (1 GB/s = 1000 mGB/s)
-/// time_ms: time in milliseconds
-/// Returns efficiency in EFF_PRECISION units (1.0 = 1_000_000)
+/// eff = work / (bw * time) in EFF_PRECISION units
 pub fn compute_efficiency_int(work_mbytes: u64, bw_mgbps: u64, time_ms: u64) -> u64 {
     if bw_mgbps == 0 || time_ms == 0 {
         return 0;
     }
-    // efficiency = work / (bw * time)
-    // work_mbytes / ((bw_mgbps / 1000.0) * (time_ms / 1000.0))
-    // = work_mbytes / (bw_mgbps * time_ms / 1_000_000)
-    // = (work_mbytes * 1_000_000 * EFF_PRECISION) / (bw_mgbps * time_ms * EFF_PRECISION / EFF_PRECISION)
-    // Simplified: (work_mbytes * 1_000_000 * eff_precision) / (bw_mgbps * time_ms)
-    // To avoid overflow: (work_mbytes * 1_000_000 / bw_mgbps) * eff_precision / time_ms
     let numerator = work_mbytes.saturating_mul(1_000_000);
     let ratio = numerator / bw_mgbps.max(1);
     let eff = ratio.saturating_mul(crate::constants::EFF_PRECISION) / time_ms.max(1);
-    eff.min(crate::constants::EFF_PRECISION * 2) // cap at 2.0
+    eff.min(crate::constants::EFF_PRECISION * 2)
 }
 
-/// Integer version of effective_commitment.
-/// bandwidth: bandwidth in COMMIT_PRECISION units (1 GB/s = 1e9)
-/// efficiency: efficiency in EFF_PRECISION units (1.0 = 1e6)
-/// Returns effective commitment in COMMIT_PRECISION units.
+/// Effective commitment = bandwidth adjusted by efficiency, in COMMIT_PRECISION units
 pub fn effective_commitment_int(bandwidth: u64, efficiency: u64) -> u64 {
-    let cap = crate::constants::EFFICIENCY_CAP_THRESHOLD_INT; // 1.3 * 1e6
-    let penalty = crate::constants::EFFICIENCY_PENALTY_THRESHOLD_INT; // 0.7 * 1e6
-    
+    let cap = crate::constants::EFFICIENCY_CAP_THRESHOLD_INT;
+    let penalty = crate::constants::EFFICIENCY_PENALTY_THRESHOLD_INT;
     if efficiency < penalty {
-        // d * e: bandwidth * efficiency / EFF_PRECISION
         bandwidth.saturating_mul(efficiency) / crate::constants::EFF_PRECISION
     } else if efficiency > cap {
-        // d * 1.3: bandwidth * 1_300_000 / 1_000_000
         bandwidth.saturating_mul(cap) / crate::constants::EFF_PRECISION
     } else {
         bandwidth
@@ -57,15 +38,13 @@ pub fn effective_commitment_int(bandwidth: u64, efficiency: u64) -> u64 {
 }
 
 pub fn min_commitment_int(r: &[u64]) -> u64 {
-    // Minimum bandwidth: 1.0 GB/s = 1000 mGB/s
-    // Rolling minimum: 0.1 * median(r)
     if r.is_empty() {
         1000
     } else {
         let mut s = r.to_vec();
         s.sort();
         let med = s[s.len() / 2];
-        1000.max(med / 10) // 0.1 * median
+        1000.max(med / 10)
     }
 }
 
@@ -114,21 +93,18 @@ mod tests {
     }
     #[test]
     fn test_eff_int() {
-        // work_mbytes=100_000, bw_mgbps=100_000, time_ms=1_000 → eff ≈ 1.0
         let e = compute_efficiency_int(100_000, 100_000, 1_000);
         assert!(e >= crate::constants::EFF_PRECISION - 1000, "eff ~1.0, got {}", e);
     }
     #[test]
     fn test_penalty_int() {
-        // bandwidth=1_000_000_000 (COMMIT_PRECISION), efficiency=500_000 (0.5 * EFF_PRECISION)
         let ce = effective_commitment_int(1_000_000_000, 500_000);
-        assert_eq!(ce, 500_000_000, "d * e: 1e9 * 0.5 = 5e8");
+        assert_eq!(ce, 500_000_000);
     }
     #[test]
     fn test_cap_int() {
-        // bandwidth=1_000_000_000, efficiency=2_000_000 (2.0 * EFF_PRECISION, >1.3 cap)
         let ce = effective_commitment_int(1_000_000_000, 2_000_000);
-        assert_eq!(ce, 1_300_000_000, "d * 1.3: 1e9 * 1.3 = 1.3e9");
+        assert_eq!(ce, 1_300_000_000);
     }
     #[test]
     fn test_sign() {

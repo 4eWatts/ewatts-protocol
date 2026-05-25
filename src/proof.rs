@@ -16,8 +16,7 @@ pub struct Solution {
     pub proof_trace: Vec<AccessSample>,
     pub elapsed_ms: u64,
     pub walk_length: u64,
-    /// Optional Merkle root over the proof trace samples (Opção B).
-    /// When Some, verifier can use sampled verification.
+    /// Optional Merkle root for sampled verification
     pub merkle_root: Option<[u8; 32]>,
 }
 
@@ -52,10 +51,7 @@ fn initial_mix(header_hash: &[u8; 32], nonce: u64) -> [u8; 64] {
     mix
 }
 
-// ─── Merkle tree utilities (Opção B) ──────────────────────────────────
-
-/// Build a binary Merkle root from a list of 32-byte leaf hashes.
-/// Odd-numbered leaves at any level are paired with themselves (duplicated).
+/// Build binary Merkle root from 32-byte leaf hashes (self-pair on odd)
 pub fn merkle_root_from_leaves(leaves: &[[u8; 32]]) -> [u8; 32] {
     if leaves.is_empty() {
         return [0u8; 32];
@@ -78,7 +74,7 @@ pub fn merkle_root_from_leaves(leaves: &[[u8; 32]]) -> [u8; 32] {
     level[0]
 }
 
-/// Compute the leaf hash for a single access sample (position + mix_hash).
+/// Leaf hash = H(position || mix_hash)
 pub fn sample_leaf_hash(position: u64, mix_hash: &[u8; 64]) -> [u8; 32] {
     let mut h = Keccak256::new();
     h.update(position.to_le_bytes());
@@ -86,14 +82,13 @@ pub fn sample_leaf_hash(position: u64, mix_hash: &[u8; 64]) -> [u8; 32] {
     h.finalize().into()
 }
 
-/// Generate a random set of sample indices to check (N indices from 0..total).
+/// Pick N random indices from 0..total via partial Fisher-Yates
 pub fn sample_indices(n: usize, total: usize, rng: &mut impl rand::Rng) -> Vec<usize> {
     if total == 0 {
         return vec![];
     }
     let n = n.min(total);
     let mut indices: Vec<usize> = (0..total).collect();
-    // Fisher-Yates partial shuffle: only first N
     for i in 0..n {
         let j = rng.gen_range(i..total);
         indices.swap(i, j);
@@ -108,7 +103,6 @@ pub fn mine(
     nonce_limit: u64,
 ) -> Option<Solution> {
     let walk_length = difficulty_to_accesses(difficulty);
-    // Integer math: VERIFICATION_SAMPLE_RATE = 0.001 = 1/1000
     let sample_interval = std::cmp::max(1, walk_length / 1000);
     let mut rng = rand::thread_rng();
     for _attempt in 0..nonce_limit {
@@ -137,7 +131,6 @@ pub fn mine(
         let elapsed_ms = start.elapsed().as_millis() as u64;
         let final_hash: [u8; 32] = Keccak256::digest(&mix).into();
         if meets_difficulty(&final_hash, difficulty) {
-            // Build Merkle root from proof trace (if any samples collected)
             let merkle_root = if trace.is_empty() {
                 None
             } else {
@@ -175,7 +168,6 @@ pub fn verify(
 
     let sample_interval = std::cmp::max(1, walk_length / 1000);
 
-    // ── Fast path: empty trace, full walk (no samples to verify) ────
     if solution.proof_trace.is_empty() {
         let mut mix = initial_mix(header_hash, solution.nonce);
         for _i in 0..walk_length {
@@ -192,11 +184,8 @@ pub fn verify(
         return Ok(());
     }
 
-    // ── Verificação amostrada com Merkle root (Opção B) ─────────────
-    //    Usado quando a solução carrega o proof_trace + merkle_root.
-    //    Verifica N=30 amostras aleatórias em vez do walk completo.
     if let Some(merkle_root) = solution.merkle_root {
-        // 1) Verify the Merkle root commits to the proof trace
+        // Verify Merkle root commits to trace
         let leaf_hashes: Vec<[u8; 32]> = solution.proof_trace
             .iter()
             .map(|s| sample_leaf_hash(s.position, &s.mix_hash))
@@ -206,7 +195,7 @@ pub fn verify(
             return Err("Merkle root mismatch".to_string());
         }
 
-        // 2) Check N random sample positions against full recompute
+        // Check N=30 random samples against full recompute
         let total = solution.proof_trace.len();
         let n = 30usize.min(total);
         let mut rng = rand::thread_rng();
@@ -227,7 +216,7 @@ pub fn verify(
             }
         }
 
-        // 3) Walk from last sample to end, check final hash meets difficulty
+        // Walk from last sample to end, check final hash
         let last = solution.proof_trace.last().unwrap();
         let mut mix = last.mix_hash;
         for _pos in (last.position + 1)..walk_length {
@@ -244,7 +233,7 @@ pub fn verify(
         return Ok(());
     }
 
-    // ── Fallback: full walk com verificação do proof trace (legacy) ──
+    // Fallback: full walk with proof trace verification
     let mut mix = initial_mix(header_hash, solution.nonce);
     let mut last_offset: u64 = 0;
     for i in 0..walk_length {
@@ -311,33 +300,28 @@ mod tests {
     }
     #[test]
     fn test_mine_and_verify() {
-        // Use a small DAG (64KB) to avoid 8GB generation during tests
         let dag = Dag::generate_with_size(0, 64 * 1024);
         let h = [0xabu8; 32];
         let s = mine(&h, 1, &dag, 100).unwrap();
         assert!(verify(&h, &s, 1, &dag).is_ok());
-        // Merkle root should be present when proof_trace is non-empty
-        assert!(s.merkle_root.is_some(), "mine should produce merkle root");
+        assert!(s.merkle_root.is_some());
     }
     #[test]
     fn test_merkle_root_verify() {
-        // Verify that the Merkle root correctly commits to the proof trace
         let dag = Dag::generate_with_size(0, 64 * 1024);
         let h = [0xabu8; 32];
         let s = mine(&h, 1, &dag, 100).unwrap();
-        // Recompute root from trace
         let leaf_hashes: Vec<[u8; 32]> = s.proof_trace.iter().map(|s|
             sample_leaf_hash(s.position, &s.mix_hash)
         ).collect();
         let computed = merkle_root_from_leaves(&leaf_hashes);
-        assert_eq!(Some(computed), s.merkle_root, "Merkle root should match trace");
-        // Tampered leaf should produce different root
+        assert_eq!(Some(computed), s.merkle_root);
         let tampered: Vec<[u8; 32]> = s.proof_trace.iter().map(|s| {
             let mut mix = s.mix_hash;
             mix[0] ^= 0xff;
             sample_leaf_hash(s.position, &mix)
         }).collect();
-        assert_ne!(merkle_root_from_leaves(&tampered), computed, "Tampered trace should differ");
+        assert_ne!(merkle_root_from_leaves(&tampered), computed);
     }
     #[test]
     fn test_walk_length() {

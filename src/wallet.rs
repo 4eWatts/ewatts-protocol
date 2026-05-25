@@ -1,20 +1,4 @@
-//! Ewatts Wallet — stealth key management, UTXO scanning, private tx construction.
-//!
-//! ## SECURITY NOTE
-//! This wallet is a REFERENCE implementation for testnet. It is NOT hardened against:
-//! - Side-channel attacks (key material processed in software without isolation)
-//! - Persistent state monitoring (keys stored unencrypted on disk)
-//! - Malicious RNG (uses ThreadRng, which is not cryptographically audited for production)
-//! - Sophisticated chain analysis (ring selection is simple, not optimized for maximum entropy)
-//! Production wallet requires HSM integration, encrypted key storage, and constant-time operations.
-//!
-//! ## Usage
-//! ```bash
-//! ewatts wallet new          # Generate stealth keypair
-//! ewatts wallet balance      # Scan blockchain for owned UTXOs
-//! ewatts wallet send <addr> <amount>  # Create and broadcast private tx
-//! ewatts wallet list         # List all wallet keys
-//! ```
+//! Ewatts Wallet — reference testnet implementation (NOT production-hardened).
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
@@ -35,11 +19,11 @@ const WALLET_DIR: &str = "ewatts_data/wallets";
 /// A single stealth keypair in the wallet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StealthKeyEntry {
-    pub view_secret: [u8; 32],      // Scalar bytes
-    pub spend_secret: [u8; 32],     // Scalar bytes
-    pub spend_key: [u8; 32],        // Compressed RistrettoPoint
-    pub view_key: [u8; 32],         // Compressed RistrettoPoint
-    pub legacy_public_key: Vec<u8>, // ed25519 public key (P1-3: legacy UTXO detection)
+    pub view_secret: [u8; 32],
+    pub spend_secret: [u8; 32],
+    pub spend_key: [u8; 32],
+    pub view_key: [u8; 32],
+    pub legacy_public_key: Vec<u8>,
     pub label: String,
 }
 
@@ -48,7 +32,6 @@ impl StealthKeyEntry {
         hex::encode(self.spend_key)
     }
 
-    /// Derive the StealthAddress from stored bytes.
     pub fn stealth_address(&self) -> Result<StealthAddress, String> {
         let s = curve25519_dalek::ristretto::CompressedRistretto(self.spend_key)
             .decompress()
@@ -117,11 +100,9 @@ impl Wallet {
         println!("  Wallet saved: {}", path);
     }
 
-    /// Generate a new stealth keypair and add to wallet.
     pub fn new_key(&mut self, label: &str) {
         let mut rng = rand::thread_rng();
         let (addr, key) = StealthAddress::generate(&mut rng);
-        // Also generate ed25519 key for legacy coinbase UTXOs (P1-3 fix)
         let ed_secret = SigningKey::generate(&mut rng);
         let ed_public = ed_secret.verifying_key().to_bytes().to_vec();
         let entry = StealthKeyEntry {
@@ -139,7 +120,7 @@ impl Wallet {
         println!("  Label: {}", label);
     }
 
-    /// Scan the UTXO set for outputs owned by this wallet.
+    /// Check UTXO set for outputs this wallet can spend.
     pub fn scan_utxos(&self, utxo_set: &UtxoSet) -> Vec<OwnedUtxo> {
         let mut owned = Vec::new();
         let map = utxo_set.utxos_map();

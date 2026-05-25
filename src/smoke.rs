@@ -1,8 +1,4 @@
-//! Smoke tests + adversarial mining tests.
-//!
-//! Smoke tests verify the mining + state pipeline without panic.
-//! Adversarial tests use mine_block_with_key for external key injection
-//! and verify chain validation under multiple miner scenarios.
+//! Smoke and adversarial mining tests.
 
 use crate::mine_block_with_difficulty;
 use crate::mine_block_with_key;
@@ -10,7 +6,7 @@ use crate::state::UtxoSet;
 use ed25519_dalek::SigningKey;
 
 
-/// Mine N blocks in round-robin across N agents (internal keys).
+
 pub(crate) fn run_round_robin_test(
     num_agents: usize,
     num_blocks: u64,
@@ -61,9 +57,7 @@ fn smoke_round_robin_uneven_blocks() {
     assert_eq!(counts[1], 2);
 }
 
-// ─── Adversarial Tests (Phase 3) ──────────────────────────────────────
-
-/// Test that mine_block_with_key accepts external signing keys.
+/// Test mine_block_with_key with external signing keys
 #[test]
 fn adv_external_key_mining() {
     let mut rng = rand::thread_rng();
@@ -75,11 +69,9 @@ fn adv_external_key_mining() {
         [0u8; 32], 1, &mut state, 1, 256 * 1024, &key,
     ).expect("External key mining");
 
-    // Verify miner pubkey is in coinbase output
     let coinbase = &block.body.transactions[0];
     assert_eq!(coinbase.outputs.len(), 1);
     assert_eq!(coinbase.inputs.len(), 0);
-    // Block should have valid hash
     assert_ne!(block.header.hash(), [0u8; 32]);
     assert_eq!(block.header.height, 1);
 }

@@ -1,32 +1,22 @@
-//! Reorg engine: handles chain reorganization when a heavier fork is detected.
-//! Integrates ChainStore, UtxoSet, and mempool for safe fork switching.
+//! Fork detection and chain reorganization.
 
 use crate::block::Block;
 use crate::chain::ChainStore;
 use crate::state::{BlockDiff, UtxoKey, UtxoSet};
 
-/// Result of checking a new block against the current chain.
 #[derive(Debug)]
 pub enum ForkDecision {
-    /// Block extends canonical chain → accept normally.
     ExtendCanonical,
-    /// Block is a heavier competing fork → reorg to this chain.
     ReorgToNew {
-        /// Blocks to unwind (from current tip down to fork point).
         to_unwind: Vec<[u8; 32]>,
-        /// Blocks to apply (from fork point up to new tip).
         to_apply: Vec<[u8; 32]>,
     },
-    /// Block is a lighter competing fork → store but don't reorg.
     Sidechain,
-    /// Block is an orphan (parent unknown) → store for later.
     Orphan,
-    /// Block is invalid or already known.
     Reject(String),
 }
 
-/// Check what to do with a newly received block.
-/// Does NOT modify the store or state.
+/// Decide what to do with a new block (read-only)
 pub fn analyze_fork(
     block: &Block,
     store: &ChainStore,
@@ -35,26 +25,19 @@ pub fn analyze_fork(
     let height = block.header.height;
     let prev_hash = block.header.previous_hash;
 
-    // Already have this block?
     if store.get_block(&hash).is_some() {
         return ForkDecision::Reject("Duplicate block".into());
     }
-
-    // Known parent?
     if store.get_block(&prev_hash).is_none() {
         if height == 0 {
             return ForkDecision::Reject("Genesis already exists".into());
         }
         return ForkDecision::Orphan;
     }
-
-    // Extends canonical chain?
     if store.extends_canonical(&block.header) {
         return ForkDecision::ExtendCanonical;
     }
 
-    // Check if this block extends a known chain (sidechain or canonical fork)
-    // by computing the accumulated work of the chain it would create.
     let tip_hash = store.chain_tip_hash();
     let current_work = store.chain_tip_work();
     let block_work = crate::chain::compute_block_work(&block.header) as u128;
@@ -62,27 +45,19 @@ pub fn analyze_fork(
     let new_work = parent_work.saturating_add(block_work);
 
     if new_work > current_work {
-        // Heavier chain! Need to reorg.
-        // Use parent hash for LCA (new block isn't in the store yet)
         let lca = store.find_lca(&prev_hash, &tip_hash);
         if let Some(fork_point) = lca {
             let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
             let mut to_apply = store.get_chain_to_fork(&prev_hash, &fork_point);
-            to_apply.reverse(); // now fork_point → ... → parent
-            to_apply.push(hash); // add the new block
+            to_apply.reverse();
+            to_apply.push(hash);
             return ForkDecision::ReorgToNew { to_unwind, to_apply };
         }
     }
-
-    // Not heavier — just a sidechain or non-competing block
     ForkDecision::Sidechain
 }
 
-/// Execute a full reorg: unwind current chain, apply new chain.
-///
-/// Returns:
-/// - Ok(tx_hashes_to_resubmit): list of tx hashes from unwound blocks
-///   that are NOT in the new chain (should be returned to mempool).
+/// Execute reorg: unwind old chain, apply new chain, return txs to resubmit
 pub fn execute_reorg(
     to_unwind: &[[u8; 32]],
     to_apply: &[[u8; 32]],
@@ -95,7 +70,6 @@ pub fn execute_reorg(
         to_apply.len()
     );
 
-    // Safety: cap reorg depth at 100 blocks
     let max_reorg = 100;
     if to_unwind.len() > max_reorg || to_apply.len() > max_reorg {
         return Err(format!(

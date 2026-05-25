@@ -1,6 +1,4 @@
-//! Privacy module: ring signatures, stealth addresses, confidential amounts.
-//! Implements MLSAG (Multi-layered Linkable Spontaneous Anonymous Group) signatures
-//! over Ristretto255, Pedersen commitments with range proofs, and stealth addresses.
+//! Ring signatures (MLSAG), stealth addresses, Pedersen commitments.
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
@@ -10,31 +8,26 @@ use rand::rngs::ThreadRng;
 use serde::{Deserialize, Serialize};
 use sha3::Shake256;
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/// Scalar zero (API compat: v4.1.3 removed Scalar::zero()).
 fn scalar_zero() -> Scalar {
     Scalar::from(0u64)
 }
 
-/// Generator G for ring signatures (independent from ed25519 base).
+/// Generator G (independent from ed25519 base point)
 pub fn ring_g() -> RistrettoPoint {
     hash_to_point(b"Ewatts_Ring_G_v1")
 }
 
-/// Generator H for Pedersen commitments (amount blinding).
+/// Generator H for Pedersen commitments (blinding)
 pub fn pedersen_h() -> RistrettoPoint {
     hash_to_point(b"Ewatts_Pedersen_H_v1")
 }
 
-/// Hash a pubkey to a point (for key images): H_p(K).
+/// Hash a pubkey to a point (for key images)
 pub fn hash_pk(pk: &RistrettoPoint) -> RistrettoPoint {
     hash_to_point(pk.compress().as_bytes())
 }
 
-// ─── Hash to Point / Scalar ─────────────────────────────────────────────────
-
-/// Deterministic hash-to-scalar using Shake256 (64 bytes → reduce mod l).
+/// Deterministic hash-to-scalar via Shake256
 pub fn hash_to_scalar(data: &[u8]) -> Scalar {
     let mut hasher = Shake256::default();
     hasher.update(data);
@@ -44,7 +37,7 @@ pub fn hash_to_scalar(data: &[u8]) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&bytes)
 }
 
-/// Deterministic hash-to-point (Ristretto) using Shake256.
+/// Deterministic hash-to-point via Shake256
 pub fn hash_to_point(data: &[u8]) -> RistrettoPoint {
     let mut hasher = Shake256::default();
     hasher.update(b"Ewatts_HTP_v1:");
@@ -67,7 +60,7 @@ pub fn hash_to_point(data: &[u8]) -> RistrettoPoint {
     }
 }
 
-/// MLSAG challenge hash: c = H(msg, L, R) where L,R are combined across layers.
+/// MLSAG challenge: c = H(msg, L, R)
 fn mlsag_challenge(msg: &[u8], l: &RistrettoPoint, r: &RistrettoPoint) -> Scalar {
     let mut hasher = Shake256::default();
     hasher.update(b"MLSAG_c:");
@@ -80,23 +73,21 @@ fn mlsag_challenge(msg: &[u8], l: &RistrettoPoint, r: &RistrettoPoint) -> Scalar
     Scalar::from_bytes_mod_order_wide(&c_bytes)
 }
 
-// ─── Stealth Address ────────────────────────────────────────────────────────
-
-/// A stealth address: public spend key + public view key.
+/// Stealth address (spend + view public keys)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StealthAddress {
     pub spend_key: RistrettoPoint,
     pub view_key: RistrettoPoint,
 }
 
-/// A one-time destination derived from a stealth address.
+/// One-time destination (dest + ephemeral key)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OneTimeAddress {
     pub dest: RistrettoPoint,
     pub ephemeral: RistrettoPoint,
 }
 
-/// Full private key for a stealth address.
+/// Stealth private key
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct OneTimeKey {
     pub spend: Scalar,
@@ -141,8 +132,7 @@ pub fn recover_one_time_key(
 pub struct Commitment(pub RistrettoPoint);
 
 impl Commitment {
-    /// Create a commitment to amount v with random blinding.
-    pub fn new(v: u64, rng: &mut ThreadRng) -> (Self, Scalar) {
+        pub fn new(v: u64, rng: &mut ThreadRng) -> (Self, Scalar) {
         let a = Scalar::random(rng);
         (Commitment::new_with_blinding(v, a), a)
     }
@@ -173,9 +163,7 @@ impl Commitment {
     }
 }
 
-// ─── MLSAG Ring Signature ──────────────────────────────────────────────────
-
-/// A multi-layered ring signature (MLSAG).
+/// Multi-layered Linkable Spontaneous Anonymous Group signature
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MLSAGSignature {
     pub ring_size: usize,
@@ -186,19 +174,7 @@ pub struct MLSAGSignature {
 }
 
 impl MLSAGSignature {
-    /// Sign with MLSAG.
-    ///
-    /// SECURITY NOTE: The signing loop processes positions in order
-    /// (real_index+1, real_index+2, ..., real_index-1). This is NOT
-    /// constant-time with respect to real_index. An attacker with
-    /// timing/cache observation of the signer's machine may be able
-    /// to recover real_index, breaking anonymity. Side-channel
-    /// hardening is planned for post-testnet phase.
-    ///
-    /// c_{π+1} = H(msg, α*G, α*H_p(K_π))          [α step, no prior challenge]
-    /// c_{i+1} = H(msg, r_i*G + c_i*K_i, r_i*H_p(K_i) + c_i*I)  [i ≠ π]
-    /// r_π = α - c_π * k
-    /// c0 = c_0  (output of position m-1)
+        /// Sign. NOT constant-time w.r.t. real_index (testnet only).
     pub fn sign(
         ring: &[Vec<RistrettoPoint>],
         secret_keys: &[Scalar],

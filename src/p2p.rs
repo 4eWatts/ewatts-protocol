@@ -87,7 +87,6 @@ impl P2pNode {
         swarm.listen_on(listen_addr.parse()?)?;
 
         if let Some(addr) = bootstrap {
-            // Retry dial a few times with backoff in case peer hasn't finished init
             for attempt in 1..=3 {
                 match swarm.dial(addr.clone()) {
                     Ok(()) => {
@@ -118,7 +117,6 @@ impl P2pNode {
     ) -> Result<(), String> {
         let height = block.header.height;
 
-        // 1. Verify the block's proof-of-work
         {
             let epoch = height / crate::constants::DAG_EPOCH_BLOCKS;
             let dag = crate::dag::Dag::generate_with_size(epoch, 4 * 1024 * 1024);
@@ -133,25 +131,22 @@ impl P2pNode {
             crate::proof::verify(&header_hash, &solution, block.header.difficulty_target, &dag)?;
         }
 
-        // 2. Check the store for the block's parent
         let parent_known = store.get_block(&block.header.previous_hash).is_some();
         if !parent_known && height > 0 {
-            // Orphan block: store for later
+            // Orphan: queue for later
             println!("P2P: Orphan block #{} (parent unknown), queuing", height);
             store.add_orphan(block.clone());
             return Ok(());
         }
 
-        // 3. Add block to the chain store (establishes parent-child relationship)
         if store.get_block(&block.header.hash()).is_some() {
             return Err("Duplicate block".into());
         }
         store.add_block(block.clone())?;
 
-        // 4. Analyze fork and decide action
+        // Analyze fork
         match crate::reorg::analyze_fork(block, store) {
             crate::reorg::ForkDecision::ExtendCanonical => {
-                // Apply to state and capture diff for reorg
                 let diff = state.apply_block_and_track(block, height)?;
                 store.block_diffs.insert(block.header.hash(), diff);
                 store.set_chain_tip(&block.header.hash()).ok();
@@ -163,22 +158,17 @@ impl P2pNode {
                 let resurrected = crate::reorg::execute_reorg(
                     &to_unwind, &to_apply, store, state
                 )?;
-                // Return resurrected txs to mempool
                 for tx_hash in &resurrected {
                     println!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
                 }
             }
             crate::reorg::ForkDecision::Sidechain => {
                 println!("P2P: Sidechain block #{} stored (not heaviest)", height);
-                // Block is stored in the tree, not applied to state.
-                // If the sidechain becomes heavier later, a reorg will be triggered.
             }
             crate::reorg::ForkDecision::Orphan => {
                 println!("P2P: Block #{} stored as orphan", height);
             }
             crate::reorg::ForkDecision::Reject(msg) => {
-                // Block was already in store — remove the duplicate entry
-                // (Actually, add_block() was a no-op for duplicates)
                 return Err(format!("Block rejected: {}", msg));
             }
         }
@@ -186,7 +176,7 @@ impl P2pNode {
         Ok(())
     }
 
-    /// Receive a validated block: save, update cache, gossip to peers.
+    /// Save block to disk and gossip to peers
     fn accept_block(block: &Block, swarm: &mut Swarm<EwattsBehaviour>) {
         let hash = block.header.hash();
         let h = block.header.height;
@@ -197,7 +187,6 @@ impl P2pNode {
         }
         println!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
 
-        // Gossip to peers
         if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block.clone())) {
             swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
         }
@@ -205,7 +194,6 @@ impl P2pNode {
 
     pub async fn run(&mut self, mine: bool, state: &mut crate::state::UtxoSet) {
         let mut last_state_save = std::time::Instant::now();
-        // Load or initialize fork-aware chain store
         let mut chain_store = crate::store::load_chain_store();
 
         loop {
@@ -219,7 +207,6 @@ impl P2pNode {
                             println!("P2P: Connected to {peer_id}");
                             self.peers.insert(peer_id);
 
-                            // Request latest blocks from new peer
                             let from = chain_store.chain_tip_height() + 1;
                             self.swarm.behaviour_mut().block_sync.send_request(
                                 &peer_id, P2pMessage::BlockRequest { from_height: from, to_height: from + 100 },
@@ -239,7 +226,6 @@ impl P2pNode {
                                         match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                             Ok(()) => {
                                                 Self::accept_block(&block, &mut self.swarm);
-                                                // Save chain store state to disk periodically
                                             }
                                             Err(e) => {
                                                 println!("P2P: Gossip block #{} rejected: {}", h, e);
@@ -247,7 +233,6 @@ impl P2pNode {
                                         }
                                     }
                                     P2pMessage::NewTransaction(tx) => {
-                                        // Validate and submit to mempool
                                         let tx_hash = tx.hash();
                                         match crate::mempool::submit(tx, state) {
                                             Ok(()) => println!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
@@ -305,7 +290,6 @@ impl P2pNode {
                     }
                 }
 
-                // Auto-mine every ~10 seconds if mine mode is enabled
                 _ = async { if mine {
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 } else {
@@ -319,7 +303,7 @@ impl P2pNode {
                 }
             }
 
-            // Periodic UTXO set save (every ~30s to prevent state loss on crash)
+            // Periodic state save (~30s)
             if last_state_save.elapsed() > std::time::Duration::from_secs(30) {
                 if let Err(e) = crate::store::save_utxo_set(state) {
                 if let Err(e) = crate::store::save_chain_store(&chain_store) {
@@ -327,7 +311,6 @@ impl P2pNode {
                 }
                     eprintln!("P2P: State save failed: {}", e);
                 }
-                // Write peer list for dashboard API
                 let peer_list: String = self.peers.iter()
                     .map(|p| p.to_string())
                     .collect::<Vec<_>>()
@@ -339,7 +322,6 @@ impl P2pNode {
         }
     }
 
-    /// Mine a block and gossip it to peers
     pub async fn mine_and_gossip(
         &mut self,
         prev_hash: [u8; 32],
@@ -352,20 +334,17 @@ impl P2pNode {
                 let hash = block.header.hash();
                 let h = block.header.height;
 
-                // Persist locally
                 if let Err(e) = crate::store::save_block(&block) {
                     eprintln!("P2P: Save error: {}", e);
                     return;
                 }
                 println!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
 
-                // Add to chain store with BlockDiff for reorg safety
                 if chain_store.get_block(&hash).is_none() {
                     let _ = chain_store.add_block_with_diff(block.clone(), diff);
                     chain_store.set_chain_tip(&hash).ok();
                 }
 
-                // Gossip to peers
                 if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
                     self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
                     println!("P2P: Gossiped block #{}", h);

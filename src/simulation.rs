@@ -13,22 +13,14 @@ use crate::mine_block_with_difficulty;
 use crate::state::UtxoSet;
 use crate::vr;
 use ed25519_dalek::SigningKey;
-/// A single block's VR measurement.
 pub struct VrSample {
     pub height: u64,
-    pub vr_millikwh: u64,    // VR in VR_PRECISION units (1e6 = 1.0 kWh/Ewatt)
-    pub effective_gbps: u64, // total effective commitment in COMMIT_PRECISION
-    pub total_supply: u64,   // cumulative supply in base units
+    pub vr_millikwh: u64,
+    pub effective_gbps: u64,
+    pub total_supply: u64,
 }
 
-/// Simulate mining and measure VR convergence.
-///
-/// Parameters:
-/// - num_blocks: total blocks to mine
-/// - dag_size: DAG size in bytes
-/// - difficulty: mining difficulty
-/// - sample_interval: record VR every N blocks
-/// - target_bandwidth_gbps: target effective bandwidth for network
+/// Simulate mining and measure VR convergence
 pub fn simulate_vr_convergence(
     num_blocks: u64,
     dag_size: u64,
@@ -86,8 +78,7 @@ pub fn simulate_vr_convergence(
     Ok(samples)
 }
 
-/// Simulate hashrate growth: start low, increase gradually.
-/// Demonstrates VR stabilization with scale.
+/// Simulate hashrate growth from low to high difficulty
 pub fn simulate_hashrate_growth(
     initial_difficulty: u64,
     final_difficulty: u64,

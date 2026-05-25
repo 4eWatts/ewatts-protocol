@@ -1,15 +1,4 @@
-//! Network shuffle harness — distributed block propagation simulator.
-//!
-//! Simulates N nodes connected via a chaotic network with variable latency,
-//! message duplication, and ordering variance. Each node maintains independent
-//! state and applies the real fork-choice rule (accumulated work) via the
-//! reorg engine when receiving blocks.
-//!
-//! Tests eventual consistency: after all blocks are delivered, all nodes should
-//! converge to the same chain tip (heaviest chain with most accumulated work).
-//!
-//! NOT an adversarial consensus simulation — no strategic actors, no block
-//! withholding, no eclipse attacks. See Fase C roadmap for those.
+//! Distributed block propagation simulator (eventual consistency test)
 
 use crate::chain::ChainStore;
 use crate::mine_block_with_difficulty;
@@ -35,56 +24,40 @@ impl ShuffleNode {
         ShuffleNode { state, store, peer_id, blocks_mined: 0 }
     }
 
-    /// Receive a block from the network. Uses the real fork-choice rule
-    /// (analyze_fork + execute_reorg) to decide what to do.
+    /// Receive block, apply real fork-choice rule
     fn receive_block(&mut self, block: &crate::block::Block) -> Result<(), String> {
         let hash = block.header.hash();
 
-        // Duplicate check
         if self.store.get_block(&hash).is_some() {
             return Ok(());
         }
 
-        // Add block to store (may fail if parent unknown — handled as orphan)
         let parent_hash = block.header.previous_hash;
         if parent_hash != [0u8; 32] && self.store.get_block(&parent_hash).is_none() {
             self.store.add_orphan(block.clone());
             return Ok(()); // orphan — will be resolved when parent arrives
         }
 
-        // Add block to chain store
         if let Err(e) = self.store.add_block(block.clone()) {
-            // Allow duplicate/orphan errors silently
             if e == "Parent block not found" || e == "Block already exists" {
                 return Ok(());
             }
             return Err(e);
         }
 
-        // Use the real fork-choice rule
         match reorg::analyze_fork(block, &self.store) {
             reorg::ForkDecision::ExtendCanonical => {
-                // Block builds on current tip — simple apply
                 let diff = self.state.apply_block_and_track(block, block.header.height)?;
                 self.store.block_diffs.insert(hash, diff);
                 self.store.set_chain_tip(&hash).ok();
             }
             reorg::ForkDecision::ReorgToNew { to_unwind, to_apply } => {
-                // Heavier chain found — execute reorg
                 let _resurrected = reorg::execute_reorg(&to_unwind, &to_apply, &mut self.store, &mut self.state)?;
             }
-            reorg::ForkDecision::Sidechain => {
-                // Block is valid but not heaviest — stored, not applied
-            }
-            reorg::ForkDecision::Orphan => {
-                // Already handled above
-            }
-            reorg::ForkDecision::Reject(msg) => {
-                return Err(format!("Block rejected: {}", msg));
-            }
+            _ => {}
         }
 
-        // Resolve any orphans that this block may have enabled
+        // Resolve orphans enabled by this block
         let resolved = self.store.resolve_orphans(&hash);
         for orphan_hash in resolved {
             if let Some(orphan_block) = self.store.get_block(&orphan_hash).cloned() {
@@ -96,12 +69,7 @@ impl ShuffleNode {
     }
 }
 
-/// Run the network shuffle test.
-/// - num_nodes: how many nodes to simulate
-/// - num_blocks: how many blocks to mine total
-/// - latency_ms: max artificial latency in ms (0 = no delay)
-/// - duplicate_chance: probability of duplicating a message (0.0-1.0)
-/// - shuffle_order: if true, deliver blocks in random order per node
+/// Shuffle test: N nodes, N blocks, eventual consistency check
 pub fn run_shuffle_test(
     num_nodes: usize,
     num_blocks: u64,
@@ -128,7 +96,6 @@ pub fn run_shuffle_test(
         ShuffleNode::new(genesis_block.clone(), genesis_diff.clone(), state, i)
     }).collect();
 
-    // ── Mine blocks on canonical state ──
     let mut canonical_state = UtxoSet::genesis(100_000_000, &genesis_pk);
     let mut prev_hash = genesis_hash;
     let mut all_blocks: Vec<(crate::block::Block, crate::state::BlockDiff)> = Vec::new();
@@ -143,7 +110,6 @@ pub fn run_shuffle_test(
         prev_hash = block_hash;
     }
 
-    // ── Gossip blocks with shuffle ──
     for (block, _diff) in &all_blocks {
         for recipient in 0..num_nodes {
             // Latency
@@ -162,16 +128,13 @@ pub fn run_shuffle_test(
         }
     }
 
-    // ── Resolve any remaining orphans ──
-    // Try gossiping all blocks again (orphans may have been resolved by now)
+    // Retry to resolve remaining orphans
     for (block, _diff) in &all_blocks {
         for recipient in 0..num_nodes {
             let _ = nodes[recipient].receive_block(block);
         }
     }
 
-    // ── Convergence check ──
-    // All nodes should have converged to the same heaviest tip
     let first_tip = nodes[0].store.chain_tip_hash();
     let first_height = nodes[0].store.chain_tip_height();
     for node in &nodes {

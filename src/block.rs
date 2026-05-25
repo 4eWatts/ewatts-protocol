@@ -12,15 +12,13 @@ pub struct BlockHeader {
     pub height: u64,
     pub epoch: u64,
     pub difficulty_target: u64,
-    pub total_effective_commit: u64,  // COMMIT_PRECISION units (1e9 per GB/s)
-    pub emission_rate: u64,           // base units per block (1 Ewatt = 1_000_000 units)
-    pub miner_effective_commit: u64,  // COMMIT_PRECISION units
-    pub vr_block: u64,                // VR_PRECISION units (1e6 per kWh/Ewatt)
-    pub coinbase_burn: u64,  // base units burned via ramp-up cap
+    pub total_effective_commit: u64,
+    pub emission_rate: u64,
+    pub miner_effective_commit: u64,
+    pub vr_block: u64,
+    pub coinbase_burn: u64,
     pub nonce: u64,
     pub elapsed_ms: u32,
-    /// Optional Merkle root of the proof trace access samples (Opção B).
-    /// When set, verifiers can run sampled verification instead of full walk.
     pub proof_merkle_root: Option<[u8; 32]>,
 }
 
@@ -36,16 +34,14 @@ pub struct Block {
     pub body: BlockBody,
 }
 
-/// A reference to a UTXO: (tx_hash, output_index).
-/// Used for ring member references.
+/// UTXO reference: (tx_hash, output_index)
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct UtxoRef {
     pub tx_hash: [u8; 32],
     pub output_index: u32,
 }
 
-/// MLSAG ring signature serialized for blockchain storage.
-/// All points stored as compressed bytes ([u8; 32]) for serde compatibility.
+/// Serialized MLSAG (compressed points for serde)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MlsagData {
     pub ring_size: usize,
@@ -56,7 +52,6 @@ pub struct MlsagData {
 }
 
 impl MlsagData {
-    /// Create from in-memory MLSAGSignature + ring reference.
     pub fn from_sig(sig: &crate::privacy::MLSAGSignature) -> Self {
         let compress = |pt: &curve25519_dalek::ristretto::RistrettoPoint| pt.compress().to_bytes();
         MlsagData {
@@ -80,7 +75,7 @@ impl MlsagData {
         }
     }
 
-    /// Deserialize to in-memory MLSAGSignature (without ring).
+    /// Deserialize to in-memory MLSAGSignature (ring excluded)
     pub fn to_sig(&self) -> Result<crate::privacy::MLSAGSignature, String> {
         use curve25519_dalek::ristretto::CompressedRistretto;
         use curve25519_dalek::scalar::Scalar;
@@ -116,9 +111,7 @@ pub struct Transaction {
     pub outputs: Vec<TxOutput>,
     pub ring_size: u16,
     pub signatures: Vec<Vec<u8>>,
-    /// MLSAG signature (private mode).
     pub mlsag: Option<MlsagData>,
-    /// For each input, the ring of UtxoRefs forming the anonymity set.
     pub ring_members: Option<Vec<Vec<UtxoRef>>>,
 }
 
@@ -126,28 +119,18 @@ pub struct Transaction {
 pub struct TxInput {
     pub previous_tx_hash: [u8; 32],
     pub output_index: u32,
-    pub key_image: [u8; 32], // 32 bytes = compressed RistrettoPoint for MLSAG
-    /// P2PKH: revealed public key when spending a hash-locked output.
-    /// Empty for MLSAG/private spends.
+    pub key_image: [u8; 32],
     pub revealed_pubkey: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxOutput {
-    /// Legacy: amount in plaintext (public mode / coinbase).
     pub amount: u64,
-    /// P2PKH: hash of public key (20 bytes, SHA256 truncated).
-    /// Empty for private/stealth outputs.
     pub pubkey_hash: [u8; 20],
-    /// Founder time-lock: 0 = immediate.
     pub spendable_after: u64,
-    /// Private mode: one-time stealth destination (compressed RistrettoPoint).
     pub stealth_dest: Option<[u8; 32]>,
-    /// Private mode: Pedersen commitment (compressed RistrettoPoint).
     pub commitment_bytes: Option<[u8; 32]>,
-    /// Private mode: serialized RangeProof.
     pub range_proof_bytes: Option<Vec<u8>>,
-    /// Private mode: ephemeral public key R = r*G (for one-time key recovery).
     pub ephemeral: Option<[u8; 32]>,
 }
 
@@ -177,7 +160,6 @@ impl TxOutput {
         }
     }
 
-    /// Create a private stealth output.
     pub fn new_private(
         amount: u64,
         dest: [u8; 32],
@@ -195,7 +177,6 @@ impl TxOutput {
         }
     }
 
-    /// Create a founder time-locked output.
     pub fn new_locked(amount: u64, pubkey: Vec<u8>, block_number: u64) -> Self {
         let ph = Self::hash_pubkey(&pubkey);
         let lock = if block_number < constants::RAMP_UP_BLOCKS {

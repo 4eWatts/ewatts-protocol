@@ -26,7 +26,6 @@ pub struct UtxoEntry {
 }
 
 impl UtxoEntry {
-    /// Decompress the stealth destination point, if present.
     pub fn stealth_dest_point(&self) -> Option<RistrettoPoint> {
         self.stealth_dest
             .and_then(|sd| curve25519_dalek::ristretto::CompressedRistretto(sd).decompress())
@@ -78,8 +77,7 @@ pub struct UtxoSet {
     total_supply: u64,
 }
 
-/// Build the message to be signed/hashed for a transaction.
-/// Used for both ed25519 legacy signing and MLSAG message.
+/// Build message to be signed (ed25519 or MLSAG)
 pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     let mut msg = Vec::new();
     for i in &tx.inputs {
@@ -115,7 +113,6 @@ fn make_signing_key() -> SigningKey {
     SigningKey::from_bytes(&b)
 }
 
-/// Verify a transaction signature using ed25519 (legacy public mode).
 pub fn verify_tx_signature(tx: &Transaction, pubkey_bytes: &[u8]) -> Result<(), String> {
     if tx.signatures.is_empty() {
         return Err("sem assinatura".into());
@@ -127,8 +124,6 @@ pub fn verify_tx_signature(tx: &Transaction, pubkey_bytes: &[u8]) -> Result<(), 
         .map_err(|_| "assinatura nao confere".to_string())
 }
 
-/// Verify an MLSAG ring signature against a ring of public keys.
-/// `ring_pubkeys`: for each layer, the set of pubkeys forming the ring.
 fn verify_mlsag(
     mlsag: &crate::block::MlsagData,
     ring_pubkeys: &[Vec<curve25519_dalek::ristretto::RistrettoPoint>],
@@ -175,16 +170,12 @@ pub fn build_ring_inline(
     Ok(ring)
 }
 
-/// Record of changes made by a single block, used for reorg unwinding.
+/// Per-block changes for reorg unwinding
 #[derive(Debug, Clone)]
 pub struct BlockDiff {
-    /// UTXOs that were consumed (key_image -> (key, entry) to restore on unwind)
     pub consumed: std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
-    /// Keys of UTXOs that were created (to remove on unwind)
     pub created: Vec<UtxoKey>,
-    /// Key images that were spent (to un-mark on unwind)
     pub key_images: Vec<[u8; 32]>,
-    /// Supply delta (positive = emission added, negative = burned)
     pub supply_delta: i64,
 }
 
@@ -237,7 +228,7 @@ impl UtxoSet {
             .unwrap_or(self.total_supply);
     }
 
-    /// Spend transaction inputs, verifying both public (ed25519) and private (MLSAG) sigs.
+    /// Spend tx inputs, verifying sigs (ed25519 or MLSAG)
     pub fn spend_transaction_inputs(
         &mut self,
         tx: &Transaction,
@@ -247,9 +238,7 @@ impl UtxoSet {
         self.spend_transaction_inputs_with_diff(tx, current_block, &mut no_diff)
     }
 
-    /// Same as spend_transaction_inputs but also populates a BlockDiff for each
-    /// individual mutation, ensuring that if a later input spend fails, the partial
-    /// diff is consistent for rollback (atomicity).
+    /// Like spend_transaction_inputs but records BlockDiff for rollback atomicity
     pub fn spend_transaction_inputs_with_diff(
         &mut self,
         tx: &Transaction,
@@ -270,15 +259,12 @@ impl UtxoSet {
             let mut all_rings = Vec::new();
             for (_input_idx, members_for_input) in ring_members.iter().enumerate() {
                 let ring = build_ring_inline(&self.utxos, members_for_input)?;
-                // Take only the first layer from each ring member (n_layers=1 per input)
                 let layer_ring: Vec<curve25519_dalek::ristretto::RistrettoPoint> =
                     ring.iter().map(|r| r[0]).collect();
                 all_rings.push(layer_ring);
             }
 
-            // Transpose: MLSAG expects ring[ring_pos][layer]
-            // We have all_rings[input_idx][ring_pos]
-            // We need ring[ring_pos][layer_idx]
+            // Transpose all_rings[input_idx][ring_pos] => ring[ring_pos][layer_idx]
             if all_rings.is_empty() {
                 return Err("No rings to verify".into());
             }

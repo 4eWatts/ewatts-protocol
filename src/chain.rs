@@ -1,44 +1,31 @@
-//! ChainStore: fork-aware block tree with heaviest-chain tracking.
-//! Manages all known blocks, chain tip, orphan queue, and fork detection.
+//! Fork-aware block store with heaviest-chain tracking.
 
 use crate::block::{Block, BlockHeader};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
-/// A lightweight block reference for the index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockEntry {
     pub height: u64,
     pub accumulated_work: u128,
-    pub block: Block,  // full block, kept in memory
+    pub block: Block,
 }
 
-/// How many orphan blocks we keep before evicting the oldest.
 const MAX_ORPHANS: usize = 500;
 
-/// The fork-aware block store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainStore {
-    /// All known blocks keyed by their hash.
     blocks: HashMap<[u8; 32], BlockEntry>,
-    /// Block diffs keyed by block hash (for reorg unwinding).
-    /// Populated when a block is applied via apply_block_and_track.
     #[serde(skip)]
     pub block_diffs: HashMap<[u8; 32], crate::state::BlockDiff>,
-    /// Hash of the current canonical chain tip.
     chain_tip: [u8; 32],
-    /// Orphan blocks: blocks whose parent is not yet known, keyed by hash.
     orphans: HashMap<[u8; 32], Block>,
-    /// Insertion order for orphan eviction (FIFO).
     orphan_order: VecDeque<[u8; 32]>,
-    /// Height of the current chain tip (cached for fast access).
     tip_height: u64,
-    /// Cumulative work of the current chain tip.
     tip_work: u128,
 }
 
 impl ChainStore {
-    /// Create a new ChainStore with genesis block.
     pub fn new(genesis: Block) -> Self {
         let genesis_hash = genesis.header.hash();
         let work = compute_block_work(&genesis.header) as u128;
@@ -59,7 +46,6 @@ impl ChainStore {
         }
     }
 
-    /// Create empty ChainStore (for loading from disk).
     pub fn empty() -> Self {
         ChainStore {
             blocks: HashMap::new(),
