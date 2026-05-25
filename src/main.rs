@@ -312,6 +312,18 @@ async fn serve_dashboard(port: &str) {
                         "node": "ewatts-testnet",
                     });
                     json_response(200, &serde_json::to_string(&status).unwrap())
+                } else if request.starts_with("GET /api/block") {
+                    let blocks = crate::store::load_blocks().unwrap_or_default();
+                    let block = blocks.last().cloned();
+                    match block {
+                        Some(b) => json_response(200, &serde_json::to_string(&serde_json::json!({
+                            "height": b.header.height,
+                            "hash": hex::encode(b.header.hash()),
+                            "txs": b.body.transactions.len(),
+                            "timestamp": b.header.timestamp,
+                        })).unwrap()),
+                        None => json_response(404, "{\"error\":\"No blocks\"}"),
+                    }
                 } else if request.starts_with("GET /api/peers") {
                     let peers = std::fs::read_to_string("p2p_peers.txt")
                         .unwrap_or_default();
