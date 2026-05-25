@@ -1,4 +1,4 @@
-# DePIN sobre eWatts — Marketplace de processamento útil
+# Nuhub — DePIN Marketplace sobre eWatts
 
 ## Conceito
 

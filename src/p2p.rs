@@ -7,6 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
+use log::{info, warn, debug, error};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::time::Duration;
@@ -96,15 +97,15 @@ impl P2pNode {
             for attempt in 1..=3 {
                 match swarm.dial(addr.clone()) {
                     Ok(()) => {
-                        println!("P2P: Dialing bootstrap {} (attempt {})", addr, attempt);
+                        debug!("P2P: Dialing bootstrap {} (attempt {})", addr, attempt);
                         break;
                     }
                     Err(e) => {
                         if attempt < 3 {
-                            eprintln!("P2P: Bootstrap dial failed ({}), retrying in {}s...", e, attempt);
+                            warn!("P2P: Bootstrap dial failed ({}), retrying in {}s...", e, attempt);
                             tokio::time::sleep(std::time::Duration::from_secs(attempt)).await;
                         } else {
-                            eprintln!("P2P: Bootstrap dial failed after 3 attempts: {}", e);
+                            error!("P2P: Bootstrap dial failed after 3 attempts: {}", e);
                         }
                     }
                 }
@@ -140,7 +141,7 @@ impl P2pNode {
         let parent_known = store.get_block(&block.header.previous_hash).is_some();
         if !parent_known && height > 0 {
             // Orphan: queue for later
-            println!("P2P: Orphan block #{} (parent unknown), queuing", height);
+            debug!("P2P: Orphan block #{} (parent unknown), queuing", height);
             store.add_orphan(block.clone());
             return Ok(());
         }
@@ -156,23 +157,23 @@ impl P2pNode {
                 let diff = state.apply_block_and_track(block, height)?;
                 store.block_diffs.insert(block.header.hash(), diff);
                 store.set_chain_tip(&block.header.hash()).ok();
-                println!("P2P: Extended canonical chain to #{}", height);
+                info!("P2P: Extended canonical chain to #{}", height);
             }
             crate::reorg::ForkDecision::ReorgToNew { to_unwind, to_apply } => {
-                println!("P2P: REORG — unwinding {} blocks, applying {}",
+                info!("P2P: REORG — unwinding {} blocks, applying {}",
                     to_unwind.len(), to_apply.len());
                 let resurrected = crate::reorg::execute_reorg(
                     &to_unwind, &to_apply, store, state
                 )?;
                 for tx_hash in &resurrected {
-                    println!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
+                    debug!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
                 }
             }
             crate::reorg::ForkDecision::Sidechain => {
-                println!("P2P: Sidechain block #{} stored (not heaviest)", height);
+                debug!("P2P: Sidechain block #{} stored (not heaviest)", height);
             }
             crate::reorg::ForkDecision::Orphan => {
-                println!("P2P: Block #{} stored as orphan", height);
+                debug!("P2P: Block #{} stored as orphan", height);
             }
             crate::reorg::ForkDecision::Reject(msg) => {
                 return Err(format!("Block rejected: {}", msg));
@@ -188,10 +189,10 @@ impl P2pNode {
         let h = block.header.height;
 
         if let Err(e) = crate::store::save_block(block) {
-            eprintln!("P2P: Store error: {}", e);
+            error!("P2P: Store error: {}", e);
             return;
         }
-        println!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
+        info!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
 
         if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block.clone())) {
             swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
@@ -209,10 +210,10 @@ impl P2pNode {
                 event = self.swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            println!("P2P: Listening on {address}");
+                            info!("P2P: Listening on {address}");
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            println!("P2P: Connected to {peer_id}");
+                            info!("P2P: Connected to {peer_id}");
                             self.peers.insert(peer_id);
 
                             let from = chain_store.chain_tip_height() + 1;
@@ -221,7 +222,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            println!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            debug!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Ping(_)) => {}
@@ -232,21 +233,21 @@ impl P2pNode {
                                 match msg {
                                     P2pMessage::NewBlock(block) => {
                                         let h = block.header.height;
-                                        println!("P2P: Gossip block #{} received", h);
+                                        debug!("P2P: Gossip block #{} received", h);
                                         match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                             Ok(()) => {
                                                 Self::accept_block(&block, &mut self.swarm);
                                             }
                                             Err(e) => {
-                                                println!("P2P: Gossip block #{} rejected: {}", h, e);
+                                                debug!("P2P: Gossip block #{} rejected: {}", h, e);
                                             }
                                         }
                                     }
                                     P2pMessage::NewTransaction(tx) => {
                                         let tx_hash = tx.hash();
                                         match crate::mempool::submit(tx, state) {
-                                            Ok(()) => println!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
-                                            Err(e) => println!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
+                                            Ok(()) => debug!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
+                                            Err(e) => debug!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
                                         }
                                     }
                                     _ => {}
@@ -264,7 +265,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height >= from_height && b.header.height <= to_height)
                                                         .collect();
-                                                    println!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
@@ -275,7 +276,7 @@ impl P2pNode {
                                         request_response::Message::Response { response, .. } => {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
-                                                    println!("P2P: Synced {} blocks", blocks.len());
+                                                    info!("P2P: Synced {} blocks", blocks.len());
                                                     for block in blocks {
                                                         let h = block.header.height;
                                                         match Self::validate_and_apply_block(&block, state, &mut chain_store) {
@@ -283,7 +284,7 @@ impl P2pNode {
                                                                 Self::accept_block(&block, &mut self.swarm);
                                                             }
                                                             Err(e) => {
-                                                                println!("P2P: Sync block #{} rejected: {}", h, e);
+                                                                debug!("P2P: Sync block #{} rejected: {}", h, e);
                                                             }
                                                         }
                                                     }
@@ -317,10 +318,10 @@ impl P2pNode {
             // Periodic state save (~30s)
             if last_state_save.elapsed() > std::time::Duration::from_secs(30) {
                 if let Err(e) = crate::store::save_utxo_set(state) {
-                if let Err(e) = crate::store::save_chain_store(&chain_store) {
-                    eprintln!("P2P: Chain store save failed: {}", e);
+                    error!("P2P: State save failed: {}", e);
                 }
-                    eprintln!("P2P: State save failed: {}", e);
+                if let Err(e) = crate::store::save_chain_store(&chain_store) {
+                    error!("P2P: Chain store save failed: {}", e);
                 }
                 let peer_list: String = self.peers.iter()
                     .map(|p| p.to_string())
@@ -346,10 +347,10 @@ impl P2pNode {
                 let h = block.header.height;
 
                 if let Err(e) = crate::store::save_block(&block) {
-                    eprintln!("P2P: Save error: {}", e);
+                    error!("P2P: Save error: {}", e);
                     return;
                 }
-                println!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
+                info!("P2P: Mined block #{} hash={:x}..", h, hash[0]);
 
                 if chain_store.get_block(&hash).is_none() {
                     let _ = chain_store.add_block_with_diff(block.clone(), diff);
@@ -358,10 +359,10 @@ impl P2pNode {
 
                 if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
                     self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
-                    println!("P2P: Gossiped block #{}", h);
+                    info!("P2P: Gossiped block #{}", h);
                 }
             }
-            Err(e) => println!("P2P: Mining failed: {}", e),
+            Err(e) => warn!("P2P: Mining failed: {}", e),
         }
     }
 
