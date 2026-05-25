@@ -196,6 +196,9 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
                 // For genesis, we need to add it specially
                 if block.header.height == 0 {
                     store = crate::chain::ChainStore::new(block.clone());
+                } else if block.header.previous_hash == [0u8; 32] {
+                    // Chain start block (first mined block), allow without genesis in store
+                    let _ = store.add_block(block.clone());
                 } else if store.get_block(&block.header.previous_hash).is_some() {
                     let _ = store.add_block(block.clone());
                 }

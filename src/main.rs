@@ -425,6 +425,39 @@ fn cmd_init() {
         }
         let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
         println!("Genesis: 1,000,000 Ewatt to {} (testnet bootstrap)", hex::encode(pubkey));
+        
+        // Create and save the genesis block (height 0, no coinbase)
+        let genesis_header = crate::block::BlockHeader {
+            version: constants::PROTOCOL_VERSION,
+            previous_hash: [0u8; 32],
+            merkle_root: [0u8; 32],
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
+            height: 0,
+            epoch: 0,
+            difficulty_target: 1,
+            total_effective_commit: 0,
+            emission_rate: 0,
+            miner_effective_commit: 0,
+            vr_block: 0,
+            coinbase_burn: 0,
+            nonce: 0,
+            elapsed_ms: 0,
+            proof_merkle_root: None,
+        };
+        let genesis_body = crate::block::BlockBody {
+            transactions: vec![],
+            commitments: vec![],
+        };
+        let genesis_block = crate::block::Block {
+            header: genesis_header,
+            body: genesis_body,
+        };
+        if let Err(e) = crate::store::save_block(&genesis_block) {
+            println!("Error saving genesis block: {}", e);
+        } else {
+            println!("Genesis block saved (height 0)");
+        }
     }
 
     #[cfg(not(feature = "testnet"))]

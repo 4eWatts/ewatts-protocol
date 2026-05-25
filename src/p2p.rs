@@ -194,6 +194,8 @@ impl P2pNode {
 
     pub async fn run(&mut self, mine: bool, state: &mut crate::state::UtxoSet) {
         let mut last_state_save = std::time::Instant::now();
+        // Invalidate block cache so chain store loads fresh data from disk
+        crate::store::invalidate_cache();
         let mut chain_store = crate::store::load_chain_store();
 
         loop {
@@ -296,7 +298,8 @@ impl P2pNode {
                     futures::future::pending::<()>().await;
                 }} => {
                     if mine {
-                        let height = chain_store.chain_tip_height();
+                        let tip_height = chain_store.chain_tip_height();
+                        let height = tip_height + 1;
                         let prev_hash = chain_store.chain_tip_hash();
                         self.mine_and_gossip(prev_hash, height, state, &mut chain_store).await;
                     }

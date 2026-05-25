@@ -122,7 +122,14 @@ impl ChainStore {
         // Use explicit match to avoid borrow conflicts with self.blocks.insert() below.
         let parent_work = match self.blocks.get(&parent_hash) {
             Some(e) => e.accumulated_work,
-            None => return Err("Parent block not found".to_string()),
+            None => {
+                // Allow blocks with zero parent hash (chain start) without a genesis block in store
+                if parent_hash == [0u8; 32] {
+                    0
+                } else {
+                    return Err("Parent block not found".to_string());
+                }
+            },
         };
 
         let block_work = compute_block_work(&block.header) as u128;
