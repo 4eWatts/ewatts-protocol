@@ -109,7 +109,6 @@ footer a:hover { color:#c8c8cc; }
 .diagram-item .arrow { display:block; margin:8px auto; color:#2a2a3a; font-size:16px; }
 .diagram-item span { display:block; font-size:11px; margin-top:4px; opacity:0.6; }
 
-.nuhub-badge { display:inline-block; font-size:10px; font-weight:600; background:#1a2a1a; color:#6ac86a; padding:2px 8px; border-radius:3px; }
 </style>
 </head>
 <body>
@@ -122,7 +121,6 @@ footer a:hover { color:#c8c8cc; }
     <a href="#architecture">Architecture</a>
     <a href="#protocol">Protocol</a>
     <a href="#mine">Mine</a>
-    <a href="#nuhub">Nuhub</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
@@ -363,40 +361,6 @@ footer a:hover { color:#c8c8cc; }
 
 <hr>
 
-<!-- ============= NUHUB ============= -->
-<section class="section" id="nuhub">
-  <div class="section-label">Ecosystem <span class="nuhub-badge">New</span></div>
-  <h2>Nuhub &mdash; DePIN Marketplace</h2>
-  <p class="intro">An open marketplace where any node with spare capacity (CPU, GPU, RAM, bandwidth) can offer processing and receive payment in eWatt. The buyer posts a demand, the seller executes and proves, the ledger settles.</p>
-
-  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #1a2a1a;border-radius:5px;">
-    <p style="font-size:13px;color:#8ac88a;margin:0;">
-      <strong>Why eWatt?</strong> The cost of issuance is known and stable (VR in kWh/eWatt). No arbitrary inflation (emission rate scales with real commitment). The seller knows exactly what it cost to mine the eWatt they receive. The buyer knows the currency won't be diluted by governance decision.
-    </p>
-  </div>
-
-  <div class="cards" style="grid-template-columns:1fr 1fr;">
-    <div class="card" style="border-color:#1e3a1e;">
-      <h3 style="color:#6ac86a;">Atomic escrow (HTLC adapted)</h3>
-      <p>Buyer deposits eWatt in a conditional output. Seller delivers work and proof. If buyer doesn't release in N blocks, seller proves delivery and claims. Trust problem solved without ZKP.</p>
-    </div>
-    <div class="card" style="border-color:#1e3a1e;">
-      <h3 style="color:#6ac86a;">Proof of bandwidth</h3>
-      <p>Before offering service, a node mines a commitment proving real bandwidth. This filters bots and low-quality nodes. The same mechanism that anchors eWatt issuance cost serves as seller onboarding.</p>
-    </div>
-    <div class="card" style="border-color:#1e3a1e;">
-      <h3 style="color:#6ac86a;">Workload-specific proofs</h3>
-      <p>Each workload defines its own proof: inference (signature over output + hash of input), rendering (frame checksums at random intervals), batch translation (samples verified by a smaller model). The protocol only verifies the proof matches the hash committed at order time.</p>
-    </div>
-    <div class="card" style="border-color:#1e3a1e;">
-      <h3 style="color:#6ac86a;">Decentralized matching</h3>
-      <p>Buy and sell orders published on-chain. Peer-to-peer matching. Atomic settlement. Reputation based on delivery history. No order book, no central matching engine.</p>
-    </div>
-  </div>
-</section>
-
-<hr>
-
 <!-- ============= PROTOCOL DETAILS ============= -->
 <section class="section" id="protocol">
   <div class="section-label">Protocol</div>
@@ -494,15 +458,13 @@ footer a:hover { color:#c8c8cc; }
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Public testnet with incentivized mining. Community of Rust contributors. Mining pool support.
         Basic wallet and exchange integration. Governance discussion with early contributors.
-        Nuhub escrow prototype.
       </p>
     </div>
     <div class="card">
       <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Mainnet launch. Decentralized governance via lazy consensus and technical maintainers.
-        Security audit results published. Reference wallet with GUI. Nuhub marketplace launch.
-        DEX and CEX listings.
+        Security audit results published. Reference wallet with GUI. DEX and CEX listings.
       </p>
     </div>
     <div class="card">
