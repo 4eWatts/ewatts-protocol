@@ -127,7 +127,7 @@ footer a:hover { color:#c8c8cc; }
 
 <div class="hero">
   <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
-    <span style="color:#3b82f6;">Phase 1: Foundation</span>
+    <span style="color:#6ac86a;">Phase 2: Testnet</span>
     <span style="color:#2a2a3a;">|</span>
     <span>local testnet</span>
     <span style="color:#2a2a3a;">|</span>
@@ -442,10 +442,10 @@ footer a:hover { color:#c8c8cc; }
   <h2>Phases</h2>
 
   <div class="cards">
-    <div class="card" style="border-color:#3b82f6;">
+    <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 1 &mdash; Foundation</h3>
-        <span style="font-size:10px;color:#3b82f6;font-weight:600;">NOW</span>
+        <span style="font-size:10px;color:#5a5a72;font-weight:600;">DONE</span>
       </div>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Protocol implementation in Rust, MBPoW mining, privacy layer (stealth addresses, ring signatures,
@@ -453,8 +453,11 @@ footer a:hover { color:#c8c8cc; }
         90+ tests passing, 0 warnings.
       </p>
     </div>
-    <div class="card">
-      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 2 &mdash; Testnet</h3>
+    <div class="card" style="border-color:#3b82f6;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 2 &mdash; Testnet</h3>
+        <span style="font-size:10px;color:#3b82f6;font-weight:600;">NOW</span>
+      </div>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Public testnet with incentivized mining. Community of Rust contributors. Mining pool support.
         Basic wallet and exchange integration. Governance discussion with early contributors.
@@ -523,7 +526,7 @@ $ ./target/release/ewatts-protocol dash</pre>
   <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
   <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
   <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 1 (Foundation), pre-mainnet local testnet. 90+ tests passing, 0 warnings. MIT License. Code is auditable and runnable today.</p>
+  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 2 (Testnet), 84 tests passing, 0 warnings, deployed testnet. MIT License. Code is auditable and runnable today.</p>
 </section>
 
 <footer>
