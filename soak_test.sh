@@ -50,13 +50,13 @@ log "Nodes 1-2 initialized with shared genesis"
 
 # ── Start nodes ───────────────────────────────────────────────────────
 
-# Node0 (boot, mines)
+# Node0 (boot, mines) — start first
 cd "$SOAK_DIR/node0"
 $BIN start --p2p --p2p-port 25050 --dash-port 26050 --difficulty $DIFFICULTY > "$SOAK_DIR/node0/stdout.log" 2>&1 &
 N0_PID=$!
 log "Node0 started (PID=$N0_PID, P2P=25050, dash=26050, diff=$DIFFICULTY)"
 
-sleep 20
+sleep 25
 
 # Get boot peer ID
 PID0=$(grep -oP 'P2P Node ID: \K\S+' "$SOAK_DIR/node0/stdout.log" | head -1)
@@ -67,18 +67,20 @@ if [ -z "$PID0" ]; then
 fi
 log "Node0 peer ID: $PID0"
 
-# Nodes 1-2 (peers, mine)
+# Nodes 1-2 (peers, mine) — staggered start to defuse mining cycles
+# Each 10s mining timer starts at node launch; 5s stagger = 180° offset
 for i in 1 2; do
   cd "$SOAK_DIR/node$i"
   BPORT=$((25050 + i))
   DPORT=$((26050 + i))
+  sleep 5  # stagger: node1 starts 5s after node0, node2 5s after node1
   $BIN start --p2p --p2p-port $BPORT --dash-port $DPORT --difficulty $DIFFICULTY \
     --bootstrap "/ip4/127.0.0.1/tcp/25050/p2p/$PID0" > "$SOAK_DIR/node$i/stdout.log" 2>&1 &
   eval "N${i}_PID=\$!"
   log "Node$i started (PID=$(eval echo \$N${i}_PID), P2P=$BPORT, dash=$DPORT)"
 done
 
-sleep 10
+sleep 5
 
 # ── Metrics header ────────────────────────────────────────────────────
 if [ ! -f "$METRICS" ]; then
