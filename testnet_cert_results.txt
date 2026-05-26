@@ -1,0 +1,28 @@
+=== eWatts Testnet Certification Report ===
+Date: Tue May 26 06:37:08 AM UTC 2026
+Binary: /home/claw/.openclaw/workspace/ewatts-protocol-repo/target/release/ewatts-protocol
+
+--- T0.1: Chain Height Persistence ---
+  Blocks pre-restart: 145 (need >=5)
+  Blocks post-restart: 268
+PASS: Height persisted (pre=145 post=268, grew after restart)
+
+--- T0.2: Tip Convergence ---
+  Boot peer ID: 12D3KooWFgwZ9Bcrv1dLW964M9ZPYtBCkQV8xLWFpCC7kmB4oujf
+  Blocks: boot=10  peer1=10  peer2=10
+PASS: All nodes converged at height 9
+
+--- T0.3: Partition / Split-brain ---
+  Pre-partition height: 4
+  After partition: boot=8 blocks
+  Final: boot=12 blocks  peer1=22 blocks
+FAIL: Divergent after partition (boot=12 peer1=22)
+
+--- T0.4: Crash Consistency ---
+  Blocks before SIGKILL: 534
+  Blocks after SIGKILL + restart: 927
+PASS: Blocks persist after SIGKILL (534 -> 927, JSON valid)
+
+=== Phase 0 Summary ===
+
+=== End of Phase 0 ===

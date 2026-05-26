@@ -185,9 +185,14 @@ pub(crate) async fn cmd_start(args: &[String]) {
             }
         }
 
-        match mine_block_with_difficulty(prev_hash, height, &mut *state.lock().unwrap(), difficulty, dag_size) {
+        // Acquire state lock once — Rust Mutex is not re-entrant,
+        // so holding it across the match prevents deadlock on nested lock().
+        let mut state_guard = state.lock().unwrap();
+        let state_ref: &mut crate::state::UtxoSet = &mut *state_guard;
+        match mine_block_with_difficulty(prev_hash, height, state_ref, difficulty, dag_size) {
             Ok((block, _diff)) => {
                 let timestamp = block.header.timestamp;
+                drop(state_guard); // release before file I/O
                 
                 // Save block
                 if let Err(e) = crate::store::save_block(&block) {
@@ -195,7 +200,8 @@ pub(crate) async fn cmd_start(args: &[String]) {
                     continue;
                 }
                 // Save UTXO state
-                if let Err(e) = crate::store::save_utxo_set(&state.lock().unwrap()) {
+                let guard = state.lock().unwrap();
+                if let Err(e) = crate::store::save_utxo_set(&guard) {
                     println!("  [{}] Error saving state: {}", height, e);
                 }
                 
@@ -208,9 +214,10 @@ pub(crate) async fn cmd_start(args: &[String]) {
                 let reward_ewatt = block.body.transactions[0].outputs.iter()
                     .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
                 println!("  Block #{} mined — reward {:.6} Ewatt — UTXOs: {} — diff={}",
-                    height, reward_ewatt, state.lock().unwrap().utxo_count(), difficulty);
+                    height, reward_ewatt, guard.utxo_count(), difficulty);
             }
             Err(e) => {
+                drop(state_guard);
                 println!("  Mining error: {}", e);
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
