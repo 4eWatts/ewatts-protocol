@@ -57,6 +57,7 @@ pub struct P2pNode {
     pub peer_id: PeerId,
     swarm: Swarm<EwattsBehaviour>,
     peers: HashSet<PeerId>,
+    bootstrap_addr: Option<Multiaddr>,
 }
 
 impl P2pNode {
@@ -93,7 +94,7 @@ impl P2pNode {
         let mut swarm = Swarm::new(transport, behaviour, peer_id, config);
         swarm.listen_on(listen_addr.parse()?)?;
 
-        if let Some(addr) = bootstrap {
+        if let Some(ref addr) = bootstrap {
             for attempt in 1..=3 {
                 match swarm.dial(addr.clone()) {
                     Ok(()) => {
@@ -112,7 +113,7 @@ impl P2pNode {
             }
         }
 
-        Ok(P2pNode { peer_id, swarm, peers: HashSet::new() })
+        Ok(P2pNode { peer_id, swarm, peers: HashSet::new(), bootstrap_addr: bootstrap })
     }
 
     /// Validate an incoming block: verify PoW proof + fork decision + state application.
@@ -205,6 +206,14 @@ impl P2pNode {
         crate::store::invalidate_cache();
         let mut chain_store = crate::store::load_chain_store();
 
+        // For boot/seed nodes (no bootstrap address), mine immediately.
+        // For follower nodes, wait for the first BlockResponse to arrive
+        // before starting the mining timer. Without this guard, the 10s
+        // timer can fire before the sync completes, causing the follower
+        // to mine a competing block #1 on genesis.
+        let has_bootstrap = self.bootstrap_addr.is_some();
+        let mut sync_complete = !mine || chain_store.chain_tip_height() > 0 || !has_bootstrap;
+
         loop {
             tokio::select! {
                 event = self.swarm.select_next_some() => {
@@ -277,17 +286,18 @@ impl P2pNode {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
                                                     info!("P2P: Synced {} blocks", blocks.len());
-                                                    for block in blocks {
+                                                    for block in &blocks {
                                                         let h = block.header.height;
-                                                        match Self::validate_and_apply_block(&block, state, &mut chain_store) {
+                                                        match Self::validate_and_apply_block(block, state, &mut chain_store) {
                                                             Ok(()) => {
-                                                                Self::accept_block(&block, &mut self.swarm);
+                                                                Self::accept_block(block, &mut self.swarm);
                                                             }
                                                             Err(e) => {
                                                                 debug!("P2P: Sync block #{} rejected: {}", h, e);
                                                             }
                                                         }
                                                     }
+                                                    sync_complete = true;
                                                 }
                                                 _ => {}
                                             }
@@ -301,12 +311,12 @@ impl P2pNode {
                     }
                 }
 
-                _ = async { if mine {
+                _ = async { if mine && sync_complete {
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 } else {
                     futures::future::pending::<()>().await;
                 }} => {
-                    if mine {
+                    if mine && sync_complete {
                         let tip_height = chain_store.chain_tip_height();
                         let height = tip_height + 1;
                         let prev_hash = chain_store.chain_tip_hash();
