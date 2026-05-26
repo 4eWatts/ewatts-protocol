@@ -204,9 +204,25 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
                 }
             }
         }
-        // Set chain tip to the last block
-        if let Some(last) = blocks.last() {
-            store.set_chain_tip(&last.header.hash()).ok();
+        // Find heaviest chain: iterate blocks and pick the one with most accumulated work.
+        // Using blocks.last() is wrong — the append-only log can have sidechain/orphan
+        // blocks appended after the canonical tip, causing the node to mine on a fork
+        // after restart.
+        let mut best_hash = [0u8; 32];
+        let mut best_work: u128 = 0;
+        // Check block entries that actually exist in the store (add_block may silently skip
+        // orphans and blocks with unknown parents — they get queued separately).
+        for block in &blocks {
+            let bh = block.header.hash();
+            if let Some(entry) = store.get_entry(&bh) {
+                if entry.accumulated_work > best_work {
+                    best_work = entry.accumulated_work;
+                    best_hash = bh;
+                }
+            }
+        }
+        if best_hash != [0u8; 32] {
+            store.set_chain_tip(&best_hash).ok();
         }
     }
     store
