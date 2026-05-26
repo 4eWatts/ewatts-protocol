@@ -655,3 +655,76 @@ mod tests {
         assert!(p.compress().decompress().is_some());
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Phase 4 — Privacy / Auditability Tests
+// ═══════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+mod phase4_tests {
+    use super::*;
+    use crate::block::*;
+    use curve25519_dalek::scalar::Scalar;
+    use curve25519_dalek::ristretto::RistrettoPoint;
+    use ed25519_dalek::SigningKey;
+
+    // T4.1: Pedersen commitment is binding (can't open to different value with same commitment)
+    #[test]
+    fn privacy_pedersen_binding() {
+        let zero = Scalar::from(0u64);
+        let c1 = Commitment::new_with_blinding(5, zero);
+        let c2 = Commitment::new_with_blinding(10, zero);
+        assert_ne!(c1.0, c2.0, "Different values must produce different commitments");
+    }
+
+    // T4.2: Pedersen homomorphism: C(a+b) = C(a) + C(b)
+    #[test]
+    fn privacy_pedersen_homomorphic_add() {
+        let zero = Scalar::from(0u64);
+        let c1 = Commitment::new_with_blinding(3, zero);
+        let c2 = Commitment::new_with_blinding(7, zero);
+        let c_sum = c1.add(&c2);
+        let c_expected = Commitment::new_with_blinding(10, zero);
+        assert_eq!(c_sum.0, c_expected.0, "C(3) + C(7) must equal C(10)");
+    }
+
+    // T4.3: Range proof verifies without revealing value
+    #[test]
+    fn privacy_range_proof_verifies() {
+        let mut rng = rand::thread_rng();
+        let blinding = Scalar::from(9999u64);
+        let v = 12345u64;
+        let proof = RangeProof::prove(v, blinding, 32, &mut rng);
+        let commitment = Commitment::new_with_blinding(v, blinding);
+        assert!(proof.verify(&commitment), "Valid range proof must verify");
+        assert_eq!(proof.bits, 32);
+        assert_eq!(proof.commitments.len(), 32);
+        assert_eq!(proof.proofs.len(), 32);
+    }
+
+    // T4.4: Range proof rejects wrong commitment (tampered amount)
+    #[test]
+    fn privacy_range_proof_rejects_wrong() {
+        let mut rng = rand::thread_rng();
+        let blinding = Scalar::from(9999u64);
+        let proof = RangeProof::prove(100, blinding, 16, &mut rng);
+        // Wrong commitment (different amount)
+        let wrong_commitment = Commitment::new_with_blinding(101, blinding);
+        assert!(!proof.verify(&wrong_commitment),
+            "Range proof must reject wrong commitment");
+    }
+
+    // T4.5: Pedersen commitment verify with same blinding and value
+    #[test]
+    fn privacy_commitment_verify() {
+        let v = 100u64;
+        let a = Scalar::from(42u64);
+        let c = Commitment::new_with_blinding(v, a);
+        // Commitment::verify checks if C = a*G + v*H
+        assert!(c.verify(v, a), "Valid commitment must self-verify");
+        // Wrong value must fail
+        assert!(!c.verify(v + 1, a), "Wrong value must fail verify");
+        // Wrong blinding must fail
+        assert!(!c.verify(v, Scalar::from(0u64)), "Wrong blinding must fail");
+    }
+}
