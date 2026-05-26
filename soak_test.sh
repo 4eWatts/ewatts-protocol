@@ -1,33 +1,52 @@
 #!/bin/bash
-# eWatts Phase 5 — 72h Soak Test Harness
-# 4 P2P nodes, staggered mining, auto-restart, metrics collection.
+# eWatts Soak Test — Day/Night mode switching
+# Light mode (08-00 UTC): 4 nodes, diff 300, 2s stagger
+# Heavy mode (00-08 UTC):  8 nodes, diff 1000, 1s stagger
 set -uo pipefail
 
 REPO="/home/claw/.openclaw/workspace/ewatts-protocol-repo"
 BIN="$REPO/target/release/ewatts-protocol"
 SOAK_DIR="/tmp/ewatts-soak"
 LOG="$SOAK_DIR/soak.log"
-METRICS="$SOAK_DIR/metrics.csv"
-DIFFICULTY=300
-NODE_COUNT=4
+
+# ── Config per mode ────────────────────────────────────────────────────
+MODE="${1:-auto}"
+
+if [ "$MODE" = "heavy" ] || { [ "$MODE" = "auto" ] && [ "$(date -u +%H)" -ge 0 ] && [ "$(date -u +%H)" -lt 8 ]; }; then
+  # Night mode (00-08 UTC)
+  NODE_COUNT=8
+  DIFFICULTY=1000
+  STAGGER=1
+  MODE_LABEL="HEAVY"
+else
+  # Day mode (08-00 UTC)
+  NODE_COUNT=4
+  DIFFICULTY=300
+  STAGGER=2
+  MODE_LABEL="LIGHT"
+fi
+
 BASE_P2P=25050
 BASE_DASH=26050
 
-mkdir -p "$SOAK_DIR"
-for i in $(seq 0 $((NODE_COUNT - 1))); do
-  mkdir -p "$SOAK_DIR/node$i/ewatts_data"
-done
-
-log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
-
+# ── Cleanup previous ───────────────────────────────────────────────────
 ewatts_kill() {
   ps aux | grep -E "target/release/ewatts-protocol" | grep -v grep | \
     awk '{print $2}' | xargs -r kill "$@" 2>/dev/null || true
   sleep 1
 }
-
-# Init
 ewatts_kill
+
+# ── Setup directories ──────────────────────────────────────────────────
+rm -rf "$SOAK_DIR" 2>/dev/null
+mkdir -p "$SOAK_DIR"
+for i in $(seq 0 $((NODE_COUNT - 1))); do
+  mkdir -p "$SOAK_DIR/node$i/ewatts_data"
+done
+
+log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S')] [$MODE_LABEL] $*" | tee -a "$LOG"; }
+
+# ── Init ───────────────────────────────────────────────────────────────
 cd "$SOAK_DIR/node0"
 $BIN init > /dev/null 2>&1
 log "Node0 initialized"
@@ -37,9 +56,9 @@ for i in $(seq 1 $((NODE_COUNT - 1))); do
   cp "$SOAK_DIR/node0/ewatts_data/genesis.key" "$SOAK_DIR/node$i/ewatts_data/" 2>/dev/null || true
   cp "$SOAK_DIR/node0/ewatts_data/miner.key" "$SOAK_DIR/node$i/ewatts_data/" 2>/dev/null || true
 done
-log "Peer nodes initialized with shared genesis"
+log "Nodes 1-$((NODE_COUNT-1)) initialized with shared genesis"
 
-# Start boot
+# ── Start boot ─────────────────────────────────────────────────────────
 cd "$SOAK_DIR/node0"
 $BIN start --p2p --p2p-port $BASE_P2P --dash-port $BASE_DASH --difficulty $DIFFICULTY \
   > "$SOAK_DIR/node0/stdout.log" 2>&1 &
@@ -54,11 +73,11 @@ if [ -z "$PID0" ]; then
 fi
 log "Node0 peer ID: $PID0"
 
-# Start peers with 2s stagger (mining cycles spread across 10s window)
+# ── Start peers with stagger ──────────────────────────────────────────
 declare -a PIDS
 PIDS[0]=$N0_PID
 for i in $(seq 1 $((NODE_COUNT - 1))); do
-  sleep 2
+  sleep $STAGGER
   cd "$SOAK_DIR/node$i"
   BPORT=$((BASE_P2P + i))
   DPORT=$((BASE_DASH + i))
@@ -70,25 +89,26 @@ done
 
 sleep 5
 
-# Metrics header
-HEADER="timestamp,elapsed_h"
+# ── Metrics ────────────────────────────────────────────────────────────
+METRICS="$SOAK_DIR/metrics.csv"
+HEADER="timestamp,elapsed_h,mode,difficulty,nodes"
 for i in $(seq 0 $((NODE_COUNT - 1))); do HEADER+=",n${i}_blocks"; done
 for i in $(seq 0 $((NODE_COUNT - 1))); do HEADER+=",n${i}_mem_kb"; done
 HEADER+=",cpu_pct"
 echo "$HEADER" > "$METRICS"
 
 START_TS=$(date +%s)
-log "Soak test running. PIDs: ${PIDS[*]}"
-log "Logs: $LOG | Metrics: $METRICS"
+log "Soak test running. Mode=$MODE_LABEL Diff=$DIFFICULTY Nodes=$NODE_COUNT PIDs: ${PIDS[*]}"
+log "Logs: $LOG"
 log "---"
 
-# Monitoring loop
+# ── Monitoring loop ────────────────────────────────────────────────────
 while true; do
   NOW=$(date +%s)
   ELAPSED=$(( (NOW - START_TS) / 3600 ))
   TS=$(date -u '+%Y-%m-%d %H:%M:%S')
 
-  LINE="$TS,$ELAPSED"
+  LINE="$TS,$ELAPSED,$MODE_LABEL,$DIFFICULTY,$NODE_COUNT"
   for i in $(seq 0 $((NODE_COUNT - 1))); do
     B=$(wc -l < "$SOAK_DIR/node$i/ewatts_data/blocks.jsonl" 2>/dev/null || echo "0")
     LINE+=",$B"
@@ -104,6 +124,14 @@ while true; do
   done
   LINE+=",$TOTAL_CPU"
   echo "$LINE" >> "$METRICS"
+
+  # Kill and switch mode if timezone boundary crossed
+  CURRENT_HOUR=$(date -u +%H)
+  if { [ "$MODE" = "auto" ] && [ "$CURRENT_HOUR" -ge 0 ] && [ "$CURRENT_HOUR" -lt 8 ] && [ "$MODE_LABEL" != "HEAVY" ]; } || \
+     { [ "$MODE" = "auto" ] && [ "$CURRENT_HOUR" -ge 8 ] && [ "$MODE_LABEL" != "LIGHT" ]; }; then
+    log "Mode switch detected. Restarting..."
+    exec "$0" "auto"
+  fi
 
   # Health check
   for i in $(seq 0 $((NODE_COUNT - 1))); do
@@ -124,11 +152,6 @@ while true; do
       log "Node$i restarted (PID=${PIDS[$i]})"
     fi
   done
-
-  # Summary every 6 hours
-  if [ $((ELAPSED % 6)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
-    log "Hour $ELAPSED — cpu: ${TOTAL_CPU}%"
-  fi
 
   sleep 600
 done
