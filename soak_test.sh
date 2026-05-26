@@ -13,8 +13,8 @@ LOG="$SOAK_DIR/soak.log"
 MODE="${1:-auto}"
 
 if [ "$MODE" = "heavy" ] || { [ "$MODE" = "auto" ] && [ "$(date -u +%H)" -ge 0 ] && [ "$(date -u +%H)" -lt 8 ]; }; then
-  # Night mode (00-08 UTC) — full stress
-  NODE_COUNT=15
+  # Night mode (00-08 UTC) — full stress (target 60-70% CPU)
+  NODE_COUNT=30
   DIFFICULTY=1000
   STAGGER=1
   MODE_LABEL="HEAVY"
