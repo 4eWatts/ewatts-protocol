@@ -113,19 +113,26 @@ pub(crate) async fn cmd_start(args: &[String]) {
         Err(e) => { println!("Error loading state: {}", e); return; }
     };
 
-    // Reconstruct BlockDiffs from disk-loaded blocks (for reorg safety)
+    // Reconstruct BlockDiffs from disk-loaded blocks (for reorg safety).
+    // Start from an EMPTY state and re-apply all blocks sequentially.
+    // Using the current UTXO set (from load_utxo_set) is WRONG — it already
+    // reflects all applied blocks, so re-applying would fail with "key image
+    // already spent" on every block.
     {
         let blocks = crate::store::load_blocks().unwrap_or_default();
         if blocks.len() > 1 {
-            let mut s = crate::store::load_utxo_set().unwrap_or_else(|_| crate::state::UtxoSet::new());
+            let mut s = crate::state::UtxoSet::new();  // fresh, empty state
             let mut store = crate::store::load_chain_store();
             for block in &blocks {
-                if block.header.height == 0 { continue; } // genesis handled by ChainStore::new
                 let hash = block.header.hash();
-                if store.block_diffs.get(&hash).is_none() {
-                    if let Ok(diff) = s.apply_block_and_track(block, block.header.height) {
-                        store.block_diffs.insert(hash, diff);
-                    }
+                if store.block_diffs.get(&hash).is_some() {
+                    // Already have this diff, but still need to apply to state
+                    // so subsequent blocks can find their inputs.
+                    let _ = s.apply_block_and_track(block, block.header.height);
+                    continue;
+                }
+                if let Ok(diff) = s.apply_block_and_track(block, block.header.height) {
+                    store.block_diffs.insert(hash, diff);
                 }
             }
             // Write back updated store with diffs
