@@ -114,20 +114,21 @@ pub(crate) async fn cmd_start(args: &[String]) {
     };
 
     // Reconstruct BlockDiffs from disk-loaded blocks (for reorg safety).
+    // Uses a marker file to skip on subsequent startups.
     // Start from an EMPTY state and re-apply all blocks sequentially.
-    // Using the current UTXO set (from load_utxo_set) is WRONG — it already
-    // reflects all applied blocks, so re-applying would fail with "key image
-    // already spent" on every block.
-    {
+    const DIFFS_SYNCED_MARKER: &str = "ewatts_data/.diffs_synced";
+    if std::path::Path::new(DIFFS_SYNCED_MARKER).exists() {
+        // Marker present — diffs already synced in a previous session.
+        // Load fresh state for the sanity check below.
+    } else {
         let blocks = crate::store::load_blocks().unwrap_or_default();
         if blocks.len() > 1 {
+            println!("  Reconstructing BlockDiffs from {} blocks...", blocks.len());
             let mut s = crate::state::UtxoSet::new();  // fresh, empty state
             let mut store = crate::store::load_chain_store();
             for block in &blocks {
                 let hash = block.header.hash();
                 if store.block_diffs.get(&hash).is_some() {
-                    // Already have this diff, but still need to apply to state
-                    // so subsequent blocks can find their inputs.
                     let _ = s.apply_block_and_track(block, block.header.height);
                     continue;
                 }
@@ -135,8 +136,26 @@ pub(crate) async fn cmd_start(args: &[String]) {
                     store.block_diffs.insert(hash, diff);
                 }
             }
-            // Write back updated store with diffs
             let _ = crate::store::save_chain_store(&store);
+
+            // Sanity check: reconstructed state must match loaded UTXO set
+            match crate::store::load_utxo_set() {
+                Ok(disk_state) => {
+                    if s.total_supply() != disk_state.total_supply()
+                        || s.utxo_count() != disk_state.utxo_count()
+                    {
+                        println!("  WARN: Reconstructed state diverges from disk! supply={} vs {} utxos={} vs {}",
+                            s.total_supply(), disk_state.total_supply(),
+                            s.utxo_count(), disk_state.utxo_count());
+                    } else {
+                        println!("  BlockDiffs synced — supply/UTXO sanity check passed");
+                        let _ = std::fs::write(DIFFS_SYNCED_MARKER, "1");
+                    }
+                }
+                Err(_) => {
+                    println!("  WARN: No UTXO set on disk, cannot sanity check");
+                }
+            }
         }
     }
 
