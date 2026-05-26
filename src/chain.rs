@@ -15,11 +15,14 @@ const MAX_ORPHANS: usize = 500;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainStore {
+    #[serde(with = "hexkey_map")]
     blocks: HashMap<[u8; 32], BlockEntry>,
     #[serde(skip)]
     pub block_diffs: HashMap<[u8; 32], crate::state::BlockDiff>,
     chain_tip: [u8; 32],
+    #[serde(with = "hexkey_map")]
     orphans: HashMap<[u8; 32], Block>,
+    #[serde(with = "hex_vec")]
     orphan_order: VecDeque<[u8; 32]>,
     tip_height: u64,
     tip_work: u128,
@@ -404,5 +407,74 @@ mod tests {
         // Check b2 was resolved (block at height 2 exists)
         let b2_exists = store.blocks.iter().any(|(_, e)| e.height == 2);
         assert!(b2_exists || resolved.len() > 0);
+    }
+}
+
+// ── Custom serde for HashMap<[u8; 32], V> ──
+// serde_json requires string keys; serialize as array of [hex, value] pairs.
+pub(crate) mod hexkey_map {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::HashMap;
+
+    pub fn serialize<S, V>(map: &HashMap<[u8; 32], V>, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        V: Serialize,
+    {
+        let pairs: Vec<(String, &V)> = map
+            .iter()
+            .map(|(k, v)| (hex::encode(k), v))
+            .collect();
+        serde::Serialize::serialize(&pairs, ser)
+    }
+
+    pub fn deserialize<'de, D, V>(de: D) -> Result<HashMap<[u8; 32], V>, D::Error>
+    where
+        D: Deserializer<'de>,
+        V: Deserialize<'de>,
+    {
+        let pairs: Vec<(String, V)> = serde::Deserialize::deserialize(de)?;
+        let mut map = HashMap::new();
+        for (hex_str, val) in pairs {
+            let bytes = hex::decode(&hex_str).map_err(serde::de::Error::custom)?;
+            if bytes.len() != 32 {
+                return Err(serde::de::Error::custom("key must be 32 bytes"));
+            }
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            map.insert(arr, val);
+        }
+        Ok(map)
+    }
+}
+
+pub(crate) mod hex_vec {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::VecDeque;
+
+    pub fn serialize<S>(vec: &VecDeque<[u8; 32]>, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let hexed: Vec<String> = vec.iter().map(|b| hex::encode(b)).collect();
+        serde::Serialize::serialize(&hexed, ser)
+    }
+
+    pub fn deserialize<'de, D>(de: D) -> Result<VecDeque<[u8; 32]>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let hexed: Vec<String> = serde::Deserialize::deserialize(de)?;
+        let mut deque = VecDeque::new();
+        for h in hexed {
+            let bytes = hex::decode(&h).map_err(serde::de::Error::custom)?;
+            if bytes.len() != 32 {
+                return Err(serde::de::Error::custom("expected 32 bytes"));
+            }
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            deque.push_back(arr);
+        }
+        Ok(deque)
     }
 }
