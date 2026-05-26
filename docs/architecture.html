@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts — 3-Layer Architecture</title>
+<meta name="description" content="eWatts 3-layer architecture: Protocol Core (deterministic state machine), Economic Hypothesis (interpretation), Adversarial Consensus (robustness).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+.container { max-width:1120px; margin:0 auto; padding:0 20px; }
+
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
+
+.section { padding:48px 0; }
+.section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5a5a72; margin-bottom:6px; }
+.section h2 { font-size:20px; font-weight:600; color:#fff; margin-bottom:8px; }
+.section p.intro { color:#5a5a72; }
+hr { border:none; height:1px; background:#1a1a2a; margin:0; }
+
+@media (max-width:720px) {
+  .container { max-width:100%; padding:0 16px; }
+  nav { margin-bottom:16px; }
+  .section { padding:32px 0; }
+}
+
+.layer-card { border-radius:6px; padding:24px; margin-top:12px; position:relative; }
+.layer-card h3 { font-size:16px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+.layer-card p { font-size:13px; line-height:1.7; }
+.layer-card .tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; padding:2px 8px; border-radius:3px; }
+.layer-1 { background:linear-gradient(135deg,#0a1628 0%,#10101a 100%); border:1px solid #1a3a5a; }
+.layer-1 .tag { background:#1a3a5a; color:#5a9cf6; }
+.layer-1 h3 { color:#5a9cf6; }
+.layer-1 p { color:#8baac8; }
+.layer-2 { background:linear-gradient(135deg,#1a0a28 0%,#10101a 100%); border:1px solid #3a1a5a; }
+.layer-2 .tag { background:#3a1a5a; color:#a05af6; }
+.layer-2 h3 { color:#a05af6; }
+.layer-2 p { color:#b08ac8; }
+.layer-3 { background:linear-gradient(135deg,#1a1a0a 0%,#10101a 100%); border:1px solid #3a3a1a; }
+.layer-3 .tag { background:#3a3a1a; color:#c8c84a; }
+.layer-3 h3 { color:#c8c84a; }
+.layer-3 p { color:#b0b080; }
+
+.rule-box { background:#0c0c18; border:1px solid #2a2a3a; border-radius:6px; padding:20px; margin-top:16px; }
+.rule-box h4 { font-size:13px; font-weight:600; color:#c8c8cc; margin-bottom:12px; }
+.rule-table { width:100%; border-collapse:collapse; font-size:13px; }
+.rule-table tr { border-bottom:1px solid #1a1a2a; }
+.rule-table tr:last-child { border:none; }
+.rule-table td { padding:8px 4px; }
+.rule-table td:first-child { color:#6b6b88; width:120px; }
+.rule-table td:nth-child(2) { width:80px; }
+.rule-table td.yes { color:#3b82f6; font-weight:600; }
+.rule-table td.no { color:#5a5a72; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
+
+.system-summary { background:#0c0c18; border:1px solid #3b82f6; border-radius:6px; padding:16px 20px; margin-top:16px; font-size:14px; color:#8baac8; }
+.system-summary strong { color:#c8c8cc; }
+
+.diagram { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
+.diagram-item { flex:1; min-width:200px; padding:16px; border-radius:6px; text-align:center; font-size:12px; }
+.diagram-item .arrow { display:block; margin:8px auto; color:#2a2a3a; font-size:16px; }
+.diagram-item span { display:block; font-size:11px; margin-top:4px; opacity:0.6; }
+
+.btn { display:inline-block; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; transition:all .12s; }
+.btn-outline { border:1px solid #2a2a3a; color:#c8c8cc; }
+.btn-outline:hover { border-color:#3b82f6; color:#fff; }
+
+table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; }
+table.specs tr { border-bottom:1px solid #1a1a2a; }
+table.specs tr:last-child { border:none; }
+table.specs td { padding:10px 0; vertical-align:top; }
+table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
+table.specs td:last-child { color:#c8c8cc; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<nav>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="index.html#protocol">Protocol</a>
+    <a href="index.html#mine">Mine</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="section-label">Architecture</div>
+  <h2>Three-layer system</h2>
+  <p class="intro">eWatts is built on a strict separation of execution, interpretation, and adversarial validation. These layers do not mix. Each has a distinct role, rule set, and falsifiability condition.</p>
+
+  <div class="system-summary">
+    <strong>One-liner:</strong> eWatts is a deterministic monetary state machine (Layer 1), evaluated under physical substrate hypotheses (Layer 2), and stress-tested in adversarial distributed environments (Layer 3).
+  </div>
+
+  <div class="diagram">
+    <div class="diagram-item layer-1">
+      <strong style="color:#5a9cf6;">Layer 1</strong>
+      <span class="arrow">&#9660;</span>
+      <span style="color:#6b8baa;">Protocol Core</span>
+      <span style="color:#4a6a8a;">Deterministic. Verifiable. Canonical.</span>
+    </div>
+    <div class="diagram-item layer-2">
+      <strong style="color:#a05af6;">Layer 2</strong>
+      <span class="arrow">&#9660;</span>
+      <span style="color:#8b6baa;">Economic Hypothesis</span>
+      <span style="color:#6a4a8a;">Interpretative. Falsifiable. Non-binding.</span>
+    </div>
+    <div class="diagram-item layer-3">
+      <strong style="color:#c8c84a;">Layer 3</strong>
+      <span style="color:#8b8b6a;">Adversarial Consensus</span>
+      <span style="color:#6a6a4a;">Experimental. Stochastic. Robustness.</span>
+    </div>
+  </div>
+
+  <!-- Layer 1 -->
+  <div class="layer-card layer-1" style="margin-top:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3><span class="tag">Layer 1</span> Protocol Core</h3>
+      <span style="font-size:11px;color:#3a6a8a;">Deterministic State Machine</span>
+    </div>
+    <p><strong>Objective:</strong> A single deterministic execution system that any node can independently verify.</p>
+    <div style="margin-top:12px;">
+      <p style="font-size:13px;color:#8baac8;margin-bottom:6px;"><strong>State transition:</strong> S<sub>t+1</sub> = f(S<sub>t</sub>, B<sub>t</sub>)</p>
+      <p style="font-size:13px;color:#8baac8;">A block is valid if: PoW satisfies the difficulty threshold &#8226; prior state exists &#8226; UTXO transitions are consistent &#8226; commitments are verifiable &#8226; emission invariants hold.</p>
+    </div>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:16px;">
+      <div>
+        <div style="font-size:11px;color:#5a7a9a;">EMISSION FUNCTION</div>
+        <div style="font-size:13px;color:#8baac8;"><code>E_t = g(height, state)</code></div>
+        <div style="font-size:11px;color:#5a7a9a;">No external input. No discretionary adjustment.</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#5a7a9a;">SECURITY INVARIANTS</div>
+        <div style="font-size:13px;color:#8baac8;">No double spend &#8226; No inflation beyond schedule &#8226; Deterministic replay &#8226; State convergence</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:#4a6a8a;">
+      <strong>Output:</strong> single canonical ledger rule, deterministic validation engine, cryptographic correctness.
+    </div>
+    <ul style="list-style:none;margin-top:10px;padding:0;font-size:12px;color:#5a7a9a;">
+      <li style="padding:2px 0;">&#9656; Modules: <code>smoke.rs</code>, <code>block.rs</code>, <code>state.rs</code>, <code>commitment.rs</code>, <code>reward.rs</code>, <code>reorg.rs</code></li>
+    </ul>
+  </div>
+
+  <!-- Layer 2 -->
+  <div class="layer-card layer-2">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3><span class="tag">Layer 2</span> Economic Hypothesis</h3>
+      <span style="font-size:11px;color:#6a3a8a;">Interpretation Layer</span>
+    </div>
+    <p><strong>Objective:</strong> Define the economic meaning of the system without interfering with the protocol.</p>
+    <div style="margin-top:12px;">
+      <p style="font-size:13px;color:#b08ac8;margin-bottom:8px;"><strong>Core hypothesis:</strong> Monetary systems anchored in physical computation substrates exhibit different long-term stability properties depending on the improvement rate of their underlying physical constraints.</p>
+      <p style="font-size:13px;color:#b08ac8;"><strong>Key variable:</strong> &#916; = rate(substrate improvement). ASIC: high &#916; (~25-30%). DRAM latency: low &#916; (~1-2%). Lower &#916; predicts more stable emission regimes.</p>
+    </div>
+    <div style="margin-top:12px;padding:12px;background:#1a0a28;border:1px solid #3a1a5a;border-radius:4px;">
+      <div style="font-size:11px;color:#7a5a9a;font-weight:600;margin-bottom:4px;">FALSIFIABILITY CONDITION</div>
+      <p style="font-size:12px;color:#b08ac8;margin:0;">The hypothesis is false if: (1) substrate advantage converges quickly, (2) system becomes economically dominated by a secondary abstraction layer, or (3) cost of attack decouples from physical constraint.</p>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:#6a4a8a;">
+      <strong>What this layer does NOT do:</strong> It does NOT define consensus rules, validation logic, or affect protocol execution.
+    </div>
+  </div>
+
+  <!-- Layer 3 -->
+  <div class="layer-card layer-3">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3><span class="tag">Layer 3</span> Adversarial Consensus</h3>
+      <span style="font-size:11px;color:#6a6a3a;">Robustness Engine</span>
+    </div>
+    <p><strong>Objective:</strong> Model system behavior under strategic, noisy, and adversarial conditions.</p>
+    <div style="margin-top:12px;">
+      <p style="font-size:13px;color:#b0b080;">Unlike Layer 1's single-chain assumption, Layer 3 models <strong>fork reality</strong>: multiple competing valid chains can exist simultaneously. Each node selects the chain maximizing <code>S(C) = W(C) - C_attack(C)</code>, where W is accumulated work and C_attack is the cost-adjusted adversarial penalty.</p>
+    </div>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:16px;">
+      <div>
+        <div style="font-size:11px;color:#6a6a3a;">THREAT MODEL</div>
+        <div style="font-size:12px;color:#b0b080;">Delayed &#8226; Partitioned &#8226; Selfish &#8226; Conflicting-state &#8226; Withholding</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6a6a3a;">NETWORK MODEL</div>
+        <div style="font-size:12px;color:#b0b080;">Latency variance &#8226; Duplication &#8226; Reordering &#8226; Partial partitions &#8226; Probabilistic loss</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:#6a6a3a;">
+      <strong>Output:</strong> emergent consensus behavior, adversarial resilience metrics, system stability envelope.
+    </div>
+  </div>
+
+  <!-- Cross-Layer Separation Rule -->
+  <div class="rule-box">
+    <h4>Cross-Layer Separation Rule (Critical)</h4>
+    <table class="rule-table">
+      <tr><td>Layer 1</td><td class="yes">YES</td><td style="color:#8baac8;font-size:12px;">Can influence protocol &#8212; execution truth</td></tr>
+      <tr><td>Layer 2</td><td class="no">NO</td><td style="color:#6a4a8a;font-size:12px;">Interpretation only &#8212; must not affect protocol</td></tr>
+      <tr><td>Layer 3</td><td class="no">NO</td><td style="color:#6a6a3a;font-size:12px;">Testing environment only &#8212; must not affect protocol</td></tr>
+    </table>
+    <div style="margin-top:10px;font-size:12px;color:#5a5a72;line-height:1.6;">
+      Without this separation: economics invades the protocol, simulations become truth, narrative becomes consensus rule.<br>
+      With this separation: the protocol is verifiable, the hypothesis is falsifiable, and the adversarial layer is experimental.
+    </div>
+  </div>
+
+  <!-- Module mapping -->
+  <div style="margin-top:16px;">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#5a5a72;margin-bottom:8px;">Module-to-Layer Mapping</div>
+    <table class="specs" style="font-size:12px;">
+      <tr><td style="width:160px;"><code>smoke.rs</code> / <code>reorg.rs</code></td><td>Layer 1</td><td style="color:#6b6b88;">Pipeline correctness, fork resolution, round-robin mining</td></tr>
+      <tr><td><code>tests.rs</code> (integration)</td><td>Layer 1</td><td style="color:#6b6b88;">Private tx, founder lock, double-spend, reorg</td></tr>
+      <tr><td><code>commitment.rs</code></td><td>Layer 1</td><td style="color:#6b6b88;">Bandwidth commitment validation</td></tr>
+      <tr><td><code>reward.rs</code></td><td>Layer 1+2</td><td style="color:#6b6b88;">Emission math (L1) + economic interpretation (L2)</td></tr>
+      <tr><td><code>shuffle.rs</code></td><td>Layer 3</td><td style="color:#6b6b88;">Block propagation under network noise</td></tr>
+      <tr><td>(future) <code>adversarial.rs</code></td><td>Layer 3</td><td style="color:#6b6b88;">Strategic miner competition simulation</td></tr>
+    </table>
+  </div>
+
+  <div style="margin-top:32px;">
+    <a href="index.html" class="btn btn-outline">&#8592; Back to eWatts.org</a>
+  </div>
+</section>
+
+<footer style="padding:40px 0; border-top:1px solid #1a1a2a; margin-top:40px; text-align:center; font-size:12px; color:#5a5a72;">
+  <a href="https://github.com/4Ewatts/ewatts-protocol" style="color:#5a5a72;text-decoration:none;">GitHub</a>
+  <span style="margin:0 8px;color:#2a2a3a;">/</span>
+  <a href="index.html" style="color:#5a5a72;text-decoration:none;">ewatts.org</a>
+  <span style="margin:0 8px;color:#2a2a3a;">/</span>
+  MIT License
+</footer>
+
+</div>
+</body>
+</html>

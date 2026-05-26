@@ -118,7 +118,7 @@ footer a:hover { color:#c8c8cc; }
 <nav>
   <div class="logo">eWatts<span>.org</span></div>
   <div class="nav-links">
-    <a href="#architecture">Architecture</a>
+    <a href="architecture.html">Architecture</a>
     <a href="#protocol">Protocol</a>
     <a href="#mine">Mine</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
@@ -226,136 +226,25 @@ footer a:hover { color:#c8c8cc; }
 
 <hr>
 
-<!-- ============= 3-LAYER ARCHITECTURE ============= -->
+<!-- ============= ARCHITECTURE ============= -->
 <section class="section" id="architecture">
   <div class="section-label">Architecture</div>
   <h2>Three-layer system</h2>
   <p class="intro">eWatts is built on a strict separation of execution, interpretation, and adversarial validation. These layers do not mix. Each has a distinct role, rule set, and falsifiability condition.</p>
-
-  <div class="system-summary">
-    <strong>One-liner:</strong> eWatts is a deterministic monetary state machine (Layer 1), evaluated under physical substrate hypotheses (Layer 2), and stress-tested in adversarial distributed environments (Layer 3).
-  </div>
-
-  <div class="diagram">
-    <div class="diagram-item layer-1">
-      <strong style="color:#5a9cf6;">Layer 1</strong>
-      <span class="arrow">&#9660;</span>
-      <span style="color:#6b8baa;">Protocol Core</span>
-      <span style="color:#4a6a8a;">Deterministic. Verifiable. Canonical.</span>
-    </div>
-    <div class="diagram-item layer-2">
-      <strong style="color:#a05af6;">Layer 2</strong>
-      <span class="arrow">&#9660;</span>
-      <span style="color:#8b6baa;">Economic Hypothesis</span>
-      <span style="color:#6a4a8a;">Interpretative. Falsifiable. Non-binding.</span>
-    </div>
-    <div class="diagram-item layer-3">
-      <strong style="color:#c8c84a;">Layer 3</strong>
-      <span style="color:#8b8b6a;">Adversarial Consensus</span>
-      <span style="color:#6a6a4a;">Experimental. Stochastic. Robustness.</span>
-    </div>
-  </div>
-
-  <!-- Layer 1 -->
-  <div class="layer-card layer-1" style="margin-top:24px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h3><span class="tag">Layer 1</span> Protocol Core</h3>
-      <span style="font-size:11px;color:#3a6a8a;">Deterministic State Machine</span>
-    </div>
-    <p><strong>Objective:</strong> A single deterministic execution system that any node can independently verify.</p>
-    <div style="margin-top:12px;">
-      <p style="font-size:13px;color:#8baac8;margin-bottom:6px;"><strong>State transition:</strong> S<sub>t+1</sub> = f(S<sub>t</sub>, B<sub>t</sub>)</p>
-      <p style="font-size:13px;color:#8baac8;">A block is valid if: PoW satisfies the difficulty threshold &#8226; prior state exists &#8226; UTXO transitions are consistent &#8226; commitments are verifiable &#8226; emission invariants hold.</p>
-    </div>
-    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:16px;">
-      <div>
-        <div style="font-size:11px;color:#5a7a9a;">EMISSION FUNCTION</div>
-        <div style="font-size:13px;color:#8baac8;"><code>E_t = g(height, state)</code></div>
-        <div style="font-size:11px;color:#5a7a9a;">No external input. No discretionary adjustment.</div>
+  <div style="margin-top:24px;padding:20px;background:#0c0c18;border:1px solid #2a2a3a;border-radius:6px;">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;">
+        <span style="font-size:11px;background:#1a3a5a;color:#5a9cf6;padding:4px 10px;border-radius:3px;font-weight:600;">L1 Protocol Core</span>
+        <span style="font-size:11px;background:#3a1a5a;color:#a05af6;padding:4px 10px;border-radius:3px;font-weight:600;">L2 Economic Hypothesis</span>
+        <span style="font-size:11px;background:#3a3a1a;color:#c8c84a;padding:4px 10px;border-radius:3px;font-weight:600;">L3 Adversarial Consensus</span>
       </div>
-      <div>
-        <div style="font-size:11px;color:#5a7a9a;">SECURITY INVARIANTS</div>
-        <div style="font-size:13px;color:#8baac8;">No double spend &#8226; No inflation beyond schedule &#8226; Deterministic replay &#8226; State convergence</div>
+      <div style="flex:1;min-width:200px;">
+        <a href="architecture.html" style="display:inline-block;padding:8px 18px;background:#1a1a2a;color:#c8c8cc;border-radius:5px;text-decoration:none;font-size:13px;font-weight:500;transition:all .12s;">Full architecture &rarr;</a>
       </div>
     </div>
-    <div style="margin-top:12px;font-size:12px;color:#4a6a8a;">
-      <strong>Output:</strong> single canonical ledger rule, deterministic validation engine, cryptographic correctness.
+    <div style="margin-top:12px;font-size:12px;color:#5a5a72;line-height:1.6;">
+      Deterministic state machine (L1), interpretative economic framework (L2), adversarial robustness engine (L3). Module mapping, cross-layer separation rule, and formal spec.
     </div>
-    <ul style="list-style:none;margin-top:10px;padding:0;font-size:12px;color:#5a7a9a;">
-      <li style="padding:2px 0;">&#9656; Modules: <code>smoke.rs</code>, <code>block.rs</code>, <code>state.rs</code>, <code>commitment.rs</code>, <code>reward.rs</code>, <code>reorg.rs</code></li>
-    </ul>
-  </div>
-
-  <!-- Layer 2 -->
-  <div class="layer-card layer-2">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h3><span class="tag">Layer 2</span> Economic Hypothesis</h3>
-      <span style="font-size:11px;color:#6a3a8a;">Interpretation Layer</span>
-    </div>
-    <p><strong>Objective:</strong> Define the economic meaning of the system without interfering with the protocol.</p>
-    <div style="margin-top:12px;">
-      <p style="font-size:13px;color:#b08ac8;margin-bottom:8px;"><strong>Core hypothesis:</strong> Monetary systems anchored in physical computation substrates exhibit different long-term stability properties depending on the improvement rate of their underlying physical constraints.</p>
-      <p style="font-size:13px;color:#b08ac8;"><strong>Key variable:</strong> &#916; = rate(substrate improvement). ASIC: high &#916; (~25-30%). DRAM latency: low &#916; (~1-2%). Lower &#916; predicts more stable emission regimes.</p>
-    </div>
-    <div style="margin-top:12px;padding:12px;background:#1a0a28;border:1px solid #3a1a5a;border-radius:4px;">
-      <div style="font-size:11px;color:#7a5a9a;font-weight:600;margin-bottom:4px;">FALSIFIABILITY CONDITION</div>
-      <p style="font-size:12px;color:#b08ac8;margin:0;">The hypothesis is false if: (1) substrate advantage converges quickly, (2) system becomes economically dominated by a secondary abstraction layer, or (3) cost of attack decouples from physical constraint.</p>
-    </div>
-    <div style="margin-top:12px;font-size:12px;color:#6a4a8a;">
-      <strong>What this layer does NOT do:</strong> It does NOT define consensus rules, validation logic, or affect protocol execution.
-    </div>
-  </div>
-
-  <!-- Layer 3 -->
-  <div class="layer-card layer-3">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h3><span class="tag">Layer 3</span> Adversarial Consensus</h3>
-      <span style="font-size:11px;color:#6a6a3a;">Robustness Engine</span>
-    </div>
-    <p><strong>Objective:</strong> Model system behavior under strategic, noisy, and adversarial conditions.</p>
-    <div style="margin-top:12px;">
-      <p style="font-size:13px;color:#b0b080;">Unlike Layer 1's single-chain assumption, Layer 3 models <strong>fork reality</strong>: multiple competing valid chains can exist simultaneously. Each node selects the chain maximizing <code>S(C) = W(C) - C_attack(C)</code>, where W is accumulated work and C_attack is the cost-adjusted adversarial penalty.</p>
-    </div>
-    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:16px;">
-      <div>
-        <div style="font-size:11px;color:#6a6a3a;">THREAT MODEL</div>
-        <div style="font-size:12px;color:#b0b080;">Delayed &#8226; Partitioned &#8226; Selfish &#8226; Conflicting-state &#8226; Withholding</div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:#6a6a3a;">NETWORK MODEL</div>
-        <div style="font-size:12px;color:#b0b080;">Latency variance &#8226; Duplication &#8226; Reordering &#8226; Partial partitions &#8226; Probabilistic loss</div>
-      </div>
-    </div>
-    <div style="margin-top:12px;font-size:12px;color:#6a6a3a;">
-      <strong>Output:</strong> emergent consensus behavior, adversarial resilience metrics, system stability envelope.
-    </div>
-  </div>
-
-  <!-- Cross-Layer Separation Rule -->
-  <div class="rule-box">
-    <h4>Cross-Layer Separation Rule (Critical)</h4>
-    <table class="rule-table">
-      <tr><td>Layer 1</td><td class="yes">YES</td><td style="color:#8baac8;font-size:12px;">Can influence protocol &#8212; execution truth</td></tr>
-      <tr><td>Layer 2</td><td class="no">NO</td><td style="color:#6a4a8a;font-size:12px;">Interpretation only &#8212; must not affect protocol</td></tr>
-      <tr><td>Layer 3</td><td class="no">NO</td><td style="color:#6a6a3a;font-size:12px;">Testing environment only &#8212; must not affect protocol</td></tr>
-    </table>
-    <div style="margin-top:10px;font-size:12px;color:#5a5a72;line-height:1.6;">
-      Without this separation: economics invades the protocol, simulations become truth, narrative becomes consensus rule.<br>
-      With this separation: the protocol is verifiable, the hypothesis is falsifiable, and the adversarial layer is experimental.
-    </div>
-  </div>
-
-  <!-- Module mapping -->
-  <div style="margin-top:16px;">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#5a5a72;margin-bottom:8px;">Module-to-Layer Mapping</div>
-    <table class="specs" style="font-size:12px;">
-      <tr><td style="width:160px;"><code>smoke.rs</code> / <code>reorg.rs</code></td><td>Layer 1</td><td style="color:#6b6b88;">Pipeline correctness, fork resolution, round-robin mining</td></tr>
-      <tr><td><code>tests.rs</code> (integration)</td><td>Layer 1</td><td style="color:#6b6b88;">Private tx, founder lock, double-spend, reorg</td></tr>
-      <tr><td><code>commitment.rs</code></td><td>Layer 1</td><td style="color:#6b6b88;">Bandwidth commitment validation</td></tr>
-      <tr><td><code>reward.rs</code></td><td>Layer 1+2</td><td style="color:#6b6b88;">Emission math (L1) + economic interpretation (L2)</td></tr>
-      <tr><td><code>shuffle.rs</code></td><td>Layer 3</td><td style="color:#6b6b88;">Block propagation under network noise</td></tr>
-      <tr><td>(future) <code>adversarial.rs</code></td><td>Layer 3</td><td style="color:#6b6b88;">Strategic miner competition simulation</td></tr>
-    </table>
   </div>
 </section>
 
