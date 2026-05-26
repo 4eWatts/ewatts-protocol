@@ -16,6 +16,9 @@ NODES=(
   "0:25050:26050"
   "1:25051:26051"
   "2:25052:26052"
+  "3:25053:26053"
+  "4:25054:26054"
+  "5:25055:26055"
 )
 
 mkdir -p "$SOAK_DIR"
@@ -41,12 +44,12 @@ $BIN init > /dev/null 2>&1
 log "Node0 initialized"
 
 # Peer nodes — copy genesis from boot
-for i in 1 2; do
+for i in 1 2 3 4 5; do
   cp "$SOAK_DIR/node0/ewatts_data/blocks.jsonl" "$SOAK_DIR/node$i/ewatts_data/" 2>/dev/null || true
   cp "$SOAK_DIR/node0/ewatts_data/genesis.key" "$SOAK_DIR/node$i/ewatts_data/" 2>/dev/null || true
   cp "$SOAK_DIR/node0/ewatts_data/miner.key" "$SOAK_DIR/node$i/ewatts_data/" 2>/dev/null || true
 done
-log "Nodes 1-2 initialized with shared genesis"
+log "Nodes 1-5 initialized with shared genesis"
 
 # ── Start nodes ───────────────────────────────────────────────────────
 
@@ -67,13 +70,13 @@ if [ -z "$PID0" ]; then
 fi
 log "Node0 peer ID: $PID0"
 
-# Nodes 1-2 (peers, mine) — staggered start to defuse mining cycles
+# Nodes 1-5 (peers, mine) — staggered start to defuse mining cycles
 # Each 10s mining timer starts at node launch; 5s stagger = 180° offset
-for i in 1 2; do
+for i in 1 2 3 4 5; do
   cd "$SOAK_DIR/node$i"
   BPORT=$((25050 + i))
   DPORT=$((26050 + i))
-  sleep 5  # stagger: node1 starts 5s after node0, node2 5s after node1
+  sleep 5  # stagger: each node starts 5s after the previous
   $BIN start --p2p --p2p-port $BPORT --dash-port $DPORT --difficulty $DIFFICULTY \
     --bootstrap "/ip4/127.0.0.1/tcp/25050/p2p/$PID0" > "$SOAK_DIR/node$i/stdout.log" 2>&1 &
   eval "N${i}_PID=\$!"
@@ -84,13 +87,13 @@ sleep 5
 
 # ── Metrics header ────────────────────────────────────────────────────
 if [ ! -f "$METRICS" ]; then
-  echo "timestamp,elapsed_h,n0_blocks,n1_blocks,n2_blocks,n0_mem_kb,n1_mem_kb,n2_mem_kb,cpu_pct" > "$METRICS"
+  echo "timestamp,elapsed_h,n0_blocks,n1_blocks,n2_blocks,n3_blocks,n4_blocks,n5_blocks,n0_mem_kb,n1_mem_kb,n2_mem_kb,n3_mem_kb,n4_mem_kb,n5_mem_kb,cpu_pct" > "$METRICS"
 fi
 
 START_TS=$(date +%s)
 
 # PID array for easier iteration
-PIDS=($N0_PID $N1_PID $N2_PID)
+PIDS=($N0_PID $N1_PID $N2_PID $N3_PID $N4_PID $N5_PID)
 
 # ── Monitoring loop ────────────────────────────────────────────────────
 log "Soak test running. PIDs: ${PIDS[*]}"
@@ -109,7 +112,7 @@ while true; do
   TOTAL_MEM=0
   TOTAL_CPU=0
 
-  for i in 0 1 2; do
+  for i in 0 1 2 3 4 5; do
     B=$(wc -l < "$SOAK_DIR/node$i/ewatts_data/blocks.jsonl" 2>/dev/null || echo "0")
     BLOCKS+=("$B")
 
@@ -126,7 +129,7 @@ while true; do
   echo "$TIMESTAMP,$ELAPSED,${BLOCKS[0]},${BLOCKS[1]},${BLOCKS[2]},${MEMS[0]},${MEMS[1]},${MEMS[2]},$TOTAL_CPU" >> "$METRICS"
 
   # Health check: restart any dead node
-  for i in 0 1 2; do
+  for i in 0 1 2 3 4 5; do
     PID=${PIDS[$i]}
     if ! kill -0 $PID 2>/dev/null; then
       log "WARN: Node$i died (PID=$PID)! Restarting..."
