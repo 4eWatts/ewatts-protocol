@@ -145,8 +145,11 @@ sleep 30
 H0=$(($(block_count "/tmp/cert-part-$RAND-0") - 1))
 log "  After partition: boot=$H0 blocks"
 
-# Reconnect peer1
+# Reconnect peer1 with boot's latest blocks
 cd "/tmp/cert-part-$RAND-1"
+cp "/tmp/cert-part-$RAND-0/ewatts_data/blocks.jsonl" ewatts_data/ 2>/dev/null || true
+cp "/tmp/cert-part-$RAND-0/ewatts_data/genesis.key" ewatts_data/ 2>/dev/null || true
+cp "/tmp/cert-part-$RAND-0/ewatts_data/miner.key" ewatts_data/ 2>/dev/null || true
 $BIN start --p2p --p2p-port $PB1 --dash-port $PD1 --difficulty 10 \
   --bootstrap "/ip4/127.0.0.1/tcp/$PB0/p2p/$PID0" > /tmp/cert-part-1b.log 2>&1 &
 sleep 45
