@@ -7,7 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
-use log::{info, warn, debug, error};
+use log::{info, warn, debug, error, trace};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::time::Duration;
@@ -142,7 +142,7 @@ impl P2pNode {
         let parent_known = store.get_block(&block.header.previous_hash).is_some();
         if !parent_known && height > 0 {
             // Orphan: queue for later
-            debug!("P2P: Orphan block #{} (parent unknown), queuing", height);
+            trace!("P2P: Orphan block #{} (parent unknown), queuing", height);
             store.add_orphan(block.clone());
             return Ok(());
         }
@@ -167,14 +167,14 @@ impl P2pNode {
                     &to_unwind, &to_apply, store, state
                 )?;
                 for tx_hash in &resurrected {
-                    debug!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
+                    trace!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
                 }
             }
             crate::reorg::ForkDecision::Sidechain => {
-                debug!("P2P: Sidechain block #{} stored (not heaviest)", height);
+                trace!("P2P: Sidechain block #{} stored (not heaviest)", height);
             }
             crate::reorg::ForkDecision::Orphan => {
-                debug!("P2P: Block #{} stored as orphan", height);
+                trace!("P2P: Block #{} stored as orphan", height);
             }
             crate::reorg::ForkDecision::Reject(msg) => {
                 return Err(format!("Block rejected: {}", msg));
@@ -231,7 +231,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            debug!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            trace!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Ping(_)) => {}
@@ -242,21 +242,21 @@ impl P2pNode {
                                 match msg {
                                     P2pMessage::NewBlock(block) => {
                                         let h = block.header.height;
-                                        debug!("P2P: Gossip block #{} received", h);
+                                        trace!("P2P: Gossip block #{} received", h);
                                         match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                             Ok(()) => {
                                                 Self::accept_block(&block, &mut self.swarm);
                                             }
                                             Err(e) => {
-                                                debug!("P2P: Gossip block #{} rejected: {}", h, e);
+                                                trace!("P2P: Gossip block #{} rejected: {}", h, e);
                                             }
                                         }
                                     }
                                     P2pMessage::NewTransaction(tx) => {
                                         let tx_hash = tx.hash();
                                         match crate::mempool::submit(tx, state) {
-                                            Ok(()) => debug!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
-                                            Err(e) => debug!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
+                                            Ok(()) => trace!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
+                                            Err(e) => trace!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
                                         }
                                     }
                                     _ => {}
@@ -274,7 +274,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height >= from_height && b.header.height <= to_height)
                                                         .collect();
-                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    trace!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
@@ -293,7 +293,7 @@ impl P2pNode {
                                                                 Self::accept_block(block, &mut self.swarm);
                                                             }
                                                             Err(e) => {
-                                                                debug!("P2P: Sync block #{} rejected: {}", h, e);
+                                                                trace!("P2P: Sync block #{} rejected: {}", h, e);
                                                             }
                                                         }
                                                     }
@@ -369,7 +369,7 @@ impl P2pNode {
 
                 if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
                     self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
-                    info!("P2P: Gossiped block #{}", h);
+                    debug!("P2P: Gossiped block #{}", h);
                 }
             }
             Err(e) => warn!("P2P: Mining failed: {}", e),

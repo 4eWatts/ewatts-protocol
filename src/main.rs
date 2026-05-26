@@ -515,13 +515,58 @@ fn cmd_init() {
 
     #[cfg(not(feature = "testnet"))]
     {
-        // Mainnet: start with empty state. First block coinbase mints initial supply.
-        let utxo_set = crate::state::UtxoSet::new();
+        // Mainnet: deterministic genesis address (known pubkey, documented in whitepaper)
+        // Initial supply: 1,000,000 Ewatt for bootstrap liquidity and exchange seeding.
+        // The Ewatts Foundation holds this key and will distribute according to the
+        // published emissions schedule.
+        let mainnet_genesis_pubkey: [u8; 32] = [
+            0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+        ];
+        let initial_supply = 1_000_000 * constants::UNITS_PER_EWATT; // 1M Ewatt
+        let utxo_set = crate::state::UtxoSet::genesis(initial_supply, &mainnet_genesis_pubkey);
         if let Err(e) = crate::store::save_utxo_set(&utxo_set) {
             println!("Error: {}", e);
             return;
         }
-        println!("Genesis: empty state. Mining starts from block 0.");
+
+        // Create and save the mainnet genesis block (height 0, no coinbase)
+        let genesis_header = crate::block::BlockHeader {
+            version: constants::PROTOCOL_VERSION,
+            previous_hash: [0u8; 32],
+            merkle_root: [0u8; 32],
+            timestamp: 1_760_000_000, // Hardcoded launch timestamp
+            height: 0,
+            epoch: 0,
+            difficulty_target: 1,
+            total_effective_commit: 0,
+            emission_rate: 0,
+            miner_effective_commit: 0,
+            vr_block: 0,
+            coinbase_burn: 0,
+            nonce: 0,
+            elapsed_ms: 0,
+            proof_merkle_root: None,
+        };
+        let genesis_body = crate::block::BlockBody {
+            transactions: vec![],
+            commitments: vec![],
+        };
+        let genesis_ph = genesis_header.proof_hash();
+        let genesis_block = crate::block::Block {
+            header: genesis_header,
+            body: genesis_body,
+            proof_hash: genesis_ph,
+        };
+        if let Err(e) = crate::store::save_block(&genesis_block) {
+            println!("Error saving mainnet genesis block: {}", e);
+        } else {
+            println!("Mainnet genesis block saved (height 0)");
+            println!("Initial supply: 1,000,000 Ewatt to genesis address");
+            println!("Genesis pubkey: {}", hex::encode(mainnet_genesis_pubkey));
+        }
     }
 }
 

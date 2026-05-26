@@ -15,82 +15,143 @@
   .status-dot { width: 10px; height: 10px; border-radius: 50%; }
   .status-dot.online { background: #3fb950; box-shadow: 0 0 8px #3fb95055; }
   .status-dot.offline { background: #f85149; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
   .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 6px; }
   .card .value { font-size: 24px; font-weight: 700; color: #f0f6fc; font-family: 'SF Mono', monospace; }
   .card .meta { font-size: 12px; color: #8b949e; margin-top: 2px; }
   .card .meta.green { color: #3fb950; }
   .card .meta.orange { color: #d29922; }
+  .card .meta.red { color: #f85149; }
   .card .meta.blue { color: #58a6ff; }
-  .section-title { font-size: 16px; font-weight: 600; color: #f0f6fc; margin: 20px 0 8px; }
+  .card .meta.purple { color: #bc8cff; }
+  .section-title { font-size: 16px; font-weight: 600; color: #f0f6fc; margin: 20px 0 8px; display: flex; justify-content: space-between; align-items: center; }
+  .section-title .hint { font-size: 11px; color: #8b949e; font-weight: 400; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; border-bottom: 1px solid #30363d; }
   td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; font-family: 'SF Mono', monospace; }
   tr:hover td { background: #1c2128; }
   .table-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow-x: auto; }
-  .bar-chart { display: flex; gap: 2px; align-items: flex-end; height: 60px; margin-top: 8px; padding: 0 4px; }
-  .bar { flex: 1; background: #58a6ff; border-radius: 2px 2px 0 0; min-height: 2px; opacity: 0.6; }
+  .chart-row { display: flex; gap: 12px; margin-top: 12px; }
+  .chart-box { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; min-height: 80px; }
+  .chart-box h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; margin-bottom: 6px; }
+  .bar-chart { display: flex; gap: 2px; align-items: flex-end; height: 48px; padding: 0 2px; }
+  .bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; opacity: 0.7; transition: opacity 0.2s; }
   .bar:hover { opacity: 1; }
+  .bar.reward { background: linear-gradient(to top, #58a6ff, #79c0ff); }
+  .bar.diff { background: linear-gradient(to top, #d29922, #e3b341); }
+  .bar.commit { background: linear-gradient(to top, #3fb950, #56d364); }
   .peers { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .peer { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: 'SF Mono', monospace; color: #8b949e; }
   .footer { text-align: center; color: #484f58; font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid #21262d; }
   .badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; background: rgba(56,139,253,0.15); color: #58a6ff; }
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .badge.green { background: rgba(63,185,80,0.15); color: #3fb950; }
+  .badge.purple { background: rgba(188,140,255,0.15); color: #bc8cff; }
+  .badge.amber { background: rgba(210,153,34,0.15); color: #d29922; }
+  .miner-table td { font-size: 12px; }
+  .sparkline { display: flex; gap: 1px; align-items: flex-end; height: 32px; }
+  .spark-bar { width: 4px; border-radius: 1px; background: #58a6ff; transition: height 0.3s; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .chart-row { flex-direction: column; } }
 </style>
 </head>
 <body>
 <div class="header">
   <div>
     <h1>Ewatts <span>Network</span></h1>
-    <div class="subtitle">Testnet · Memory-Bound PoW</div>
+    <div class="subtitle" id="networkLabel">Testnet · Memory-Bound PoW</div>
   </div>
   <div class="status">
     <span class="status-dot online" id="statusDot"></span>
     <span id="statusText" style="font-size:13px;">Connecting...</span>
     <span class="badge" id="nodeId">—</span>
+    <span class="badge purple" id="epochBadge">Epoch 0</span>
   </div>
 </div>
 
 <div class="grid">
   <div class="card"><h3>Height</h3><div class="value" id="height">—</div><div class="meta" id="heightMeta">blocks</div></div>
   <div class="card"><h3>Supply</h3><div class="value" id="supply">—</div><div class="meta" id="supplyMeta">Ewatt</div></div>
-  <div class="card"><h3>UTXOs</h3><div class="value" id="utxos">—</div><div class="meta" id="utxosMeta">unspent</div></div>
+  <div class="card"><h3>UTXOs</h3><div class="value" id="utxos">—</div><div class="meta" id="utxosMeta">unspent outputs</div></div>
   <div class="card"><h3>MemPool</h3><div class="value" id="mempool">0</div><div class="meta orange" id="mempoolMeta">pending tx</div></div>
   <div class="card"><h3>Peers</h3><div class="value" id="peers">0</div><div class="meta" id="peersMeta">connected</div></div>
   <div class="card"><h3>Difficulty</h3><div class="value" id="difficulty">—</div><div class="meta" id="difficultyMeta">target</div></div>
-  <div class="card"><h3>Block Time</h3><div class="value" id="blockTime">—</div><div class="meta green" id="blockTimeMeta">avg recent</div></div>
-  <div class="card"><h3>Bandwidth</h3><div class="value" id="bandwidth">—</div><div class="meta blue" id="bandwidthMeta">GB/s</div></div>
+  <div class="card"><h3>Emission</h3><div class="value" id="emission">—</div><div class="meta green" id="emissionMeta">per block</div></div>
+  <div class="card"><h3>Block Time</h3><div class="value" id="blockTime">—</div><div class="meta" id="blockTimeMeta">avg recent</div></div>
+  <div class="card"><h3>Bandwidth</h3><div class="value" id="bandwidth">—</div><div class="meta blue" id="bandwidthMeta">GB/s commit</div></div>
+  <div class="card"><h3>VR</h3><div class="value" id="vr">—</div><div class="meta purple" id="vrMeta">verification ratio</div></div>
 </div>
 
-<div class="section-title">Recent Blocks</div>
+<div class="chart-row">
+  <div class="chart-box">
+    <h4>Block Rewards (last 30)</h4>
+    <div class="bar-chart" id="blockChart"></div>
+  </div>
+  <div class="chart-box">
+    <h4>Difficulty Trend (last 30)</h4>
+    <div class="bar-chart" id="diffChart"></div>
+  </div>
+  <div class="chart-box">
+    <h4>Commit Bandwidth (last 30)</h4>
+    <div class="bar-chart" id="commitChart"></div>
+  </div>
+</div>
+
+<div class="section-title">
+  <span>Recent Blocks</span>
+  <span class="hint" id="blocksHint">loading...</span>
+</div>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>#</th><th>Hash</th><th>Time</th><th>Diff</th><th>VR</th><th>TX</th></tr></thead>
-  <tbody id="blocksBody"><tr><td colspan="6" style="text-align:center;color:#484f58;padding:16px;">Loading...</td></tr></tbody>
+  <thead><tr><th>#</th><th>Hash</th><th>Time</th><th>Diff</th><th>Emission</th><th>VR</th><th>TX</th><th>Age</th></tr></thead>
+  <tbody id="blocksBody"><tr><td colspan="8" style="text-align:center;color:#484f58;padding:16px;">Loading...</td></tr></tbody>
 </table>
 </div>
-<div class="bar-chart" id="blockChart"></div>
 
-<div class="section-title">Network</div>
+<div class="section-title">
+  <span>Network</span>
+  <span class="hint" id="peersHint">—</span>
+</div>
 <div class="peers" id="peersList"><span style="color:#484f58;font-size:13px;">No peers</span></div>
 
 <div class="footer">
-  <span id="updateTime">—</span> · Ewatts Protocol
+  <span id="updateTime">—</span> · Ewatts Protocol v0.3
 </div>
 
 <script>
 const HOST = window.location.origin;
 
+function relTime(ts) {
+  if (!ts || ts === 0) return '—';
+  const delta = Date.now() / 1000 - ts;
+  if (delta < 10) return 'now';
+  if (delta < 60) return Math.floor(delta) + 's ago';
+  if (delta < 3600) return Math.floor(delta / 60) + 'm ago';
+  return Math.floor(delta / 3600) + 'h ago';
+}
+
+function fmtHash(h) {
+  return h ? h.substring(0, 8) + '…' : '—';
+}
+
+function fmtEwatt(units) {
+  if (!units || units === 0) return '0';
+  const e = units / 1e8;
+  if (e >= 1000000) return (e / 1e6).toFixed(2) + 'M';
+  if (e >= 1000) return (e / 1e3).toFixed(2) + 'K';
+  return e.toFixed(2);
+}
+
 async function fetchAll() {
   try {
-    const [statusRes, mempoolRes] = await Promise.all([
+    const [statusRes, mempoolRes, peersRes] = await Promise.all([
       fetch(HOST + '/api/status'),
-      fetch(HOST + '/api/mempool').catch(() => null)
+      fetch(HOST + '/api/mempool').catch(() => null),
+      fetch(HOST + '/api/peers').catch(() => null),
     ]);
     const data = await statusRes.json();
     const mempool = mempoolRes ? await mempoolRes.json().catch(() => null) : null;
-    updateDashboard(data, mempool);
+    const peers = peersRes ? await peersRes.json().catch(() => null) : null;
+    updateDashboard(data, mempool, peers);
     document.getElementById('statusDot').className = 'status-dot online';
     document.getElementById('statusText').textContent = 'Live';
   } catch(e) {
@@ -100,50 +161,103 @@ async function fetchAll() {
   document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
 }
 
-function updateDashboard(d, mp) {
+function updateDashboard(d, mp, peersData) {
   const h = d.height || 0;
   document.getElementById('height').textContent = h;
   document.getElementById('heightMeta').textContent = h + ' blocks';
-  document.getElementById('supply').textContent = d.supply ? (d.supply / 1e8).toFixed(2) : '0';
-  document.getElementById('supplyMeta').textContent = (d.supply || 0) + ' base units';
+  
+  const supply = d.supply || 0;
+  document.getElementById('supply').textContent = fmtEwatt(supply);
+  document.getElementById('supplyMeta').textContent = (supply / 1e8).toFixed(2) + ' Ewatt';
+  
   document.getElementById('utxos').textContent = d.utxos || 0;
   document.getElementById('mempool').textContent = mp && mp.pending != null ? mp.pending : (mp && mp.count != null ? mp.count : 0);
-  document.getElementById('peers').textContent = d.peers || 0;
-  document.getElementById('difficulty').textContent = d.difficulty || (d.blocks && d.blocks.length > 0 ? d.blocks[d.blocks.length-1].diff : '—');
+  document.getElementById('peers').textContent = d.peers || (peersData && peersData.count != null ? peersData.count : 0);
   
-  if (d.blocks && d.blocks.length >= 2) {
-    const blks = d.blocks;
+  const diff = d.difficulty || (d.blocks && d.blocks.length > 0 ? 1 : '—');
+  document.getElementById('difficulty').textContent = diff;
+  
+  const emission = d.emission || 0;
+  document.getElementById('emission').textContent = fmtEwatt(emission);
+  document.getElementById('emissionMeta').textContent = (emission / 1e8).toFixed(2) + ' Ewatt/block';
+  
+  const vr = d.vr || 0;
+  document.getElementById('vr').textContent = vr < 1000 ? vr : (vr / 1000).toFixed(1) + 'K';
+  document.getElementById('vrMeta').textContent = 'ratio × 1e6';
+  
+  // Epoch badge
+  const epoch = Math.floor(h / 2016);
+  document.getElementById('epochBadge').textContent = 'Epoch ' + epoch;
+  
+  // Block time from blocks
+  let blks = d.blocks || [];
+  if (blks.length >= 2) {
     const times = blks.slice(-10).map(b => b.time).filter(t => t > 0);
     if (times.length >= 2) {
-      const avg = (times[times.length-1] - times[0]) / (times.length - 1);
-      document.getElementById('blockTime').textContent = avg.toFixed(0) + 's';
+      const avg = ((times[times.length-1] - times[0]) / (times.length - 1));
+      document.getElementById('blockTime').textContent = avg < 300 ? Math.round(avg) + 's' : (avg / 60).toFixed(1) + 'm';
       document.getElementById('blockTimeMeta').textContent = 'avg last ' + (times.length-1) + ' blocks';
     }
   }
 
-  // Bandwidth (estimate from last block)
-  const last = d.blocks && d.blocks.length > 0 ? d.blocks[d.blocks.length-1] : null;
-  document.getElementById('bandwidth').textContent = last && last.bandwidth ? last.bandwidth.toFixed(1) : '—';
+  // Bandwidth from last block
+  const last = blks.length > 0 ? blks[blks.length-1] : null;
+  const bw = last && last.bandwidth ? last.bandwidth : (last && last.commit ? last.commit : '—');
+  document.getElementById('bandwidth').textContent = typeof bw === 'number' ? bw.toFixed(1) : bw;
+
+  // Peer list
+  if (peersData && peersData.raw) {
+    const lines = peersData.raw.trim().split('\n').filter(l => l.length > 10);
+    const peersEl = document.getElementById('peersList');
+    document.getElementById('peersHint').textContent = lines.length + ' peers known';
+    if (lines.length > 0) {
+      const localId = lines[0];
+      document.getElementById('nodeId').textContent = localId.substring(0, 10) + '…';
+      peersEl.innerHTML = lines.slice(1).map(p => {
+        const short = p.substring(0, 16);
+        return '<div class="peer" title="' + p + '">' + short + '…</div>';
+      }).join('');
+    }
+  }
 
   // Blocks table
-  if (d.blocks && d.blocks.length > 0) {
+  if (blks.length > 0) {
     const tbody = document.getElementById('blocksBody');
-    const recent = d.blocks.slice(-15).reverse();
+    const recent = blks.slice(-20).reverse();
+    document.getElementById('blocksHint').textContent = blks.length + ' total';
     tbody.innerHTML = recent.map(b => {
-      const timeStr = b.time ? new Date(b.time * 1000).toLocaleTimeString() : '—';
-      const hashStr = b.hash ? b.hash.substring(0, 12) + '…' : '—';
-      return `<tr><td>#${b.height}</td><td title="${b.hash}">${hashStr}</td><td>${timeStr}</td><td>${b.diff || '—'}</td><td>${b.vr || '—'}</td><td>${b.txs || 0}</td></tr>`;
+      return '<tr><td>#' + b.height + '</td><td title="' + (b.hash || '') + '">' + fmtHash(b.hash) + '</td>' +
+        '<td>' + (b.time ? new Date(b.time * 1000).toLocaleTimeString() : '—') + '</td>' +
+        '<td>' + (b.diff || '—') + '</td>' +
+        '<td>' + fmtEwatt(b.reward) + '</td>' +
+        '<td>' + (b.vr || '—') + '</td>' +
+        '<td>' + (b.txs || 0) + '</td>' +
+        '<td>' + relTime(b.time) + '</td></tr>';
     }).join('');
   }
 
-  // Bar chart (reward per block)
-  if (d.blocks && d.blocks.length > 0) {
-    const chart = document.getElementById('blockChart');
-    const recent = d.blocks.slice(-30);
+  // Charts
+  if (blks.length > 0) {
+    const recent = blks.slice(-30);
+    
+    // Reward bar chart
     const maxR = Math.max(...recent.map(b => (b.reward || 0)), 0.01);
-    chart.innerHTML = recent.map(b => {
-      const pct = ((b.reward || 0) / maxR) * 56;
-      return `<div class="bar" style="height:${Math.max(2, pct)}px" title="#${b.height}: ${(b.reward || 0).toFixed(2)} Ew"></div>`;
+    document.getElementById('blockChart').innerHTML = recent.map(b => {
+      const pct = ((b.reward || 0) / maxR) * 44;
+      return '<div class="bar reward" style="height:' + Math.max(2, pct) + 'px" title="#' + b.height + ': ' + fmtEwatt(b.reward) + ' Ew"></div>';
+    }).join('');
+
+    // Diff chart
+    const maxD = Math.max(...recent.map(b => (b.diff || 1)), 1);
+    document.getElementById('diffChart').innerHTML = recent.map(b => {
+      const pct = ((b.diff || 1) / maxD) * 44;
+      return '<div class="bar diff" style="height:' + Math.max(2, pct) + 'px" title="#' + b.height + ': diff ' + (b.diff || '—') + '"></div>';
+    }).join('');
+
+    // Commit chart (if available) — use reward as proxy
+    document.getElementById('commitChart').innerHTML = recent.map(b => {
+      const pct = ((b.vr || 1) / Math.max(...recent.map(x => (x.vr || 1)), 1)) * 44;
+      return '<div class="bar commit" style="height:' + Math.max(2, pct) + 'px" title="#' + b.height + ': VR ' + (b.vr || '—') + '"></div>';
     }).join('');
   }
 }
