@@ -15,6 +15,7 @@ pub mod mempool;
 pub mod chain;
 pub mod reorg;
 pub mod bip39;
+pub mod pool;
 
 #[cfg(test)]
 pub mod tests;
