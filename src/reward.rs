@@ -1,15 +1,21 @@
 use crate::constants;
 
-/// Emission rate = BASE * total_eff / hist_avg, clamped, in EMISSION_PRECISION
-pub fn compute_emission_rate_int(total_eff: u64, hist_avg: u64) -> u64 {
-    if hist_avg == 0 { return crate::constants::BASE_EMISSION_INT; }
-    let rate = crate::constants::BASE_EMISSION_INT
-        .saturating_mul(total_eff) / hist_avg;
-    let floor = crate::constants::BASE_EMISSION_INT
-        .saturating_mul(crate::constants::EMISSION_FLOOR_MULTIPLIER_INT) / crate::constants::EMISSION_PRECISION;
-    let ceil = crate::constants::BASE_EMISSION_INT
-        .saturating_mul(crate::constants::EMISSION_CEILING_MULTIPLIER_INT) / crate::constants::EMISSION_PRECISION;
-    rate.clamp(floor, ceil)
+/// Emission rate = BASE × max(EFF_REF / total_eff, total_eff / EFF_REF)
+/// Dual-mode formula:
+///   Bootstrap (total_eff < EFF_REF): high reward to attract miners
+///   Mature (total_eff >= EFF_REF): R grows with network, energy/eWatt stable
+/// No bounds — ramp-up cap handles bootstrap excess.
+pub fn compute_emission_rate_int(total_eff: u64, _hist_avg: u64) -> u64 {
+    use crate::constants::{BASE_EMISSION_INT, EFF_REF_INT};
+    if total_eff == 0 { return BASE_EMISSION_INT; }
+    let rate = if total_eff < EFF_REF_INT {
+        // Bootstrap: R = BASE × (EFF_REF / total_eff) — decays as network grows
+        BASE_EMISSION_INT.saturating_mul(EFF_REF_INT) / total_eff
+    } else {
+        // Mature: R = BASE × (total_eff / EFF_REF) — grows with network
+        BASE_EMISSION_INT.saturating_mul(total_eff) / EFF_REF_INT
+    };
+    rate
 }
 
 /// Cap individual miner share during ramp-up, returning excess burned
@@ -125,27 +131,32 @@ mod econ_tests {
     use super::*;
     use crate::constants;
 
-    // T3.1: Emission rate clamped to [floor, ceil] bounds
+    // T3.1: Dual-Mode emission rate — bootstrap high, mature stable, no bounds
     #[test]
     fn econ_emission_rate_bounds() {
-        // Very high total_eff / hist_avg → ceiling
-        let high = compute_emission_rate_int(u64::MAX, 1);
-        let ceil = constants::BASE_EMISSION_INT
-            .saturating_mul(constants::EMISSION_CEILING_MULTIPLIER_INT)
-            / constants::EMISSION_PRECISION;
-        assert_eq!(high, ceil, "High ratio must clamp to ceiling");
+        // Mature phase (total_eff >= EFF_REF): R = BASE × (te / EFF_REF)
+        // Very large network → R grows proportionally
+        let high = compute_emission_rate_int(constants::EFF_REF_INT * 100, 1);
+        let expected = constants::BASE_EMISSION_INT
+            .saturating_mul(100);
+        assert_eq!(high, expected, "100x network must give 100x BASE");
 
-        // Very low total_eff / hist_avg → floor
+        // Bootstrap phase (total_eff < EFF_REF): R = BASE × (EFF_REF / te)
+        // Single miner → high reward
         let low = compute_emission_rate_int(1, u64::MAX);
-        let floor = constants::BASE_EMISSION_INT
-            .saturating_mul(constants::EMISSION_FLOOR_MULTIPLIER_INT)
-            / constants::EMISSION_PRECISION;
-        assert_eq!(low, floor, "Low ratio must clamp to floor");
+        let expected_boot = constants::BASE_EMISSION_INT
+            .saturating_mul(constants::EFF_REF_INT) / 1;
+        assert_eq!(low, expected_boot, "Single miner must get bootstrap reward");
 
-        // Zero historical average → BASE
-        let zero_hist = compute_emission_rate_int(100, 0);
-        assert_eq!(zero_hist, constants::BASE_EMISSION_INT,
-            "Zero hist_avg must return BASE_EMISSION_INT");
+        // At equilibrium (total_eff == EFF_REF): R = BASE
+        let eq = compute_emission_rate_int(constants::EFF_REF_INT, 0);
+        assert_eq!(eq, constants::BASE_EMISSION_INT,
+            "At equilibrium R must equal BASE_EMISSION_INT");
+
+        // Zero total_eff → BASE (safety fallback)
+        let zero = compute_emission_rate_int(0, 100);
+        assert_eq!(zero, constants::BASE_EMISSION_INT,
+            "Zero total_eff must return BASE_EMISSION_INT");
     }
 
     // T3.2: Zero total effective commitment → empty rewards

@@ -24,6 +24,12 @@ pub const RATE_PRECISION: u64 = 1_000_000;                // 1e6 for rate ratios
 
 // Integer versions of previously f64 constants (in precision units)
 pub const BASE_EMISSION_INT: u64 = 100_000_000 * EMISSION_PRECISION / UNITS_PER_EWATT;  // 100 Ewatt
+
+/// Reference effective commitment for emission formula equilibrium.
+/// When total_eff == EFF_REF_INT, emission rate = BASE (100 Ewatt/block).
+/// In COMMIT_PRECISION units, ~1,000 miners at 1 GB/s each.
+pub const EFF_REF_INT: u64 = 1_000_000;  // Effective commitment for equilibrium (~1,000 miners at 1 GB/s)
+
 pub const EMISSION_FLOOR_MULTIPLIER_INT: u64 = 50_000_000;  // 0.05 * 1e9
 pub const EMISSION_CEILING_MULTIPLIER_INT: u64 = 20_000_000_000_000;  // 20.0 * 1e12 (overflows u64? no, 20e12 fits in u64: 20,000,000,000,000 < 18e18)
 pub const RAMP_UP_CAP_INT: u64 = 800_000;                  // 0.80 * 1e6
