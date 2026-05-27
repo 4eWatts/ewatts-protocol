@@ -10,16 +10,15 @@ SOAK_DIR="/tmp/ewatts-soak"
 LOG="$SOAK_DIR/soak.log"
 
 # ── Config per mode ────────────────────────────────────────────────────
-MODE="${1:-auto}"
+# Always runs light mode to avoid restart spikes on night cycle.
+MODE="${1:-light}"
 
-if [ "$MODE" = "heavy" ] || { [ "$MODE" = "auto" ] && [ "$(date -u +%H)" -ge 0 ] && [ "$(date -u +%H)" -lt 8 ]; }; then
-  # Night mode (00-08 UTC) — full stress (target 60-70% CPU)
+if [ "$MODE" = "heavy" ]; then
   NODE_COUNT=30
   DIFFICULTY=1000
   STAGGER=1
   MODE_LABEL="HEAVY"
 else
-  # Day mode (08-00 UTC) — light
   NODE_COUNT=6
   DIFFICULTY=300
   STAGGER=2
@@ -125,13 +124,7 @@ while true; do
   LINE+=",$TOTAL_CPU"
   echo "$LINE" >> "$METRICS"
 
-  # Kill and switch mode if timezone boundary crossed
-  CURRENT_HOUR=$(date -u +%H)
-  if { [ "$MODE" = "auto" ] && [ "$CURRENT_HOUR" -ge 0 ] && [ "$CURRENT_HOUR" -lt 8 ] && [ "$MODE_LABEL" != "HEAVY" ]; } || \
-     { [ "$MODE" = "auto" ] && [ "$CURRENT_HOUR" -ge 8 ] && [ "$MODE_LABEL" != "LIGHT" ]; }; then
-    log "Mode switch detected. Restarting..."
-    exec "$0" "auto"
-  fi
+  # Mode switching disabled — runs continuously without restart
 
   # Health check
   for i in $(seq 0 $((NODE_COUNT - 1))); do
