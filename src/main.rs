@@ -124,7 +124,16 @@ pub(crate) async fn cmd_start(args: &[String]) {
         let blocks = crate::store::load_blocks().unwrap_or_default();
         if blocks.len() > 1 {
             println!("  Reconstructing BlockDiffs from {} blocks...", blocks.len());
-            let mut s = crate::state::UtxoSet::new();  // fresh, empty state
+            // Start from genesis state (matches UtxoSet::genesis in cmd_init)
+            let genesis_pk = crate::store::load_genesis_key()
+                .map(|key| ed25519_dalek::SigningKey::from_bytes(&key)
+                    .verifying_key().to_bytes())
+                .unwrap_or([0u8; 32]);
+            #[cfg(feature = "testnet")]
+            let genesis_supply = 100_000_000;
+            #[cfg(not(feature = "testnet"))]
+            let genesis_supply = 1_000_000 * constants::UNITS_PER_EWATT;
+            let mut s = crate::state::UtxoSet::genesis(genesis_supply, &genesis_pk);
             let mut store = crate::store::load_chain_store();
             for block in &blocks {
                 let hash = block.header.hash();

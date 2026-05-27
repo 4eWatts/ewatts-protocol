@@ -126,8 +126,11 @@ impl ChainStore {
         let parent_work = match self.blocks.get(&parent_hash) {
             Some(e) => e.accumulated_work,
             None => {
-                // Allow blocks with zero parent hash (chain start) without a genesis block in store
-                if parent_hash == [0u8; 32] {
+                // Allow blocks with zero parent hash AND height 0 (genuine genesis).
+                // Without the height check, any block with previous_hash=[0;32] would be
+                // accepted as a "chain start", letting an attacker spam the blocks map with
+                // alternative chains rooted at nothing.
+                if parent_hash == [0u8; 32] && height == 0 {
                     0
                 } else {
                     return Err("Parent block not found".to_string());

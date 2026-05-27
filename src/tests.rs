@@ -151,6 +151,8 @@ fn integration_block_hash_determinism() {
 
 #[test]
 fn integration_reorg_simulation() {
+    // Full reorg end-to-end: mine competing chains, execute reorg,
+    // and verify the resulting state matches mining Chain B directly.
     use crate::chain::ChainStore;
     use crate::mine_block_with_difficulty;
     use crate::reorg;
@@ -177,7 +179,7 @@ fn integration_reorg_simulation() {
     let _ = store.add_block_with_diff(block_a2, d2);
     store.set_chain_tip(&h_a2).ok();
 
-    // Chain B: genesis → B1 → B2 → B3
+    // Chain B: genesis → B1 → B2 → B3 (heavier)
     let mut state_b = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
     let (block_b1, d1b) = mine_block_with_difficulty(gen_hash, 1, &mut state_b, 1, dag_size).unwrap();
     let h_b1 = block_b1.header.hash();
@@ -191,13 +193,31 @@ fn integration_reorg_simulation() {
     let h_b3 = block_b3.header.hash();
     let _ = store.add_block_with_diff(block_b3, d3b);
 
+    // Capture Chain B's expected state (mined directly on fresh genesis)
+    let expected_supply = state_b.total_supply();
+    let expected_utxos = state_b.utxo_count();
+
+    // Build state_r as if Chain A was the canonical chain
     let mut state_r = crate::state::UtxoSet::genesis(100_000_000, &genesis_pk);
     state_r.apply_block_and_track(store.get_block(&h_a1).unwrap(), 1).unwrap();
     state_r.apply_block_and_track(store.get_block(&h_a2).unwrap(), 2).unwrap();
+    assert_eq!(state_r.total_supply(), state_a.total_supply(),
+        "State_r must match Chain A before reorg");
 
+    // Execute reorg: unwind A1, A2; apply B1, B2, B3
     reorg::execute_reorg(&[h_a2, h_a1], &[h_b1, h_b2, h_b3], &mut store, &mut state_r).unwrap();
-    assert_eq!(store.chain_tip_hash(), h_b3);
-    assert_eq!(store.chain_tip_height(), 3);
+
+    // Chain tip must be Chain B's last block
+    assert_eq!(store.chain_tip_hash(), h_b3, "Chain tip must be B3 after reorg");
+    assert_eq!(store.chain_tip_height(), 3, "Chain height must be 3");
+
+    // CRITICAL: state after reorg must match Chain B's standalone state
+    assert_eq!(state_r.total_supply(), expected_supply,
+        "Reorg state supply must match Chain B standalone: {} vs {}",
+        state_r.total_supply(), expected_supply);
+    assert_eq!(state_r.utxo_count(), expected_utxos,
+        "Reorg state UTXO count must match Chain B standalone: {} vs {}",
+        state_r.utxo_count(), expected_utxos);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
