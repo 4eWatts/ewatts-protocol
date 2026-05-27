@@ -188,10 +188,27 @@ async function sendTx() {
     return;
   }
   
-  // This requires the daemon to handle the transaction
-  // For now, show instructions
-  rEl.innerHTML = 'Transaction submission requires the eWatts daemon. Use CLI: <code>ewatts wallet send ' + idx + ' ' + to + ' ' + amount + '</code>';
-  rEl.style.color = '#3b82f6';
+  // Try wallet API first
+  fetch(WALLET_API + '/wallet/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ key_index: idx, to: to, amount: amount }),
+    signal: AbortSignal.timeout(5000),
+  }).then(r => r.json()).then(d => {
+    if (d.status === 'submitted') {
+      rEl.innerHTML = '✅ Transaction submitted! Hash: <code>' + d.tx_hash.substring(0,16) + '...</code>';
+      rEl.style.color = '#22c55e';
+    } else if (d.tx_hash) {
+      rEl.innerHTML = '✅ Sent! Hash: <code>' + d.tx_hash.substring(0,16) + '...</code>';
+      rEl.style.color = '#22c55e';
+    } else {
+      rEl.textContent = 'Error: ' + (d.error || 'unknown');
+      rEl.style.color = '#ef4444';
+    }
+  }).catch(e => {
+    rEl.innerHTML = 'Wallet API not available. Use CLI: <code>ewatts wallet send ' + idx + ' ' + to + ' ' + amount + '</code>';
+    rEl.style.color = '#3b82f6';
+  });
 }
 
 function copyToClip(text) {
@@ -203,7 +220,8 @@ function copyToClip(text) {
 }
 
 // Init — try wallet API first, fallback to public API
-const WALLET_API = 'http://' + window.location.hostname + ':9090';
+// Wallet API runs on the eWatts node (port 9090, started with: ewatts wallet serve)
+const WALLET_API = 'http://178.104.193.51:9090';
 const statusEl = document.getElementById('status');
 
 async function fetchWallet(path) {
