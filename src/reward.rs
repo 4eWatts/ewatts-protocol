@@ -66,6 +66,7 @@ pub fn compute_block_rewards_int(
 }
 
 /// Convert Ewatt (f64) to base units with rounding.
+#[cfg(test)]
 fn ewatt_to_units(ewatt: f64) -> u64 {
     (ewatt * constants::UNITS_PER_EWATT as f64).round() as u64
 }

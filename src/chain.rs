@@ -452,7 +452,7 @@ pub(crate) mod hexkey_map {
 }
 
 pub(crate) mod hex_vec {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
     use std::collections::VecDeque;
 
     pub fn serialize<S>(vec: &VecDeque<[u8; 32]>, ser: S) -> Result<S::Ok, S::Error>

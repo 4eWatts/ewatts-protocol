@@ -4,7 +4,7 @@
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
-use crate::pool::{MiningPool, Share, register_in_pool, pool_stats};
+use crate::pool::{Share, register_in_pool, pool_stats};
 
 pub fn serve(port: &str, pool_address: Vec<u8>) {
     // Initialize global pool

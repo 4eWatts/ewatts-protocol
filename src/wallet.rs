@@ -2,7 +2,6 @@
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::ThreadRng;
 use rand::RngCore;
@@ -669,6 +668,7 @@ pub fn mnemonic_to_entropy(words: &[String]) -> Result<[u8; 32], String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use curve25519_dalek::traits::Identity;
 
     #[test]
     fn test_wallet_keygen() {

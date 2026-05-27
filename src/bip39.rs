@@ -86,14 +86,12 @@ pub fn mnemonic_to_entropy(input_words: &[String]) -> Result<Vec<u8>, String> {
     let mut bits: u64 = 0;
     let mut bit_count: u32 = 0;
     let mut entropy_bytes = Vec::new();
-    let mut bits_read = 0;
     
     for word in input_words {
         let idx = wordlist.iter().position(|&w| w == word.as_str())
             .ok_or_else(|| format!("Unknown word: {}", word))?;
         bits = (bits << 11) | (idx as u64);
         bit_count += 11;
-        bits_read += 11;
         
         // Extract bytes up to but not including the checksum bits
         while bit_count >= 8 && entropy_bytes.len() < entropy_bytes_count {

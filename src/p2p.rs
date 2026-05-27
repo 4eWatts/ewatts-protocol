@@ -231,7 +231,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            trace!("P2P: ConnectionClosed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            debug!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Ping(_)) => {}
@@ -241,22 +241,20 @@ impl P2pNode {
                             if let Ok(msg) = serde_json::from_slice::<P2pMessage>(&message.data) {
                                 match msg {
                                     P2pMessage::NewBlock(block) => {
-                                        let h = block.header.height;
-                                        trace!("P2P: Gossip block #{} received", h);
                                         match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                             Ok(()) => {
                                                 Self::accept_block(&block, &mut self.swarm);
                                             }
                                             Err(e) => {
-                                                trace!("P2P: Gossip block #{} rejected: {}", h, e);
+                                                trace!("P2P: Gossip block #{} rejected: {}", block.header.height, e);
                                             }
                                         }
                                     }
                                     P2pMessage::NewTransaction(tx) => {
-                                        let tx_hash = tx.hash();
+                                        let tx_hash_prefix = tx.hash()[0];
                                         match crate::mempool::submit(tx, state) {
-                                            Ok(()) => trace!("P2P: Gossip tx {:x}.. accepted", tx_hash[0]),
-                                            Err(e) => trace!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash[0], e),
+                                            Ok(()) => {}
+                                            Err(e) => trace!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash_prefix, e),
                                         }
                                     }
                                     _ => {}
@@ -274,7 +272,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height >= from_height && b.header.height <= to_height)
                                                         .collect();
-                                                    trace!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
@@ -285,7 +283,7 @@ impl P2pNode {
                                         request_response::Message::Response { response, .. } => {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
-                                                    info!("P2P: Synced {} blocks", blocks.len());
+                                                    debug!("P2P: Synced {} blocks from peer", blocks.len());
                                                     for block in &blocks {
                                                         let h = block.header.height;
                                                         match Self::validate_and_apply_block(block, state, &mut chain_store) {
@@ -369,7 +367,6 @@ impl P2pNode {
 
                 if let Ok(data) = serde_json::to_vec(&P2pMessage::NewBlock(block)) {
                     self.swarm.behaviour_mut().gossipsub.publish(Topic::new(GOSSIP_TOPIC), data).ok();
-                    debug!("P2P: Gossiped block #{}", h);
                 }
             }
             Err(e) => warn!("P2P: Mining failed: {}", e),

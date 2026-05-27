@@ -113,7 +113,7 @@ pub(crate) async fn cmd_start(args: &[String]) {
     let dag_size_mb: u64 = parse_arg(args, "--dag-size-mb")
         .and_then(|s| s.parse().ok())
         .unwrap_or(256);
-    let dag_size = dag_size_mb * 1024 * 1024;
+    let _dag_size = dag_size_mb * 1024 * 1024;
         
     println!("Ewatts Testnet Daemon");
     println!("  Dashboard: http://0.0.0.0:{}/", dash_port);
@@ -1112,7 +1112,7 @@ fn cmd_wallet(args: &[String]) {
                 return;
             }
             
-            let entropy = match crate::bip39::mnemonic_to_entropy(&words) {
+            let _entropy = match crate::bip39::mnemonic_to_entropy(&words) {
                 Ok(e) => e,
                 Err(e) => { println!("Invalid seed phrase: {}", e); return; }
             };

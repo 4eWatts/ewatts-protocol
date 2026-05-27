@@ -78,7 +78,7 @@ impl MiningPool {
         if self.total_shares == 0 {
             return vec![];
         }
-        let pool_fee = 1u64; // 1% pool fee (scaled)
+        let _pool_fee = 1u64; // 1% pool fee (scaled)
         let net_reward = total_reward.saturating_sub(total_reward / 100); // 1% fee
 
         self.miners.iter()
