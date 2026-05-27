@@ -51,6 +51,7 @@ fn main() {
         "balance" => cmd_balance(&args),
         "send" => cmd_send(&args),
         "keygen" => cmd_keygen(),
+        "seed" => cmd_seed(),
         "wallet" => cmd_wallet(&args),
         "info" => cmd_info(),
         "dash" => cmd_dashboard_sync(),
@@ -456,9 +457,11 @@ fn cmd_help() {
     println!("  balance <pubkey_hex>     Show balance");
     println!("  send <to_pubkey> <amt>   Send from genesis key");
     println!("  keygen                   Generate a new keypair");
+    println!("  seed                     Generate a BIP39 seed phrase (12 words)");
     println!("  wallet new               Create a new wallet key");
     println!("  wallet list              List wallet keys and balances");
     println!("  wallet send <idx> <to_pk> <amt>  Send from wallet key");
+    println!("  wallet restore           Restore wallet from BIP39 seed phrase");
     println!("  info                     Show node status");
     println!("  dash                     Start dashboard (port 8080)");
     println!("  p2p [addr] [bootstrap]     Start P2P node");
@@ -578,6 +581,19 @@ fn cmd_init() {
             println!("Genesis pubkey: {}", hex::encode(mainnet_genesis_pubkey));
         }
     }
+}
+
+fn cmd_seed() {
+    let words = match crate::bip39::generate_mnemonic() {
+        Ok(w) => w,
+        Err(e) => { println!("Error: {}", e); return; }
+    };
+    println!("\n  *** WRITE DOWN AND SECURE THESE {} WORDS ***\n", words.len());
+    for (i, word) in words.iter().enumerate() {
+        println!("  {:2}. {}", i + 1, word);
+    }
+    println!("\n  *** ANYONE WITH THESE WORDS CAN ACCESS YOUR FUNDS ***");
+    println!("  To restore: ewatts wallet restore\n");
 }
 
 fn cmd_keygen() {
@@ -1044,6 +1060,50 @@ fn cmd_wallet(args: &[String]) {
     let mut wallet = crate::wallet::Wallet::load();
 
     match sub {
+        "restore" => {
+            println!("Enter your BIP39 seed phrase (12 words, space-separated):");
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).unwrap();
+            let words: Vec<String> = input.trim().split_whitespace()
+                .map(|s| s.to_lowercase()).collect();
+            
+            if words.len() != 12 && words.len() != 24 {
+                println!("Error: Expected 12 or 24 words, got {}", words.len());
+                return;
+            }
+            
+            let entropy = match crate::bip39::mnemonic_to_entropy(&words) {
+                Ok(e) => e,
+                Err(e) => { println!("Invalid seed phrase: {}", e); return; }
+            };
+            
+            let mnemonic_str = words.join(" ");
+            let seed = crate::bip39::mnemonic_to_seed(&mnemonic_str, "");
+            let sk = crate::bip39::seed_to_keypair(&seed);
+            let pk = sk.verifying_key().to_bytes();
+            
+            // Derive spend/view secrets from seed
+            use sha2::{Sha256, Digest};
+            let spend_bytes = Sha256::digest(&seed[..32]);
+            let view_bytes = Sha256::digest(&seed[32..]);
+            let mut spend_secret = [0u8; 32];
+            let mut view_secret = [0u8; 32];
+            spend_secret.copy_from_slice(&spend_bytes[..32]);
+            view_secret.copy_from_slice(&view_bytes[..32]);
+            
+            wallet.keys.push(crate::wallet::StealthKeyEntry {
+                view_secret,
+                spend_secret,
+                spend_key: pk,
+                view_key: pk,
+                legacy_public_key: pk.to_vec(),
+                label: format!("restored-{}", hex::encode(&pk[..4])),
+            });
+            wallet.save();
+            println!("Wallet restored successfully!");
+            println!("Public key: {}", hex::encode(pk));
+            println!("Saved to ewatts_data/");
+        }
         "new" => {
             let label = args.get(3).map(|s| s.as_str()).unwrap_or("default");
             wallet.new_key(label);
