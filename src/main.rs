@@ -16,6 +16,7 @@ pub mod chain;
 pub mod reorg;
 pub mod bip39;
 pub mod pool;
+pub mod pool_server;
 
 #[cfg(test)]
 pub mod tests;
@@ -57,6 +58,21 @@ fn main() {
         "info" => cmd_info(),
         "dash" => cmd_dashboard_sync(),
         "txhash" => cmd_txhash(),
+        "pool" => {
+            let sub = args.get(2).map(|s| s.as_str()).unwrap_or("help");
+            match sub {
+                "serve" => {
+                    let port = args.get(3).map(|s| s.as_str()).unwrap_or("7070");
+                    let pool_addr = crate::store::load_genesis_key()
+                        .map(|k| k.to_vec()).unwrap_or_else(|_| vec![0u8; 32]);
+                    crate::pool_server::serve(port, pool_addr);
+                }
+                _ => {
+                    println!("Pool commands:");
+                    println!("  pool serve [port]    Start mining pool HTTP server (default 7070)");
+                }
+            }
+        }
         "p2p" => {
             // cmd_p2p has #[tokio::main] — it sets up its own runtime internally
             cmd_p2p(&args);
