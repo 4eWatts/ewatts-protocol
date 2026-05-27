@@ -350,7 +350,30 @@ async fn serve_dashboard(port: &str) {
                 }
                 let request = String::from_utf8_lossy(&buf[..n]);
                 
-                let response = if request.starts_with("GET /api/status") || request.contains("/status") {
+                let response = if request.starts_with("GET /api/v2/info") {
+                    // Exchange API v2: comprehensive node info
+                    let blocks = crate::store::load_blocks().unwrap_or_default();
+                    let state = crate::store::load_utxo_set().ok();
+                    let last = blocks.last();
+                    json_response(200, &serde_json::to_string(&serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "height": blocks.len(),
+                            "supply": state.as_ref().map(|s| s.total_supply()).unwrap_or(0),
+                            "supply_ewatt": state.as_ref().map(|s| s.total_supply() as f64 / crate::constants::UNITS_PER_EWATT as f64).unwrap_or(0.0),
+                            "utxo_count": state.as_ref().map(|s| s.utxo_count()).unwrap_or(0),
+                            "latest_block": last.map(|b| serde_json::json!({
+                                "height": b.header.height,
+                                "hash": hex::encode(b.header.hash()),
+                                "timestamp": b.header.timestamp,
+                                "transactions": b.body.transactions.len(),
+                            })),
+                            "network": "testnet",
+                            "version": crate::constants::PROTOCOL_VERSION,
+                            "consensus": "MBPoW",
+                        }
+                    })).unwrap())
+                } else if request.starts_with("GET /api/status") || request.contains("/status") {
                     // Full status response
                     let blocks = crate::store::load_blocks().unwrap_or_default();
                     let height = if blocks.is_empty() { 0 } else { blocks.len() as u64 - 1 };
