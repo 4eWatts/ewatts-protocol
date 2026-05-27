@@ -1183,6 +1183,10 @@ fn cmd_wallet(args: &[String]) {
             let total: u64 = owned.iter().map(|o| o.entry.amount).sum();
             println!("  Total: {}", total);
         }
+        "serve" => {
+            let port = args.get(3).map(|s| s.as_str()).unwrap_or("9090");
+            cmd_wallet_serve(wallet, port);
+        }
         _ => {
             println!("Wallet commands:");
             println!("  wallet new [label]           Generate stealth keypair");
@@ -1190,6 +1194,7 @@ fn cmd_wallet(args: &[String]) {
             println!("  wallet balance               Show balance");
             println!("  wallet send <idx> <addr> <amt>  Send private tx");
             println!("  wallet scan                  Scan for owned UTXOs");
+            println!("  wallet serve [port]          Start wallet HTTP API (default 9090)");
         }
     }
 }
@@ -1453,6 +1458,120 @@ fn cmd_dashboard_sync() {
 fn json_response(code: u16, body: &str) -> String {
     format!("HTTP/1.1 {} {}\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
         code, if code == 200 { "OK" } else { "Error" }, body.len(), body)
+}
+
+fn cmd_wallet_serve(wallet: crate::wallet::Wallet, port: &str) {
+    use std::io::{Read, Write};
+    
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = match std::net::TcpListener::bind(&addr) {
+        Ok(l) => { println!("Wallet API: http://{}/wallet", addr); l }
+        Err(e) => { println!("Failed to bind: {}", e); return; }
+    };
+    listener.set_nonblocking(true).ok();
+    
+    loop {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                let mut buf = [0u8; 4096];
+                let n = match stream.read(&mut buf) {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                };
+                let request = String::from_utf8_lossy(&buf[..n]).to_string();
+                
+                let response = if request.starts_with("GET /wallet/balance") {
+                    let state = crate::store::load_utxo_set().ok();
+                    if let Some(ref s) = state {
+                        let owned = wallet.scan_utxos(s);
+                        let total: u64 = owned.iter().map(|o| o.entry.amount).sum();
+                        json_response(200, &serde_json::to_string(&serde_json::json!({
+                            "balance": total,
+                            "ewatt": total as f64 / crate::constants::UNITS_PER_EWATT as f64,
+                            "utxos": owned.len(),
+                            "keys": wallet.keys.len(),
+                        })).unwrap())
+                    } else {
+                        json_response(200, "{\"balance\":0,\"ewatt\":0}")
+                    }
+                } else if request.starts_with("GET /wallet/keys") {
+                    let keys: Vec<serde_json::Value> = wallet.keys.iter().map(|k| serde_json::json!({
+                        "label": k.label,
+                        "address": hex::encode(k.spend_key),
+                    })).collect();
+                    json_response(200, &serde_json::to_string(&serde_json::json!({"keys": keys})).unwrap())
+                } else if request.starts_with("GET /wallet/utxos") {
+                    let state = crate::store::load_utxo_set().ok();
+                    if let Some(ref s) = state {
+                        let owned = wallet.scan_utxos(s);
+                        let utxos: Vec<serde_json::Value> = owned.iter().map(|o| serde_json::json!({
+                            "tx_hash": hex::encode(o.key.tx_hash),
+                            "output_index": o.key.output_index,
+                            "amount": o.entry.amount,
+                            "spendable_after": o.entry.spendable_after,
+                        })).collect();
+                        json_response(200, &serde_json::to_string(&serde_json::json!({"utxos": utxos})).unwrap())
+                    } else {
+                        json_response(200, "{\"utxos\":[]}")
+                    }
+                } else if request.starts_with("POST /wallet/send") {
+                    // Parse JSON body
+                    let body_start = request.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+                    let body = &request[body_start..];
+                    let parsed: serde_json::Value = serde_json::from_str(body).unwrap_or(serde_json::json!({}));
+                    let idx = parsed["key_index"].as_u64().unwrap_or(0) as usize;
+                    let to_hex = parsed["to"].as_str().unwrap_or("");
+                    let amount = parsed["amount"].as_u64().unwrap_or(0);
+                    
+                    if idx >= wallet.keys.len() || to_hex.len() != 64 || amount == 0 {
+                        json_response(400, "{\"error\":\"Invalid parameters\"}")
+                    } else {
+                        let to_bytes = hex::decode(to_hex).unwrap_or_default();
+                        if to_bytes.len() != 32 {
+                            json_response(400, "{\"error\":\"Invalid address\"}")
+                        } else {
+                            let state = match crate::store::load_utxo_set() {
+                                Ok(s) => s,
+                                Err(_) => { json_response(500, "{\"error\":\"Cannot load state\"}"); continue; }
+                            };
+                            let mut to_arr = [0u8; 32];
+                            to_arr.copy_from_slice(&to_bytes[..32]);
+                            let to_addr = crate::privacy::StealthAddress {
+                                spend_key: curve25519_dalek::ristretto::CompressedRistretto(to_arr)
+                                    .decompress()
+                                    .unwrap_or(curve25519_dalek::ristretto::RistrettoPoint::identity()),
+                                view_key: curve25519_dalek::ristretto::RistrettoPoint::identity(),
+                            };
+                            let mut rng = rand::thread_rng();
+                            match crate::wallet::create_private_tx(&wallet, &to_addr, amount, &state, &mut rng) {
+                                Ok(tx) => {
+                                    let hash = tx.hash();
+                                    match crate::mempool::submit(tx, &state) {
+                                        Ok(()) => json_response(200, &serde_json::to_string(&serde_json::json!({
+                                            "status": "submitted",
+                                            "tx_hash": hex::encode(hash),
+                                        })).unwrap()),
+                                        Err(e) => json_response(400, &serde_json::to_string(&serde_json::json!({
+                                            "error": format!("Mempool: {}", e)
+                                        })).unwrap()),
+                                    }
+                                }
+                                Err(e) => json_response(400, &serde_json::to_string(&serde_json::json!({
+                                    "error": format!("Tx failed: {}", e)
+                                })).unwrap()),
+                            }
+                        }
+                    }
+                } else {
+                    json_response(200, "{\"status\":\"eWatts wallet API\"}")
+                };
+                let _ = stream.write_all(response.as_bytes());
+            }
+            Err(_) => {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+    }
 }
 
 fn cmd_info() {
