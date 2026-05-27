@@ -14,6 +14,7 @@ pub mod p2p;
 pub mod mempool;
 pub mod chain;
 pub mod reorg;
+pub mod bip39;
 
 #[cfg(test)]
 pub mod tests;
