@@ -202,26 +202,44 @@ function copyToClip(text) {
   });
 }
 
-// Init
+// Init — try wallet API first, fallback to public API
+const WALLET_API = 'http://' + window.location.hostname + ':9090';
 const statusEl = document.getElementById('status');
-api('/status').then(d => {
-  state.height = d.height;
-  state.supply = d.supply;
-  state.utxos_total = d.utxos;
-  state.balance = 0;
-  state.utxos = [];
-  
-  // Try to get ring pool for UTXO info
-  return api('/ring/pool').catch(() => ({ utxos: [] }));
-}).then(pool => {
-  if (pool.utxos) {
-    state.utxos = pool.utxos.slice(0, 100);
+
+async function fetchWallet(path) {
+  try {
+    const r = await fetch(WALLET_API + path, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) return r.json();
+  } catch(e) { /* wallet server not available */ }
+  return null;
+}
+
+async function init() {
+  try {
+    const d = await api('/status');
+    state.height = d.height;
+    state.supply = d.supply;
+    state.utxos_total = d.utxos;
+    
+    const w = await fetchWallet('/wallet/balance');
+    if (w) state.balance = w.balance || 0;
+    const k = await fetchWallet('/wallet/keys');
+    if (k && k.keys) state.keys = k.keys;
+    const u = await fetchWallet('/wallet/utxos');
+    if (u && u.utxos) state.utxos = u.utxos;
+    
+    // Fallback
+    if (state.utxos.length === 0) {
+      const pool = await api('/ring/pool').catch(() => ({ utxos: [] }));
+      if (pool.utxos) state.utxos = pool.utxos.slice(0, 100);
+    }
+  } catch(e) {
+    statusEl.textContent = 'Cannot connect to node.';
   }
   show();
-}).catch(e => {
-  statusEl.textContent = 'Cannot connect to node. Start the daemon first.';
-  show();
-});
+}
+
+init();
 </script>
 </body>
 </html>
