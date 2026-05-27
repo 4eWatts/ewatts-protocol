@@ -196,19 +196,11 @@ footer a:hover { color:#c8c8cc; }
   <div class="cards">
     <div class="card">
       <h3>Mining runs on standard RAM</h3>
-      <p>No ASICs, no GPUs required. Mining speed is determined by how fast your computer can read its own memory. Every computer has RAM. Every computer can mine. The algorithm performs random memory accesses that scale with bandwidth, not clock speed.</p>
+      <p>No ASICs, no GPUs required. Any computer with RAM can mine — a machine from five years ago performs at the same efficiency as one built today. <a href="http://178.104.193.51:8080/" style="color:#3b82f6;">See the live testnet dashboard.</a></p>
     </div>
     <div class="card">
-      <h3>Your identity is protected</h3>
-      <p>Each transaction is signed with a ring of 11 possible keys. An observer cannot tell which key produced the signature. The same key can be used multiple times without linking the transactions together.</p>
-    </div>
-    <div class="card">
-      <h3>Transaction amounts are private</h3>
-      <p>The value of each transaction is committed cryptographically, visible only to the parties involved. Range proofs prove the amount is positive without revealing it. The total supply remains auditable by summing commitments on-chain.</p>
-    </div>
-    <div class="card">
-      <h3>Every payment gets a unique address</h3>
-      <p>Each transaction creates a one-time destination known only to the recipient. No two payments to the same person can be linked. Only the recipient can prove they received it.</p>
+      <h3>Private by default</h3>
+      <p>Sender, recipient, and amount are hidden. Each transaction uses ring signatures (11 possible keys — an observer can't tell which is yours), one-time stealth addresses (no two payments to the same person can be linked), and Pedersen commitments that hide amounts while keeping total supply auditable.</p>
     </div>
     <div class="card">
       <h3>Money supply follows energy cost</h3>
@@ -216,8 +208,7 @@ footer a:hover { color:#c8c8cc; }
     </div>
     <div class="card">
       <h3>Governance designed for stability</h3>
-      <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. No token sale. Mining starts at block 1 with all early coinbase outputs time-locked on-chain.</p>
-      <p style="margin-top:8px; font-size:13px; color:#6b6b8a;">The protocol launches with intentionally minimal governance. Major changes require 95% of miners and 95% of nodes. As the community grows, governance evolves from founder-led to technical maintainers to community stewardship.</p>
+      <p>Major changes require 95% of miners and 95% of nodes. Governance evolves from founder-led to technical maintainers to community stewardship as the network grows.</p>
     </div>
   </div>
 </section>
