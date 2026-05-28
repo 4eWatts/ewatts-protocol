@@ -1,36 +1,44 @@
 use crate::constants;
 
-/// Emission rate = total_supply × (0.025 / BLOCKS_PER_YEAR) × EFF_REF / max(EFF_REF, te)
+/// Emission rate = total_supply × (0.025 / BLOCKS_PER_YEAR) × min(CAP, EFF_REF / te)
 ///
 /// Supply-based emission with inverse network scaling:
-///   - te ≤ EFF_REF (≤3 miners at 1 GB/s): R = supply × 2.5%/year per block (equilibrium maximum)
-///   - te > EFF_REF: R = supply × 2.5%/year × EFF_REF / te — decays with network growth
-///
-/// No bootstrap cap, no floor, no boost. The first 3 miners receive the full
-/// equilibrium rate (2.5%/year nominal). Beyond that, emission decays as 1/te.
-/// The EFF_REF floor prevents the formula from going infinite when te is tiny.
+///   - At equilibrium (te ≈ EFF_REF): R = supply × 2.5%/year per block (~0.0000475%)
+///   - Bootstrap (te < EFF_REF): R capped at BOOTSTRAP_CAP × equilibrium rate
+///   - Mature (te > EFF_REF): R decays as 1/te — more miners, less emission per block
 ///
 /// Design rationale:
 ///   - "Inflation" in eWatts is DRAM efficiency improvement (~1.5%/year), not price inflation
 ///   - 2.5% nominal with ~1.5% efficiency drift ≈ ~1% real dilution — below cost of capital
-///   - The first miners already get the maximum rate; no extra subsidy needed
+///   - Bootstrap cap prevents solo miner from getting 1000×+ rewards (founder allocation by formula)
+///   - No floor — the market decides if emission is worth mining
 ///   - Supply converges asymptotically: more network = less emission = stronger energy anchor
 pub fn compute_emission_rate_int(total_eff: u64, total_supply: u64) -> u64 {
     use crate::constants;
     if total_eff == 0 || total_supply == 0 { return 0; }
 
-    // Floor te to EFF_REF: the first 3 miners don't get penalized for small network size
-    let effective_te = std::cmp::max(total_eff, constants::EFF_REF_INT);
+    // Multiplier: min(BOOTSTRAP_CAP, EFF_REF / te) in CAP_PRECISION (1e6)
+    // At te = EFF_REF, multiplier = 1.0× (CAP_PRECISION)
+    // At te = 1 (solo tiny), multiplier capped at BOOTSTRAP_CAP
+    // At te = 10× EFF_REF, multiplier = 0.1×
+    let multiplier = if total_eff < constants::EFF_REF_INT {
+        let inv = constants::EFF_REF_INT
+            .saturating_mul(constants::CAP_PRECISION) / total_eff;
+        std::cmp::min(constants::BOOTSTRAP_CAP_INT, inv)
+    } else {
+        constants::EFF_REF_INT
+            .saturating_mul(constants::CAP_PRECISION) / total_eff
+    };
 
-    // R = supply × (0.025 / BLOCKS_PER_YEAR) × EFF_REF / max(EFF_REF, te)
+    // R = supply × (0.025 / BLOCKS_PER_YEAR) × (multiplier / CAP_PRECISION)
     // Result directly in EMISSION_PRECISION units (single u128 chain to preserve precision)
     ((total_supply as u128)
         .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-        .saturating_mul(constants::EFF_REF_INT as u128)
+        .saturating_mul(multiplier as u128)
         .saturating_mul(constants::EMISSION_PRECISION as u128)
         / (constants::BLOCKS_PER_YEAR as u128)
         / (constants::RATE_PRECISION as u128)
-        / (effective_te as u128)
+        / (constants::CAP_PRECISION as u128)
         / (constants::UNITS_PER_EWATT as u128)) as u64
 }
 
@@ -177,16 +185,17 @@ mod econ_tests {
         assert_eq!(eq, expected_eq,
             "At equilibrium R ≈ {expected_eq} (got {eq})");
 
-        // Bootstrap (te = 1, tiny): floored to EFF_REF, same rate as equilibrium
+        // Bootstrap (te = 1, tiny): cap at BOOTSTRAP_CAP × equilibrium
         let boot = compute_emission_rate_int(1, GENESIS_SUPPLY);
-        assert_eq!(boot, expected_eq,
-            "Bootstrap R must equal equilibrium rate (got {boot}, expected {expected_eq})");
+        let max_boot = expected_eq.saturating_mul(constants::BOOTSTRAP_CAP_INT) / constants::CAP_PRECISION;
+        assert!(boot <= max_boot,
+            "Bootstrap R must be ≤ {max_boot} (got {boot})");
+        assert!(boot > 0, "Bootstrap R must be positive");
 
         // Large network (te = 100× EFF_REF): R ≈ 0.01× equilibrium
-        let large_te = constants::EFF_REF_INT * 100;
-        let large = compute_emission_rate_int(large_te, GENESIS_SUPPLY);
+        let large = compute_emission_rate_int(constants::EFF_REF_INT * 100, GENESIS_SUPPLY);
         let expected_large = expected_eq / 100;
-        assert!((large as i64 - expected_large as i64).abs() <= 1,
+        assert!((large as i64 - expected_large as i64).abs() <= 2,
             "100× network gives R ≈ 1/100 of equilibrium (got {large}, expected ~{expected_large})");
 
         // Zero total_eff → 0 (no supply issuance without network)

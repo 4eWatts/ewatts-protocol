@@ -31,13 +31,18 @@ pub const RATE_PRECISION: u64 = 1_000_000;                // 1e6 for rate ratios
 /// any minimally productive asset.
 pub const ANNUAL_GROWTH_RATE: u64 = 25_000;  // 2.5% in RATE_PRECISION (1e6)
 
-/// Reference effective commitment: minimum network size for equilibrium emission.
-/// When te < EFF_REF_INT, the formula floors te to EFF_REF_INT, meaning
-/// the first 3 miners (at 1 GB/s each) receive the full 2.5%/year equilibrium
-/// emission. Beyond 3 miners, emission decays as 1/te — no boost, no cap.
-/// 
-/// Each miner at 1 GB/s × commit_window contributes ~1e9 to te (in COMMIT_PRECISION).
-pub const EFF_REF_INT: u64 = 3_000_000_000;  // 3 miners at 1 GB/s each
+/// Bootstrap cap: maximum multiplier over equilibrium emission.
+/// Prevents solo miner from getting absurd rewards (1000×+) when the
+/// network is tiny, which would constitute founder allocation by formula.
+/// Calibratable: higher = stronger bootstrap incentive but more founder
+/// accumulation risk. Suggested range 3-10.
+pub const BOOTSTRAP_CAP_INT: u64 = 5_000_000;  // 5.0× in CAP_PRECISION (1e6)
+
+/// Reference effective commitment for emission formula equilibrium.
+/// When total_eff == EFF_REF_INT, the bootstrap cap is just releasing
+/// (emission = equilibrium rate × BOOTSTRAP_CAP_INT / CAP_PRECISION).
+/// Equivalent to ~1,000 miners at 1 GB/s each.
+pub const EFF_REF_INT: u64 = 1_000_000;  // Effective commitment for equilibrium (~1,000 miners at 1 GB/s)
 
 // ─── Legacy constants (kept for genesis supply and safety caps) ────
 pub const RAMP_UP_CAP_INT: u64 = 800_000;                  // 0.80 * 1e6
