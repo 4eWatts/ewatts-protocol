@@ -780,29 +780,7 @@ pub fn mine_block_with_key(
     header.miner_effective_commit = ce_int;
 
     // Emission rate (integer): avg_hist from recent commit values
-    let avg_hist_int = {
-        let all_blocks = crate::store::load_blocks().unwrap_or_default();
-        let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
-        let window_start = if all_blocks.len() > window_len {
-            all_blocks.len() - window_len
-        } else {
-            0
-        };
-        if window_start < all_blocks.len() && window_start < height as usize {
-            let window: Vec<u64> = all_blocks[window_start..]
-                .iter()
-                .map(|b| b.header.total_effective_commit)
-                .collect();
-            if window.is_empty() {
-                constants::BASE_EMISSION_INT
-            } else {
-                window.iter().sum::<u64>() / window.len() as u64
-            }
-        } else {
-            constants::BASE_EMISSION_INT
-        }
-    };
-    let em_int = crate::reward::compute_emission_rate_int(ce_int, avg_hist_int);
+    let em_int = crate::reward::compute_emission_rate_int(ce_int, state.total_supply());
     header.total_effective_commit = ce_int;
 
     // Reward in EMISSION_PRECISION units

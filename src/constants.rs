@@ -22,25 +22,35 @@ pub const EFF_PRECISION: u64 = 1_000_000;                 // 1e6 for efficiency 
 pub const CAP_PRECISION: u64 = 1_000_000;                 // 1e6 for ramp-up cap (0-1)
 pub const RATE_PRECISION: u64 = 1_000_000;                // 1e6 for rate ratios
 
-// Integer versions of previously f64 constants (in precision units)
-pub const BASE_EMISSION_INT: u64 = 100_000_000 * EMISSION_PRECISION / UNITS_PER_EWATT;  // 100 Ewatt
+// ─── Supply-Based Emission ─────────────────────────────────────────
+/// Annual supply growth target: 2.5% nominal.
+/// The protocol targets 2.5% supply expansion per year at equilibrium.
+/// "Inflation" in eWatts is DRAM efficiency improvement (~1.5%/year), not
+/// consumer price inflation. At 2.5% nominal with ~1.5% efficiency drift,
+/// real supply dilution is ~1%/year — less than the cost of opportunity of
+/// any minimally productive asset.
+pub const ANNUAL_GROWTH_RATE: u64 = 25_000;  // 2.5% in RATE_PRECISION (1e6)
+
+/// Bootstrap cap: maximum multiplier over equilibrium emission.
+/// Prevents solo miner from getting absurd rewards (1000×+) when the
+/// network is tiny, which would constitute founder allocation by formula.
+/// Calibratable: higher = stronger bootstrap incentive but more founder
+/// accumulation risk. Suggested range 3-10.
+pub const BOOTSTRAP_CAP_INT: u64 = 5_000_000;  // 5.0× in CAP_PRECISION (1e6)
 
 /// Reference effective commitment for emission formula equilibrium.
-/// When total_eff == EFF_REF_INT, emission rate = BASE (100 Ewatt/block).
-/// In COMMIT_PRECISION units, ~1,000 miners at 1 GB/s each.
+/// When total_eff == EFF_REF_INT, the bootstrap cap is just releasing
+/// (emission = equilibrium rate × BOOTSTRAP_CAP_INT / CAP_PRECISION).
+/// Equivalent to ~1,000 miners at 1 GB/s each.
 pub const EFF_REF_INT: u64 = 1_000_000;  // Effective commitment for equilibrium (~1,000 miners at 1 GB/s)
 
-pub const EMISSION_FLOOR_MULTIPLIER_INT: u64 = 50_000_000;  // 0.05 * 1e9
-pub const EMISSION_CEILING_MULTIPLIER_INT: u64 = 20_000_000_000_000;  // 20.0 * 1e12 (overflows u64? no, 20e12 fits in u64: 20,000,000,000,000 < 18e18)
+// ─── Legacy constants (kept for genesis supply and safety caps) ────
 pub const RAMP_UP_CAP_INT: u64 = 800_000;                  // 0.80 * 1e6
 pub const MIN_COMMIT_GBS_INT: u64 = 1_000_000_000;         // 1.0 GB/s in milli-GB/s
 pub const EFFICIENCY_PENALTY_THRESHOLD_INT: u64 = 700_000; // 0.7 * 1e6
 pub const EFFICIENCY_CAP_THRESHOLD_INT: u64 = 1_300_000;   // 1.3 * 1e6
 pub const TESTNET_RAMP_UP_CAP_INT: u64 = 800_000;          // 0.80 * 1e6
-pub const BASE_EMISSION: f64 = 100.0;
-pub const BASE_EMISSION_UNITS: u64 = 100_000_000;   // 100 Ewatt em base units
-pub const EMISSION_FLOOR_MULTIPLIER: f64 = 0.05;     // v27: 5 Ewatt min (was 0.1)
-pub const EMISSION_CEILING_MULTIPLIER: f64 = 20.0;   // v27: 2,000 Ewatt max (was 10.0)
+pub const BASE_EMISSION_UNITS: u64 = 100_000_000;   // 100 Ewatt em base units (genesis supply)
 pub const COMMIT_WINDOW_BLOCKS: u64 = 4300;           // v27: 30 days (was 1000 = 7 days)
 pub const RAMP_UP_BLOCKS: u64 = 10000;
 pub const RAMP_UP_CAP: f64 = 0.80;                    // v27: max 80% reward per miner during ramp-up
