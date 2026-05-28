@@ -61,6 +61,70 @@ if [ ! -f "$BIN" ]; then
     exit 1
 fi
 
+# ── Interactive configuration ──
+echo ""
+echo -e "${BLUE}=== Mining Configuration ===${NC}"
+echo "eWatts can mine in the background while you use your computer."
+echo ""
+
+# Schedule
+echo -e "Do you want to restrict mining to specific hours?"
+echo -e "Examples: ${YELLOW}22:00-08:00${NC} (mine at night), ${YELLOW}09:00-18:00${NC} (mine during work), or leave empty for 24/7."
+read -p "Schedule (HH:MM-HH:MM or empty): " SCHEDULE_INPUT
+SCHEDULE_FLAG=""
+if [ -n "$SCHEDULE_INPUT" ]; then
+    SCHEDULE_FLAG="--schedule '$SCHEDULE_INPUT'"
+    echo -e "  ${GREEN}Schedule set: $SCHEDULE_INPUT${NC}"
+else
+    echo -e "  ${GREEN}Mining 24/7${NC}"
+fi
+
+# Idle threshold
+echo ""
+echo "Do you want mining to pause when your CPU is busy?"
+echo -e "Examples: ${YELLOW}50${NC} (pause if CPU > 50%), ${YELLOW}30${NC} (pause if CPU > 30%), or leave empty for never."
+read -p "CPU threshold % (or empty): " IDLE_INPUT
+IDLE_FLAG=""
+if [ -n "$IDLE_INPUT" ]; then
+    IDLE_FLAG="--idle-threshold $IDLE_INPUT"
+    echo -e "  ${GREEN}Idle threshold set: CPU < $IDLE_INPUT%${NC}"
+else
+    echo -e "  ${GREEN}Always mine (no CPU check)${NC}"
+fi
+
+# Systemd service (Linux only)
+SERVICE_INSTALLED=false
+if [ "$OS" = "Linux" ] && command -v systemctl &> /dev/null; then
+    echo ""
+    echo -e "Do you want to install eWatts as a ${BLUE}background service${NC}?"
+    echo "It will start automatically on boot and run in the background."
+    read -p "Install as systemd service? (y/n): " SERVICE_ANS
+    if [ "$SERVICE_ANS" = "y" ] || [ "$SERVICE_ANS" = "Y" ]; then
+        SERVICE_FILE="$HOME/.config/systemd/user/ewatts.service"
+        mkdir -p "$HOME/.config/systemd/user"
+        
+        # Build the ExecStart line
+        START_CMD="$BIN start $SCHEDULE_FLAG $IDLE_FLAG"
+        cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=eWatts Protocol Node
+After=network.target
+
+[Service]
+ExecStart=$START_CMD
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=$INSTALL_DIR
+
+[Install]
+WantedBy=default.target
+EOF
+        systemctl --user daemon-reload 2>/dev/null || true
+        echo -e "  ${GREEN}Service file created: $SERVICE_FILE${NC}"
+        SERVICE_INSTALLED=true
+    fi
+fi
+
 echo ""
 echo -e "${GREEN}======================================"
 echo -e "  eWatts installed successfully!"
@@ -71,8 +135,14 @@ echo -e "  Data:   ${BLUE}$INSTALL_DIR/ewatts_data/${NC}"
 echo ""
 echo -e "Quick start:"
 echo -e "  ${YELLOW}cd $INSTALL_DIR${NC}"
-echo -e "  ${YELLOW}./target/release/ewatts-protocol init${NC}"
-echo -e "  ${YELLOW}./target/release/ewatts-protocol start${NC}"
+
+if [ "$SERVICE_INSTALLED" = true ]; then
+    echo -e "  ${YELLOW}systemctl --user start ewatts${NC}    # Start the service"
+    echo -e "  ${YELLOW}systemctl --user enable ewatts${NC}   # Auto-start on boot"
+    echo -e "  ${YELLOW}systemctl --user status ewatts${NC}   # Check status"
+else
+    echo -e "  ${YELLOW}./target/release/ewatts-protocol start $SCHEDULE_FLAG $IDLE_FLAG${NC}"
+fi
 echo ""
 echo -e "Dashboard: http://localhost:8080/"
 echo -e "Explorer:  https://ewatts.org/explorer.html"
