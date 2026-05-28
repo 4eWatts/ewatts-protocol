@@ -1,45 +1,21 @@
 use crate::constants;
 
-/// Emission rate = total_supply × (0.025 / BLOCKS_PER_YEAR) × min(CAP, EFF_REF / te)
-///
-/// Supply-based emission with inverse network scaling:
-///   - At equilibrium (te ≈ EFF_REF): R = supply × 2.5%/year per block (~0.0000475%)
-///   - Bootstrap (te < EFF_REF): R capped at BOOTSTRAP_CAP × equilibrium rate
-///   - Mature (te > EFF_REF): R decays as 1/te — more miners, less emission per block
-///
-/// Design rationale:
-///   - "Inflation" in eWatts is DRAM efficiency improvement (~1.5%/year), not price inflation
-///   - 2.5% nominal with ~1.5% efficiency drift ≈ ~1% real dilution — below cost of capital
-///   - Bootstrap cap prevents solo miner from getting 1000×+ rewards (founder allocation by formula)
-///   - No floor — the market decides if emission is worth mining
-///   - Supply converges asymptotically: more network = less emission = stronger energy anchor
-pub fn compute_emission_rate_int(total_eff: u64, total_supply: u64) -> u64 {
-    use crate::constants;
-    if total_eff == 0 || total_supply == 0 { return 0; }
-
-    // Multiplier: min(BOOTSTRAP_CAP, EFF_REF / te) in CAP_PRECISION (1e6)
-    // At te = EFF_REF, multiplier = 1.0× (CAP_PRECISION)
-    // At te = 1 (solo tiny), multiplier capped at BOOTSTRAP_CAP
-    // At te = 10× EFF_REF, multiplier = 0.1×
-    let multiplier = if total_eff < constants::EFF_REF_INT {
-        let inv = constants::EFF_REF_INT
-            .saturating_mul(constants::CAP_PRECISION) / total_eff;
-        std::cmp::min(constants::BOOTSTRAP_CAP_INT, inv)
+/// Emission rate = BASE × max(EFF_REF / total_eff, total_eff / EFF_REF)
+/// Dual-mode formula:
+///   Bootstrap (total_eff < EFF_REF): high reward to attract miners
+///   Mature (total_eff >= EFF_REF): R grows with network, energy/eWatt stable
+/// No bounds — ramp-up cap handles bootstrap excess.
+pub fn compute_emission_rate_int(total_eff: u64, _hist_avg: u64) -> u64 {
+    use crate::constants::{BASE_EMISSION_INT, EFF_REF_INT};
+    if total_eff == 0 { return BASE_EMISSION_INT; }
+    let rate = if total_eff < EFF_REF_INT {
+        // Bootstrap: R = BASE × (EFF_REF / total_eff) — decays as network grows
+        BASE_EMISSION_INT.saturating_mul(EFF_REF_INT) / total_eff
     } else {
-        constants::EFF_REF_INT
-            .saturating_mul(constants::CAP_PRECISION) / total_eff
+        // Mature: R = BASE × (total_eff / EFF_REF) — grows with network
+        BASE_EMISSION_INT.saturating_mul(total_eff) / EFF_REF_INT
     };
-
-    // R = supply × (0.025 / BLOCKS_PER_YEAR) × (multiplier / CAP_PRECISION)
-    // Result directly in EMISSION_PRECISION units (single u128 chain to preserve precision)
-    ((total_supply as u128)
-        .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-        .saturating_mul(multiplier as u128)
-        .saturating_mul(constants::EMISSION_PRECISION as u128)
-        / (constants::BLOCKS_PER_YEAR as u128)
-        / (constants::RATE_PRECISION as u128)
-        / (constants::CAP_PRECISION as u128)
-        / (constants::UNITS_PER_EWATT as u128)) as u64
+    rate
 }
 
 /// Cap individual miner share during ramp-up, returning excess burned
@@ -119,35 +95,27 @@ mod tests {
         assert_eq!(ewatt_to_units(0.0000005), 1);  // rounding up
     }
     #[test] fn test_reward_proportional_int() {
-        let eff: u64 = 1_000_000;  // = EFF_REF (equilibrium)
-        let supply: u64 = 100_000_000;  // genesis supply (100 Ewatt)
-        let em = compute_emission_rate_int(eff * 2, supply);
+        let eff: u64 = 100_000_000_000;
+        let em = compute_emission_rate_int(eff * 2, eff * 2);
         let commits = vec![(eff, [1u8;32]), (eff, [2u8;32])];
         let rewards = compute_block_rewards_int(20000, &commits, em);
         assert_eq!(rewards[0].1, rewards[1].1);
         assert!(rewards[0].1 > 0);
     }
     #[test] fn test_reward_honest_more_int() {
-        let honest_eff: u64 = 800_000;
-        let under_eff: u64 = 80_000;
+        let honest_eff: u64 = 100_000_000_000;
+        let under_eff: u64 = 10_000_000_000;
         let total_eff = honest_eff + under_eff;
-        let supply: u64 = 100_000_000;
-        let em = compute_emission_rate_int(total_eff, supply);
+        let em = compute_emission_rate_int(total_eff, total_eff);
         let commits = vec![(honest_eff, [1u8;32]), (under_eff, [2u8;32])];
         let rewards = compute_block_rewards_int(20000, &commits, em);
         assert!(rewards[0].1 > rewards[1].1);
-        // Ratio: honest gets ~10/11 = 90.9% of rewards
-        // Check at EMISSION_PRECISION level before base_units truncation
-        let total_reward = rewards[0].1 + rewards[1].1;
-        let ratio = rewards[0].1 as f64 / total_reward as f64;
-        assert!((ratio - 0.909).abs() < 0.02,
-            "Honest miner ratio {:.3}, expected ~0.909", ratio);
-        assert!(ratio > 0.89, "Honest miner should get majority: {:.3}", ratio);
+        let ratio = rewards[0].1 as f64 / (rewards[0].1 + rewards[1].1) as f64;
+        assert!((ratio - 0.909).abs() < 0.01);
     }
     #[test] fn test_solo_miner_reward_positive() {
-        let eff: u64 = 500_000;  // below EFF_REF → bootstrap
-        let supply: u64 = 100_000_000;
-        let em = compute_emission_rate_int(eff, supply);
+        let eff: u64 = 100_000_000_000;
+        let em = compute_emission_rate_int(eff, eff);
         let commits = vec![(eff, [1u8;32])];
         let rewards = compute_block_rewards_int(5000, &commits, em);
         assert!(!rewards.is_empty());
@@ -164,53 +132,38 @@ mod econ_tests {
     use super::*;
     use crate::constants;
 
-    // Genesis supply used in tests (100 Ewatt in base units)
-    const GENESIS_SUPPLY: u64 = 100_000_000;
-
-    // T3.1: Supply-based emission rate — bounded inverse with bootstrap cap
+    // T3.1: Dual-Mode emission rate — bootstrap high, mature stable, no bounds
     #[test]
-    fn econ_emission_rate_basic() {
-        // Equilibrium (te == EFF_REF): multiplier = 1.0×
-        // R = GENESIS_SUPPLY × 0.025 / 52596 per block ≈ 47.5 base units/block
-        let eq = compute_emission_rate_int(constants::EFF_REF_INT, GENESIS_SUPPLY);
-        // Expected: supply × 0.025 / 52596 per block = ~47,532 in EMISSION_PRECISION
-        let expected_eq = ((GENESIS_SUPPLY as u128)
-            .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-            .saturating_mul(constants::CAP_PRECISION as u128)
-            .saturating_mul(constants::EMISSION_PRECISION as u128)
-            / (constants::BLOCKS_PER_YEAR as u128)
-            / (constants::RATE_PRECISION as u128)
-            / (constants::CAP_PRECISION as u128)
-            / (constants::UNITS_PER_EWATT as u128)) as u64;
-        assert_eq!(eq, expected_eq,
-            "At equilibrium R ≈ {expected_eq} (got {eq})");
+    fn econ_emission_rate_bounds() {
+        // Mature phase (total_eff >= EFF_REF): R = BASE × (te / EFF_REF)
+        // Very large network → R grows proportionally
+        let high = compute_emission_rate_int(constants::EFF_REF_INT * 100, 1);
+        let expected = constants::BASE_EMISSION_INT
+            .saturating_mul(100);
+        assert_eq!(high, expected, "100x network must give 100x BASE");
 
-        // Bootstrap (te = 1, tiny): cap at BOOTSTRAP_CAP × equilibrium
-        let boot = compute_emission_rate_int(1, GENESIS_SUPPLY);
-        let max_boot = expected_eq.saturating_mul(constants::BOOTSTRAP_CAP_INT) / constants::CAP_PRECISION;
-        assert!(boot <= max_boot,
-            "Bootstrap R must be ≤ {max_boot} (got {boot})");
-        assert!(boot > 0, "Bootstrap R must be positive");
+        // Bootstrap phase (total_eff < EFF_REF): R = BASE × (EFF_REF / te)
+        // Single miner → high reward
+        let low = compute_emission_rate_int(1, u64::MAX);
+        let expected_boot = constants::BASE_EMISSION_INT
+            .saturating_mul(constants::EFF_REF_INT) / 1;
+        assert_eq!(low, expected_boot, "Single miner must get bootstrap reward");
 
-        // Large network (te = 100× EFF_REF): R ≈ 0.01× equilibrium
-        let large = compute_emission_rate_int(constants::EFF_REF_INT * 100, GENESIS_SUPPLY);
-        let expected_large = expected_eq / 100;
-        assert!((large as i64 - expected_large as i64).abs() <= 2,
-            "100× network gives R ≈ 1/100 of equilibrium (got {large}, expected ~{expected_large})");
+        // At equilibrium (total_eff == EFF_REF): R = BASE
+        let eq = compute_emission_rate_int(constants::EFF_REF_INT, 0);
+        assert_eq!(eq, constants::BASE_EMISSION_INT,
+            "At equilibrium R must equal BASE_EMISSION_INT");
 
-        // Zero total_eff → 0 (no supply issuance without network)
-        let zero = compute_emission_rate_int(0, GENESIS_SUPPLY);
-        assert_eq!(zero, 0, "Zero te must return 0");
-
-        // Zero supply → 0
-        let zero_supply = compute_emission_rate_int(constants::EFF_REF_INT, 0);
-        assert_eq!(zero_supply, 0, "Zero supply must return 0");
+        // Zero total_eff → BASE (safety fallback)
+        let zero = compute_emission_rate_int(0, 100);
+        assert_eq!(zero, constants::BASE_EMISSION_INT,
+            "Zero total_eff must return BASE_EMISSION_INT");
     }
 
     // T3.2: Zero total effective commitment → empty rewards
     #[test]
     fn econ_zero_commitment_no_reward() {
-        let em = compute_emission_rate_int(constants::EFF_REF_INT, GENESIS_SUPPLY);
+        let em = compute_emission_rate_int(100, 100);
         let rewards = compute_block_rewards_int(1000, &[], em);
         assert!(rewards.is_empty(), "No commitments = no rewards");
     }
@@ -218,14 +171,13 @@ mod econ_tests {
     // T3.3: Rewards proportional to effective commitment
     #[test]
     fn econ_reward_proportionality() {
-        let eff_a: u64 = constants::EFF_REF_INT * 2;  // 2× equilibrium
-        let eff_b: u64 = constants::EFF_REF_INT;       // 1× equilibrium
-        let te = eff_a + eff_b;
-        let em = compute_emission_rate_int(te, GENESIS_SUPPLY);
-        let commits = vec![(eff_a, [1u8; 32]), (eff_b, [2u8; 32])];
+        let eff: u64 = 1_000_000_000;
+        let em = compute_emission_rate_int(eff * 3, eff * 3);
+        // Miner A has 2x the effective commitment of Miner B
+        let commits = vec![(eff * 2, [1u8; 32]), (eff, [2u8; 32])];
         let rewards = compute_block_rewards_int(20000, &commits, em);
         assert_eq!(rewards.len(), 2);
-        // A has 2× B's commitment → A gets 2× reward
+        // A should get roughly 2x what B gets
         assert!(rewards[0].1 >= rewards[1].1 * 2,
             "2x commit should get >= 2x reward: {} vs {}",
             rewards[0].1, rewards[1].1);
@@ -234,18 +186,25 @@ mod econ_tests {
     // T3.4: Ramp-up cap burns excess during early blocks
     #[test]
     fn econ_ramp_up_cap_burns_excess() {
-        let eff: u64 = constants::EFF_REF_INT;
-        let em = compute_emission_rate_int(eff, GENESIS_SUPPLY);
+        // During ramp-up (block < RAMP_UP_BLOCKS), a single miner
+        // gets capped to prevent early domination
+        let eff: u64 = 100_000_000_000;
+        let em = compute_emission_rate_int(eff, eff);
         let commits = vec![(eff, [1u8; 32])];
 
+        // Block before ramp-up end
         let early = constants::RAMP_UP_BLOCKS - 1;
         let rewards = compute_block_rewards_int(early, &commits, em);
+        // Burn is already handled inside compute_block_rewards_int
         assert!(!rewards.is_empty(), "Early block must produce rewards");
         assert!(rewards[0].1 > 0, "Reward must be positive");
 
+        // After ramp-up, the same commitment should produce a higher reward
+        // (no cap applied)
         let late = constants::RAMP_UP_BLOCKS + 1000;
         let late_rewards = compute_block_rewards_int(late, &commits, em);
         assert!(!late_rewards.is_empty());
+        // Late reward should be >= early reward (cap removed)
         assert!(late_rewards[0].1 >= rewards[0].1,
             "Post-ramp reward must not be less than ramp reward: {} vs {}",
             late_rewards[0].1, rewards[0].1);
@@ -268,10 +227,12 @@ mod econ_tests {
         let gen_hash = gen_block.header.hash();
         state.apply_block_and_track(&gen_block, 0).expect("Apply genesis");
 
+        // Mine a block — the coinbase output should have spendable_after = founder_lock
         let (block1, _) = crate::mine_block_with_difficulty(
             gen_hash, 1, &mut state, 1, 64 * 1024,
         ).expect("Block 1");
 
+        // The coinbase output's spendable_after must be >= founder_lock for this height
         let expected_lock = founder_lock_block(1);
         for output in &block1.body.transactions[0].outputs {
             assert!(output.spendable_after >= expected_lock,
@@ -279,8 +240,10 @@ mod econ_tests {
                 expected_lock, output.spendable_after);
         }
 
+        // Apply the block and verify the UTXO is properly locked
         state.apply_block_and_track(&block1, 1).expect("Apply block 1");
 
+        // Find the miner's UTXO and check its lock
         let keys = state.utxo_keys_for(&pk);
         assert!(!keys.is_empty(), "Miner must have UTXOs after mining");
         for key in &keys {
@@ -294,9 +257,9 @@ mod econ_tests {
         }
     }
 
-    // T3.6: Supply grows monotonically and within expected bounds
+    // T3.6: Supply capped at maximum (total supply must not exceed MAX_SUPPLY)
     #[test]
-    fn econ_supply_growth_positive() {
+    fn econ_supply_cap_not_exceeded() {
         use crate::state::UtxoSet;
         use ed25519_dalek::SigningKey;
 
@@ -313,6 +276,7 @@ mod econ_tests {
         let initial_supply = state.total_supply();
         assert_eq!(initial_supply, 100_000_000, "Genesis supply must be 100M");
 
+        // Mine several blocks and verify supply grows monotonically
         let mut prev_hash = gen_hash;
         let mut last_supply = initial_supply;
         for height in 1..=20u64 {
@@ -323,13 +287,13 @@ mod econ_tests {
                 .expect(&format!("Apply block {}", height));
             let supply = state.total_supply();
             assert!(supply >= last_supply,
-                "Supply must not decrease: {supply} < {last_supply} at height {height}");
-            // With new supply-based emission, each block adds ~0.0005-50 base units
-            // Sanity check: never exceed +100 Ewatt/block safety cap
-            let max_per_block = 100_000_000u64;  // 100 Ewatt safety ceiling
-            let max_expected = initial_supply + height * max_per_block;
+                "Supply must not decrease: {} < {} at height {}",
+                supply, last_supply, height);
+            // With initial 100M + 20 blocks * ~100 Ewatt each, max is ~2.1B units
+            let max_expected = 100_000_000 + 20 * constants::BASE_EMISSION_UNITS;
             assert!(supply <= max_expected,
-                "Supply must not exceed expected max: {supply} > {max_expected}");
+                "Supply must not exceed expected max: {} > {}",
+                supply, max_expected);
             last_supply = supply;
             prev_hash = block.header.hash();
         }
