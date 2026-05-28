@@ -1,35 +1,36 @@
 use crate::constants;
 
-/// Emission rate = supply × (0.015 / BLOCKS_PER_YEAR) × (REF_COMMIT + te) / te
+/// Emission rate = total_supply × (0.025 / BLOCKS_PER_YEAR) × EFF_REF / max(EFF_REF, te)
 ///
-/// Supply-based emission that asymptotes to 1.5%/year as te → ∞.
-/// The bootstrap boost comes naturally from (REF_COMMIT + te) / te:
-///   - At 1 miner (te = REF_COMMIT = 1e9): multiplier = 2 → 3.0%/year
-///   - At 3 miners (te = 3e9): multiplier = 1.33 → 2.0%/year
-///   - At 10 miners (te = 1e10): multiplier = 1.1 → 1.65%/year
-///   - At infinity: multiplier → 1.0 → 1.5%/year (asymptotic minimum)
+/// Supply-based emission with inverse network scaling:
+///   - te ≤ EFF_REF (≤3 miners at 1 GB/s): R = supply × 2.5%/year per block (equilibrium maximum)
+///   - te > EFF_REF: R = supply × 2.5%/year × EFF_REF / te — decays with network growth
+///
+/// No bootstrap cap, no floor, no boost. The first 3 miners receive the full
+/// equilibrium rate (2.5%/year nominal). Beyond that, emission decays as 1/te.
+/// The EFF_REF floor prevents the formula from going infinite when te is tiny.
 ///
 /// Design rationale:
-///   - 1.5% is the ASYMPTOTE (minimum rate), not the target at equilibrium
-///   - The inverse boost is natural: less network = more emission per miner
-///   - No floors, no caps, no bounds — the formula is smooth across all te
-///   - "Inflation" in eWatts is DRAM efficiency (~1.5%/year), converging
-///     to ~0% real dilution as the network grows
+///   - "Inflation" in eWatts is DRAM efficiency improvement (~1.5%/year), not price inflation
+///   - 2.5% nominal with ~1.5% efficiency drift ≈ ~1% real dilution — below cost of capital
+///   - The first miners already get the maximum rate; no extra subsidy needed
+///   - Supply converges asymptotically: more network = less emission = stronger energy anchor
 pub fn compute_emission_rate_int(total_eff: u64, total_supply: u64) -> u64 {
     use crate::constants;
     if total_eff == 0 || total_supply == 0 { return 0; }
 
-    // R = supply × (0.015 / 52596) × (REF_COMMIT + te) / te
-    // Single u128 chain to preserve precision:
-    // R = supply × GROWTH_RATE × (REF_COMMIT + te) × EMISSION_PRECISION
-    //     / (52596 × RATE_PRECISION × te × UNITS_PER_EWATT)
+    // Floor te to EFF_REF: the first 3 miners don't get penalized for small network size
+    let effective_te = std::cmp::max(total_eff, constants::EFF_REF_INT);
+
+    // R = supply × (0.025 / BLOCKS_PER_YEAR) × EFF_REF / max(EFF_REF, te)
+    // Result directly in EMISSION_PRECISION units (single u128 chain to preserve precision)
     ((total_supply as u128)
         .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-        .saturating_mul((total_eff as u128).saturating_add(constants::REF_COMMIT_INT as u128))
+        .saturating_mul(constants::EFF_REF_INT as u128)
         .saturating_mul(constants::EMISSION_PRECISION as u128)
         / (constants::BLOCKS_PER_YEAR as u128)
         / (constants::RATE_PRECISION as u128)
-        / (total_eff as u128)
+        / (effective_te as u128)
         / (constants::UNITS_PER_EWATT as u128)) as u64
 }
 
@@ -110,7 +111,7 @@ mod tests {
         assert_eq!(ewatt_to_units(0.0000005), 1);  // rounding up
     }
     #[test] fn test_reward_proportional_int() {
-        let eff: u64 = 1_000_000_000;  // ~1 miner at 1 GB/s
+        let eff: u64 = 1_000_000;  // = EFF_REF (equilibrium)
         let supply: u64 = 100_000_000;  // genesis supply (100 Ewatt)
         let em = compute_emission_rate_int(eff * 2, supply);
         let commits = vec![(eff, [1u8;32]), (eff, [2u8;32])];
@@ -119,14 +120,16 @@ mod tests {
         assert!(rewards[0].1 > 0);
     }
     #[test] fn test_reward_honest_more_int() {
-        let honest_eff: u64 = 1_000_000_000;
-        let under_eff: u64 = 100_000_000;
+        let honest_eff: u64 = 800_000;
+        let under_eff: u64 = 80_000;
         let total_eff = honest_eff + under_eff;
         let supply: u64 = 100_000_000;
         let em = compute_emission_rate_int(total_eff, supply);
         let commits = vec![(honest_eff, [1u8;32]), (under_eff, [2u8;32])];
         let rewards = compute_block_rewards_int(20000, &commits, em);
         assert!(rewards[0].1 > rewards[1].1);
+        // Ratio: honest gets ~10/11 = 90.9% of rewards
+        // Check at EMISSION_PRECISION level before base_units truncation
         let total_reward = rewards[0].1 + rewards[1].1;
         let ratio = rewards[0].1 as f64 / total_reward as f64;
         assert!((ratio - 0.909).abs() < 0.02,
@@ -134,7 +137,7 @@ mod tests {
         assert!(ratio > 0.89, "Honest miner should get majority: {:.3}", ratio);
     }
     #[test] fn test_solo_miner_reward_positive() {
-        let eff: u64 = 500_000_000;  // below REF_COMMIT → bootstrap boost
+        let eff: u64 = 500_000;  // below EFF_REF → bootstrap
         let supply: u64 = 100_000_000;
         let em = compute_emission_rate_int(eff, supply);
         let commits = vec![(eff, [1u8;32])];
@@ -156,63 +159,49 @@ mod econ_tests {
     // Genesis supply used in tests (100 Ewatt in base units)
     const GENESIS_SUPPLY: u64 = 100_000_000;
 
-    // T3.1: Supply-based emission — inverse boost asymptoting to 1.5%
+    // T3.1: Supply-based emission rate — bounded inverse with bootstrap cap
     #[test]
     fn econ_emission_rate_basic() {
-        let te_ref = constants::REF_COMMIT_INT;
-
-        // At te = REF_COMMIT (1 miner): multiplier = (1e9+1e9)/1e9 = 2 → 3.0%/year
-        let eq = compute_emission_rate_int(te_ref, GENESIS_SUPPLY);
+        // Equilibrium (te == EFF_REF): multiplier = 1.0×
+        // R = GENESIS_SUPPLY × 0.025 / 52596 per block ≈ 47.5 base units/block
+        let eq = compute_emission_rate_int(constants::EFF_REF_INT, GENESIS_SUPPLY);
+        // Expected: supply × 0.025 / 52596 per block = ~47,532 in EMISSION_PRECISION
         let expected_eq = ((GENESIS_SUPPLY as u128)
             .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-            .saturating_mul((te_ref as u128) + (te_ref as u128))
+            .saturating_mul(constants::CAP_PRECISION as u128)
             .saturating_mul(constants::EMISSION_PRECISION as u128)
             / (constants::BLOCKS_PER_YEAR as u128)
             / (constants::RATE_PRECISION as u128)
-            / (te_ref as u128)
+            / (constants::CAP_PRECISION as u128)
             / (constants::UNITS_PER_EWATT as u128)) as u64;
         assert_eq!(eq, expected_eq,
-            "At 1 miner R ≈ {expected_eq} (got {eq})");
+            "At equilibrium R ≈ {expected_eq} (got {eq})");
 
-        // Tiny te (1 unit): very high boost
-        let tiny = compute_emission_rate_int(1, GENESIS_SUPPLY);
-        let expected_tiny = ((GENESIS_SUPPLY as u128)
-            .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-            .saturating_mul(constants::REF_COMMIT_INT as u128 + 1)
-            .saturating_mul(constants::EMISSION_PRECISION as u128)
-            / (constants::BLOCKS_PER_YEAR as u128)
-            / (constants::RATE_PRECISION as u128)
-            / 1u128
-            / (constants::UNITS_PER_EWATT as u128)) as u64;
-        assert_eq!(tiny, expected_tiny,
-            "Tiny te must give boost: {tiny} vs {expected_tiny}");
-        assert!(tiny > expected_eq,
-            "Tiny te must give higher emission than 1 miner");
+        // Bootstrap (te = 1, tiny): floored to EFF_REF, same rate as equilibrium
+        let boot = compute_emission_rate_int(1, GENESIS_SUPPLY);
+        assert_eq!(boot, expected_eq,
+            "Bootstrap R must equal equilibrium rate (got {boot}, expected {expected_eq})");
 
-        // Large network (te = 100× REF_COMMIT): multiplier ≈ 1.01
-        let large_te = te_ref * 100;
+        // Large network (te = 100× EFF_REF): R ≈ 0.01× equilibrium
+        let large_te = constants::EFF_REF_INT * 100;
         let large = compute_emission_rate_int(large_te, GENESIS_SUPPLY);
-        let expected_large = ((GENESIS_SUPPLY as u128)
-            .saturating_mul(constants::ANNUAL_GROWTH_RATE as u128)
-            .saturating_mul((te_ref as u128) + (large_te as u128))
-            .saturating_mul(constants::EMISSION_PRECISION as u128)
-            / (constants::BLOCKS_PER_YEAR as u128)
-            / (constants::RATE_PRECISION as u128)
-            / (large_te as u128)
-            / (constants::UNITS_PER_EWATT as u128)) as u64;
+        let expected_large = expected_eq / 100;
         assert!((large as i64 - expected_large as i64).abs() <= 1,
-            "100× network gives R ≈ {expected_large} (got {large})");
+            "100× network gives R ≈ 1/100 of equilibrium (got {large}, expected ~{expected_large})");
 
-        // Zero te → 0
-        assert_eq!(compute_emission_rate_int(0, GENESIS_SUPPLY), 0);
+        // Zero total_eff → 0 (no supply issuance without network)
+        let zero = compute_emission_rate_int(0, GENESIS_SUPPLY);
+        assert_eq!(zero, 0, "Zero te must return 0");
+
         // Zero supply → 0
-        assert_eq!(compute_emission_rate_int(te_ref, 0), 0);
+        let zero_supply = compute_emission_rate_int(constants::EFF_REF_INT, 0);
+        assert_eq!(zero_supply, 0, "Zero supply must return 0");
     }
 
     // T3.2: Zero total effective commitment → empty rewards
     #[test]
     fn econ_zero_commitment_no_reward() {
-        let em = compute_emission_rate_int(constants::REF_COMMIT_INT, GENESIS_SUPPLY);
+        let em = compute_emission_rate_int(constants::EFF_REF_INT, GENESIS_SUPPLY);
         let rewards = compute_block_rewards_int(1000, &[], em);
         assert!(rewards.is_empty(), "No commitments = no rewards");
     }
@@ -220,8 +209,8 @@ mod econ_tests {
     // T3.3: Rewards proportional to effective commitment
     #[test]
     fn econ_reward_proportionality() {
-        let eff_a: u64 = constants::REF_COMMIT_INT * 2;  // 2× equilibrium
-        let eff_b: u64 = constants::REF_COMMIT_INT;       // 1× equilibrium
+        let eff_a: u64 = constants::EFF_REF_INT * 2;  // 2× equilibrium
+        let eff_b: u64 = constants::EFF_REF_INT;       // 1× equilibrium
         let te = eff_a + eff_b;
         let em = compute_emission_rate_int(te, GENESIS_SUPPLY);
         let commits = vec![(eff_a, [1u8; 32]), (eff_b, [2u8; 32])];
@@ -236,7 +225,7 @@ mod econ_tests {
     // T3.4: Ramp-up cap burns excess during early blocks
     #[test]
     fn econ_ramp_up_cap_burns_excess() {
-        let eff: u64 = constants::REF_COMMIT_INT;
+        let eff: u64 = constants::EFF_REF_INT;
         let em = compute_emission_rate_int(eff, GENESIS_SUPPLY);
         let commits = vec![(eff, [1u8; 32])];
 

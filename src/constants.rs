@@ -23,22 +23,21 @@ pub const CAP_PRECISION: u64 = 1_000_000;                 // 1e6 for ramp-up cap
 pub const RATE_PRECISION: u64 = 1_000_000;                // 1e6 for rate ratios
 
 // ─── Supply-Based Emission ─────────────────────────────────────────
-/// Annual supply growth rate: 1.5% nominal (asymptotic minimum).
-/// The growth rate converges to 1.5%/year as the network grows large.
-/// In early stages with few miners, emission is higher:
-///   R = supply × (0.015 / 52596) × (REF_COMMIT + te) / te
-/// At 1 miner: 3.0%/year. At 3 miners: 2.0%/year. At infinity: 1.5%/year.
-///
+/// Annual supply growth target: 2.5% nominal.
+/// The protocol targets 2.5% supply expansion per year at equilibrium.
 /// "Inflation" in eWatts is DRAM efficiency improvement (~1.5%/year), not
-/// consumer price inflation. The asymptotic rate matches the drift of the
-/// physical anchor: 1.5% nominal ≈ 0% real dilution in the limit.
-pub const ANNUAL_GROWTH_RATE: u64 = 15_000;  // 1.5% in RATE_PRECISION (1e6)
+/// consumer price inflation. At 2.5% nominal with ~1.5% efficiency drift,
+/// real supply dilution is ~1%/year — less than the cost of opportunity of
+/// any minimally productive asset.
+pub const ANNUAL_GROWTH_RATE: u64 = 25_000;  // 2.5% in RATE_PRECISION (1e6)
 
-/// Reference commitment: one standard miner at 1 GB/s with full efficiency.
-/// Used in the emission formula as the bootstrap inverse multiplier:
-///   multiplier = (REF_COMMIT + te) / te
-/// At 1 miner: 2×. At 10 miners: 1.1×. At infinity: 1×.
-pub const REF_COMMIT_INT: u64 = 1_000_000_000;  // ~1 GB/s miner in COMMIT_PRECISION (1e9)
+/// Reference effective commitment: minimum network size for equilibrium emission.
+/// When te < EFF_REF_INT, the formula floors te to EFF_REF_INT, meaning
+/// the first 3 miners (at 1 GB/s each) receive the full 2.5%/year equilibrium
+/// emission. Beyond 3 miners, emission decays as 1/te — no boost, no cap.
+/// 
+/// Each miner at 1 GB/s × commit_window contributes ~1e9 to te (in COMMIT_PRECISION).
+pub const EFF_REF_INT: u64 = 3_000_000_000;  // 3 miners at 1 GB/s each
 
 // ─── Legacy constants (kept for genesis supply and safety caps) ────
 pub const RAMP_UP_CAP_INT: u64 = 800_000;                  // 0.80 * 1e6
