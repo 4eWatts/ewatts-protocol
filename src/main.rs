@@ -87,6 +87,70 @@ fn parse_arg(args: &[String], flag: &str) -> Option<String> {
     args.windows(2).find(|w| w[0] == flag).map(|w| w[1].clone())
 }
 
+/// Read CPU usage snapshot from /proc/stat.
+/// Returns (total_jiffies, busy_jiffies) or (0,0) on error.
+fn cpu_stat_snapshot() -> (u64, u64) {
+    #[cfg(target_os = "linux")]
+    {
+        let stat = match std::fs::read_to_string("/proc/stat") {
+            Ok(s) => s,
+            Err(_) => return (0, 0),
+        };
+        let line = stat.lines().next().unwrap_or("");
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 5 { return (0, 0); }
+        let user: u64 = parts[1].parse().unwrap_or(0);
+        let nice: u64 = parts[2].parse().unwrap_or(0);
+        let system: u64 = parts[3].parse().unwrap_or(0);
+        let idle: u64 = parts[4].parse().unwrap_or(0);
+        (user + nice + system + idle, user + nice + system)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        (0, 0)
+    }
+}
+
+/// Compute CPU usage % from two snapshots taken some time apart.
+fn cpu_usage_from_delta(prev: (u64, u64), curr: (u64, u64)) -> f64 {
+    let delta_total = curr.0.saturating_sub(prev.0);
+    let delta_busy = curr.1.saturating_sub(prev.1);
+    if delta_total == 0 { return 0.0; }
+    (delta_busy as f64 / delta_total as f64) * 100.0
+}
+
+/// Check if current local time falls within a schedule range.
+/// Format: "HH:MM-HH:MM" in 24h. Example: "08:00-18:00" means mine 8am-6pm.
+/// If schedule is empty, returns true (always mine).
+fn is_in_schedule(schedule: &str) -> bool {
+    if schedule.is_empty() { return true; }
+    let parts: Vec<&str> = schedule.split('-').collect();
+    if parts.len() != 2 { return true; }
+    let now = chrono_now_minutes();
+    let start = parse_time_minutes(parts[0]);
+    let end = parse_time_minutes(parts[1]);
+    let (start, end) = if start <= end { (start, end) } else { (start, end + 1440) };
+    now >= start && now < end
+}
+
+fn parse_time_minutes(t: &str) -> u32 {
+    let hms: Vec<&str> = t.split(':').collect();
+    if hms.len() < 2 { return 0; }
+    let h: u32 = hms[0].trim().parse().unwrap_or(0);
+    let m: u32 = hms[1].trim().parse().unwrap_or(0);
+    h * 60 + m
+}
+
+fn chrono_now_minutes() -> u32 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // UTC minutes since midnight
+    ((secs % 86400) / 60) as u32
+}
+
 /// Testnet daemon: initialize + mine + serve dashboard + optional P2P.
 /// Flags:
 ///   --dash-port <port>     Dashboard HTTP port (default 8080)
@@ -114,8 +178,20 @@ pub(crate) async fn cmd_start(args: &[String]) {
         .and_then(|s| s.parse().ok())
         .unwrap_or(256);
     let _dag_size = dag_size_mb * 1024 * 1024;
-        
+    
+    // ── Schedule & idle flags ──
+    let schedule = parse_arg(args, "--schedule").unwrap_or_default();
+    let idle_threshold: f64 = parse_arg(args, "--idle-threshold")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+    
     println!("Ewatts Testnet Daemon");
+    if !schedule.is_empty() {
+        println!("  Schedule: {}", schedule);
+    }
+    if idle_threshold > 0.0 {
+        println!("  Idle threshold: CPU < {}%", idle_threshold);
+    }
     println!("  Dashboard: http://0.0.0.0:{}/", dash_port);
     println!("  P2P:       {}", if enable_p2p { "enabled" } else { "disabled (use --p2p to enable)" });
     if enable_p2p { println!("  P2P addr:  {}", p2p_addr); }
@@ -236,6 +312,27 @@ pub(crate) async fn cmd_start(args: &[String]) {
                 println!("  Difficulty: {} → {} (avg block time {:.1}s, target {}s)",
                     difficulty, new_diff, actual_time, target_secs);
                 difficulty = new_diff;
+            }
+        }
+
+        // ── Schedule & idle check ──
+        if !schedule.is_empty() || idle_threshold > 0.0 {
+            let mut should_skip = false;
+            if !schedule.is_empty() && !is_in_schedule(&schedule) {
+                should_skip = true;
+            }
+            if idle_threshold > 0.0 {
+                let snap1 = cpu_stat_snapshot();
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                let snap2 = cpu_stat_snapshot();
+                let cpu_pct = cpu_usage_from_delta(snap1, snap2);
+                if cpu_pct >= idle_threshold {
+                    should_skip = true;
+                }
+            }
+            if should_skip {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                continue;
             }
         }
 
