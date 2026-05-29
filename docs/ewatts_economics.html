@@ -168,9 +168,9 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
   <div class="chart-grid">
 
     <div class="chart-card">
-      <h3 class="chart-title">Emission per block</h3>
-      <p class="chart-desc">Decays exponentially during bootstrap, then scales with network size. No drift, no inflation parameter.</p>
-      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per block decaying from bootstrap to mature baseline"></canvas></div>
+      <h3 class="chart-title">Emission per miner per block</h3>
+    <p class="chart-desc">Single miner reward decays as bootstrap progresses. Total emission scales with network size — this chart isolates the per-miner decay determined only by M(S).</p>
+      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per miner decaying from bootstrap to mature baseline"></canvas></div>
     </div>
 
     <div class="chart-card">
@@ -348,6 +348,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       if (block % sample_every === 0 || block === total_blocks - 1) {
         points.push({
           block, year: block / BLOCKS_YEAR, supply, emission: e,
+          emission_per_miner: e / n,  // per-miner (decays monotonically)
           cost: P_TARGET / mult(supply),  // cost = P_target / M(S)
           n_active: n,
           early_daily: (e / n) * BLOCKS_DAY,
@@ -457,14 +458,14 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     const yearLabels = sim.points.map(p => p.year.toFixed(1));
 
-    // ── A: Emission per block (log scale) ──────────────────────────
+    // ── A: Emission per miner per block (log scale) ────────────────
     charts.a = new Chart(document.getElementById('chart-a'), {
       type: 'line',
       data: {
         labels: yearLabels,
         datasets: [{
-          label: 'Emission per block',
-          data: sim.points.map(p => p.emission),
+          label: 'Emission per miner',
+          data: sim.points.map(p => Math.max(0.001, p.emission_per_miner)),
           borderColor: '#378ADD',
           backgroundColor: 'rgba(55,138,221,0.08)',
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
