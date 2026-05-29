@@ -314,6 +314,8 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
   // over `timeToTarget` years. At x=0.5 (half elapsed): ~half of target.
   // At x=1.0: reaches target (clamped at target thereafter).
   function adoption(block) {
+    // Block 0: exactly 1 miner (prevents initial emission rise)
+    if (block === 0) return 1;
     const fullAt = timeToTarget * BLOCKS_YEAR;
     const x = block / fullAt;
     if (x >= 1) return targetN;
