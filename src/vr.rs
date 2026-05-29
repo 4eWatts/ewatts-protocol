@@ -1,4 +1,17 @@
-/// VR = avg_eff * block_time * window / (360M * total_ewatts) in VR_PRECISION units
+/// Derive VR divisor from J_PER_KWH and J_PER_GB constants.
+///
+/// divisor = 8 × J_PER_KWH / J_PER_GB
+///
+/// With J_PER_GB=0.08 (old): divisor = 8 × 3,600,000 / 0.08 = 360,000,000
+/// With J_PER_GB=6.0  (v3):   divisor = 8 × 3,600,000 / 6.0  =   4,800,000
+pub fn vr_divisor() -> u64 {
+    let numerator = 8u64.saturating_mul(crate::constants::J_PER_KWH as u64).saturating_mul(10);
+    let j_per_gb_x10 = (crate::constants::J_PER_GB * 10.0) as u64;
+    if j_per_gb_x10 == 0 { return 4_800_000; }
+    numerator / j_per_gb_x10
+}
+
+/// VR = avg_eff × block_time × window / (divisor × total_ewatts)  in VR_PRECISION units
 pub fn compute_vr_int(
     avg_eff: u64,
     total_ewatts: u64,
@@ -12,7 +25,7 @@ pub fn compute_vr_int(
     let numerator = avg_eff
         .saturating_mul(total_secs)
         .saturating_mul(crate::constants::VR_PRECISION);
-    let denominator = 360_000_000u64.saturating_mul(total_ewatts);
+    let denominator = vr_divisor().saturating_mul(total_ewatts);
     if denominator == 0 { return 0; }
     numerator / denominator
 }
