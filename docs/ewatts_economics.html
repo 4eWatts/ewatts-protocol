@@ -3,93 +3,399 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
-<meta name="version" content="eWatts v3 — 2026-05-29" />
-<title>eWatts — Economic model</title>
+<meta name="description" content="Interactive economic model for the eWatts Protocol — emission curve, cost trajectory, supply dynamics, and inflation comparison." />
+<title>eWatts — Economic Model</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; }
-.container { max-width:1120px; margin:0 auto; padding:0 20px; }
-nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
-.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
-.logo span { color:#5a5a72; }
-.nav-links { display:flex; gap:20px; }
-.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
-.nav-links a:hover { color:#c8c8cc; }
-header { margin:2rem 0 2.5rem; padding-bottom:1.5rem; border-bottom:1px solid #1a1a2a; }
-.eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:#5a5a72; margin-bottom:.75rem; }
-h1 { font-size:2.25rem; font-weight:500; margin:0 0 .75rem; line-height:1.2; letter-spacing:-.02em; color:#e0e0e0; }
-.subtitle { font-size:1rem; color:#6b6b8a; margin:0; max-width:740px; }
-h2 { font-size:1.3rem; font-weight:500; margin:3rem 0 1rem; color:#e0e0e0; }
-h3 { font-size:1rem; font-weight:500; margin:0 0 .5rem; color:#d4d4dc; }
-p { margin:0 0 1rem; color:#6b6b8a; }
-a { color:#3b82f6; text-decoration:none; }
-a:hover { opacity:.8; }
-.calibration { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin:2rem 0; }
-.calibration-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin-top:.75rem; }
-.calibration-item { font-size:.9rem; }
-.calibration-label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5a5a72; margin-bottom:2px; }
-.calibration-value { font-family:ui-monospace,monospace; font-weight:500; color:#d4d4dc; }
-.scenario-bar { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin:2rem 0 1.5rem; }
-.scenario-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#5a5a72; margin-bottom:.6rem; }
-.slider-row { margin-bottom:1.1rem; }
-.slider-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.5rem; }
-.slider-name { font-size:.9rem; color:#6b6b8a; }
-.slider-value { font-size:.95rem; font-weight:500; font-family:ui-monospace,monospace; color:#d4d4dc; }
-input[type="range"] { -webkit-appearance:none; appearance:none; width:100%; height:6px; background:#2a2a3a; border-radius:3px; outline:none; cursor:pointer; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:#3b82f6; border-radius:50%; cursor:pointer; border:2px solid #111121; transition:transform .1s; }
-input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.1); }
-input[type="range"]::-moz-range-thumb { width:18px; height:18px; background:#3b82f6; border-radius:50%; cursor:pointer; border:2px solid #111121; }
-.scenario-presets { display:flex; flex-wrap:wrap; gap:6px; margin-top:1.2rem; padding-top:1rem; border-top:1px solid #1a1a2a; }
-.preset-label { font-size:11px; color:#5a5a72; align-self:center; margin-right:6px; }
-.preset-btn { padding:4px 10px; font-size:12px; font-family:inherit; border:1px solid #2a2a3a; border-radius:4px; background:#111121; color:#6b6b8a; cursor:pointer; transition:.15s; }
-.preset-btn:hover { background:#1a1a2a; border-color:#3b82f6; color:#3b82f6; }
-.metric-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:2.5rem; }
-.metric-card { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.1rem; }
-.metric-label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5a5a72; margin-bottom:.4rem; }
-.metric-value { font-size:1.4rem; font-weight:500; font-family:ui-monospace,monospace; color:#d4d4dc; }
-.chart-grid { display:grid; grid-template-columns:1fr; gap:1.5rem; }
-@media(min-width:800px){.chart-grid{grid-template-columns:1fr 1fr;}}
-.chart-card { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.4rem 1.4rem; }
-.chart-title { font-size:.95rem; font-weight:500; margin:0 0 .35rem; color:#d4d4dc; }
-.chart-desc { font-size:.82rem; color:#6b6b8a; margin:0 0 1rem; line-height:1.5; }
-.chart-wrapper { position:relative; height:240px; }
-.footer-note { background:#0c0c18; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin-top:3rem; font-size:.85rem; color:#6b6b8a; line-height:1.6; }
-.footer-note strong { color:#d4d4dc; font-weight:500; }
-hr { border:none; border-top:1px solid #1a1a2a; margin:3rem 0; }
-.source-line { font-size:.8rem; color:#5a5a72; margin-top:3rem; text-align:center; }
-ul.assumption-list { list-style:none; padding:0; margin:0; }
-ul.assumption-list li { padding:.4rem 0; border-bottom:1px solid #1a1a2a; color:#6b6b8a; font-size:.92rem; }
-ul.assumption-list li:last-child { border-bottom:none; }
-ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --surface-alt: #f4f3ee;
+    --text: #1a1a1a;
+    --text-muted: #5a5a55;
+    --text-faint: #8a8a83;
+    --border: #d8d6cf;
+    --accent: #0c447c;
+    --accent-bg: #e6f1fb;
+    --blue: #378ADD;
+    --teal: #1D9E75;
+    --coral: #D85A30;
+    --purple: #7F77DD;
+    --amber: #BA7517;
+    --gray: #888780;
+    --pink: #D4537E;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --surface: #242422;
+      --surface-alt: #2c2c2a;
+      --text: #f0efe9;
+      --text-muted: #b4b2a9;
+      --text-faint: #888780;
+      --border: #3a3a36;
+      --accent: #85B7EB;
+      --accent-bg: #0c447c;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-faint);
+    margin-bottom: 0.75rem;
+  }
+
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 500;
+    margin: 0 0 0.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 740px;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 3rem 0 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+  }
+
+  p.lead {
+    color: var(--text);
+    font-size: 1.05rem;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  a:hover { opacity: 0.7; }
+
+  .calibration {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .calibration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 0.75rem;
+  }
+
+  .calibration-item {
+    font-size: 0.9rem;
+  }
+
+  .calibration-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    margin-bottom: 2px;
+  }
+
+  .calibration-value {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 500;
+  }
+
+  .scenario-bar {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 2rem 0 1.5rem;
+  }
+
+  .scenario-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 0.6rem;
+  }
+
+  .slider-row {
+    margin-bottom: 1.1rem;
+  }
+
+  .slider-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+  }
+
+  .slider-name {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .slider-value {
+    font-size: 0.95rem;
+    font-weight: 500;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--accent);
+    transition: transform 0.1s ease;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .scenario-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .preset-label {
+    font-size: 11px;
+    color: var(--text-faint);
+    align-self: center;
+    margin-right: 6px;
+  }
+
+  .preset-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .preset-btn:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .metric-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 2.5rem;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    margin-bottom: 0.4rem;
+  }
+
+  .metric-value {
+    font-size: 1.4rem;
+    font-weight: 500;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: -0.01em;
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  @media (min-width: 800px) {
+    .chart-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.4rem 1.4rem;
+  }
+
+  .chart-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin: 0 0 0.35rem;
+  }
+
+  .chart-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+    line-height: 1.5;
+    min-height: 2.5em;
+  }
+
+  .chart-wrapper {
+    position: relative;
+    height: 240px;
+  }
+
+  .footer-note {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 3rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .footer-note strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3rem 0;
+  }
+
+  .source-line {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    margin-top: 3rem;
+    text-align: center;
+  }
+
+  ul.assumption-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  ul.assumption-list li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  ul.assumption-list li:last-child {
+    border-bottom: none;
+  }
+
+  ul.assumption-list li strong {
+    color: var(--text);
+    font-weight: 500;
+  }
 </style>
 </head>
 <body>
-<nav>
-  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;">economic model</span></div>
-  <div class="nav-links">
-    <a href="index.html">Home</a>
-    <a href="explorer.html">Explorer</a>
-    <a href="wallet.html">Wallet</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="index.html#protocol">Protocol</a>
-    <a href="index.html#mine">Mine</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
-  </div>
-</nav>
 
 <div class="container">
 
   <header>
-    <div class="eyebrow">Economic Model — v3</div>
+    <div class="eyebrow">Economic Model</div>
     <h1>How the supply, cost and incentive curves evolve</h1>
-    <p class="subtitle">Interactive model of the eWatts emission formula. No drift, no inflation target, no oracle. Adjust the adoption scenario to see how the bootstrap phase transitions into mature operation under different network growth trajectories.</p>
+    <p class="subtitle">Interactive model of the eWatts emission formula. Adjust the adoption scenario to see how the bootstrap phase transitions into mature operation under different network growth trajectories.</p>
   </header>
 
   <p class="lead">eWatts is a neutral settlement layer anchored to the physical cost of memory-bound computation. Its supply is not capped, but it is also not arbitrary — each eWatt corresponds to real energy spent by the network. The charts below illustrate how this works in practice across adoption scenarios.</p>
 
   <div class="calibration">
-    <h3>Protocol parameters</h3>
+    <h3>Calibration parameters</h3>
     <div class="calibration-grid">
       <div class="calibration-item">
         <div class="calibration-label">N calibration</div>
@@ -139,16 +445,16 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     <div class="scenario-presets">
       <span class="preset-label">Quick presets:</span>
-      <button class="preset-btn" data-target="10000" data-time="3">Slow (10k/3y)</button>
-      <button class="preset-btn" data-target="100000" data-time="2">Standard (100k/2y)</button>
-      <button class="preset-btn" data-target="500000" data-time="1">Fast (500k/1y)</button>
-      <button class="preset-btn" data-target="1000000" data-time="0.5">Viral (1M/6mo)</button>
+      <button class="preset-btn" data-target="10000" data-time="3">Slow</button>
+      <button class="preset-btn" data-target="100000" data-time="2">Standard</button>
+      <button class="preset-btn" data-target="500000" data-time="1">Fast</button>
+      <button class="preset-btn" data-target="1000000" data-time="0.5">Viral</button>
     </div>
   </div>
 
   <div class="metric-cards">
     <div class="metric-card">
-      <div class="metric-label">Formal maturity (M=1)</div>
+      <div class="metric-label">Formal maturity</div>
       <div class="metric-value" id="m-mature">—</div>
     </div>
     <div class="metric-card">
@@ -156,11 +462,11 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       <div class="metric-value" id="m-supply20">—</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Early miner, 6yr cumulative</div>
+      <div class="metric-label">Early adopter, 6y</div>
       <div class="metric-value" id="m-early">—</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">ROI vs electricity cost</div>
+      <div class="metric-label">ROI vs electricity</div>
       <div class="metric-value" id="m-roi">—</div>
     </div>
   </div>
@@ -168,9 +474,9 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
   <div class="chart-grid">
 
     <div class="chart-card">
-      <h3 class="chart-title">Emission per miner per block</h3>
-    <p class="chart-desc">Single miner reward decays as bootstrap progresses. Total emission scales with network size — this chart isolates the per-miner decay determined only by M(S).</p>
-      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per miner decaying from bootstrap to mature baseline"></canvas></div>
+      <h3 class="chart-title">Emission per block</h3>
+      <p class="chart-desc">Decays exponentially during bootstrap, then scales with network size. No drift, no inflation parameter.</p>
+      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per block decaying from bootstrap to mature baseline"></canvas></div>
     </div>
 
     <div class="chart-card">
@@ -181,12 +487,12 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     <div class="chart-card">
       <h3 class="chart-title">Cumulative supply</h3>
-      <p class="chart-desc">Bootstrap acceleration, then linear expansion proportional to network. No cap. Always backed by real energy.</p>
+      <p class="chart-desc">Bootstrap acceleration, then linear expansion proportional to network. No cap. Always backed by real energy spent.</p>
       <div class="chart-wrapper"><canvas id="chart-c" role="img" aria-label="Cumulative supply accelerating in bootstrap then linear in maturity"></canvas></div>
     </div>
 
     <div class="chart-card">
-      <h3 class="chart-title">Early miner daily earnings</h3>
+      <h3 class="chart-title">Early adopter daily earnings</h3>
       <p class="chart-desc">Single miner running from block 1. Drops as others enter and multiplier decays. The asymmetry that funds bootstrap.</p>
       <div class="chart-wrapper"><canvas id="chart-d" role="img" aria-label="Single miner daily earnings declining over time"></canvas></div>
     </div>
@@ -237,7 +543,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
   <div class="footer-note">
     <strong>Model assumptions.</strong>
-    Block time 600 seconds. Node power 75 W. Reference electricity price $0.165/kWh (US EIA residential average 2024–2025). Bootstrap multiplier M(S) = max(1, 100,000 × exp(−ln(100,000) × S / 10,000,000,000)). Mature emission = N × $0.002063 / $1.00. Maturity boundary at supply ≥ 10B eWatts. Per-miner reward assumes equal commitment across active miners. Adoption curves modeled as logistic functions to target N over specified period. Reference inflation values: Bitcoin 0.83% post-2024 halving (industry sources); gold 1.7% (World Gold Council, 25-year average); USD M2 ~6.5% (Federal Reserve long-run average). All forward-looking metrics depend on network growth that has not yet occurred — these are illustrations of the model, not predictions of outcomes.
+    Block time 600 seconds. Node power 75 W. Reference electricity price $0.165/kWh (US EIA residential average 2024–2025). Bootstrap multiplier M(S) = max(1, 100,000 × exp(−ln(100,000) × S / 10,000,000,000)). Mature emission = N × $0.002 / $1.00. Maturity boundary at supply ≥ 10B eWatts. Per-miner reward assumes equal commitment across active miners. Adoption curves modeled as logistic functions to target N over specified period. Reference inflation values: Bitcoin 0.83% post-2024 halving (industry sources); gold 1.7% (World Gold Council, 25-year average); USD M2 ~6.5% (Federal Reserve long-run average). All forward-looking metrics depend on network growth that has not yet occurred — these are illustrations of the model, not predictions of outcomes.
   </div>
 
   <div class="source-line">
@@ -248,84 +554,40 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-/*
- * eWatts v3 — Interactive Economic Dashboard
- * ==========================================
- *
- * This simulation runs entirely client-side. No server calls, no data tracking.
- *
- * KEY FORMULAS (v3 specification):
- *
- *   cost_per_block_per_node = 75W × 600s ÷ 3,600,000 × $0.165/kWh = $0.002063
- *   M(S)          = max(1, 100,000 × exp(-ln(100,000) × S / 10B))
- *   emission(S,n) = n × $0.002063 × M(S) / $1.00
- *   cost(S)       = $1.00 / M(S)   (at N = N_calibration)
- *   solo_reward   = $0.002063 × M(S) / $1.00  eWatts per block
- *
- * No drift. No inflation parameter. No oracle. No post-maturity adjustment.
- *
- * CHANGES FROM ORIGINAL SIMULATION (v3 adaptation):
- *   - BLOCKS_YEAR corrected to 52560 (was 52596; 365 days × 144 blocks/day)
- *   - Adoption uses logistic S-curve with smoother mid-point
- *   - All text updated to v3 framing
- *   - Added version metadata
- */
-
 (function() {
-  // ── Physical constants (from eWatts whitepaper v28) ──────────────
   const W_NODE = 75;
   const T_BLOCK = 600;
   const E_KWH = 0.165;
-  const USD_BLOCK_NODE = W_NODE * T_BLOCK / 3600000 * E_KWH;  // $0.002063
+  const USD_BLOCK_NODE = W_NODE * T_BLOCK / 3600000 * E_KWH;
+  const P_TARGET = 1.0;
+  const N_CAL = 100000;
+  const M_MAX = 100000;
+  const THRESHOLD = 10000000000;
+  const BLOCKS_YEAR = 52596;
+  const BLOCKS_DAY = 144;
+  const k_decay = Math.log(M_MAX);
 
-  // ── Protocol parameters (immutable) ──────────────────────────────
-  const P_TARGET = 1.0;            // Target cost per eWatt at maturity ($)
-  const N_CAL = 100000;            // Reference network size
-  const M_MAX = 100000;            // Bootstrap multiplier at block 1
-  const THRESHOLD = 10000000000;   // 10B eWatts = formal maturity
-  const BLOCKS_YEAR = 52560;       // 144 blocks/day × 365 days (CORRECTED from 52596)
-  const BLOCKS_DAY = 144;          // (24 × 3600) / 600
-  const k_decay = Math.log(M_MAX); // ln(100,000) ≈ 11.5129
-
-  // ── State ────────────────────────────────────────────────────────
   let targetN = 100000;
   let timeToTarget = 2.0;
   let charts = {};
   let renderTimeout = null;
 
-  // ── Bootstrap multiplier ─────────────────────────────────────────
-  // M(S) = max(1, M_MAX × exp(-k × S / S_threshold))
-  // Decays exponentially from 100,000x to 1x as supply → 10B.
-  // At S = S_threshold: M(S) = 1 exactly (continuous transition).
   function mult(supply) {
     if (supply >= THRESHOLD) return 1.0;
     return Math.max(1.0, M_MAX * Math.exp(-k_decay * supply / THRESHOLD));
   }
 
-  // ── Emission per block ───────────────────────────────────────────
-  // E_block(S,n) = n × C_node × M(S) / P_target
-  // This is the COMPLETE emission formula. No post-maturity drift.
   function emission(supply, n) {
     return (USD_BLOCK_NODE * n / P_TARGET) * mult(supply);
   }
 
-  // ── Adoption S-curve ─────────────────────────────────────────────
-  // Logistic function: starts at 1 miner, approaches targetN asymptotically
-  // over `timeToTarget` years. At x=0.5 (half elapsed): ~half of target.
-  // At x=1.0: reaches target (clamped at target thereafter).
   function adoption(block) {
-    // Block 0: exactly 1 miner (prevents initial emission rise)
-    if (block === 0) return 1;
     const fullAt = timeToTarget * BLOCKS_YEAR;
     const x = block / fullAt;
     if (x >= 1) return targetN;
-    // Logistic: f(x) = 1 + (targetN-1) / (1 + exp(-10*(x-0.5)))
     return Math.max(1, Math.floor(1 + (targetN - 1) / (1 + Math.exp(-10 * (x - 0.5)))));
   }
 
-  // ── Simulation engine ────────────────────────────────────────────
-  // Runs full block-by-block simulation for `years` years.
-  // Samples ~200 points evenly for charting.
   function simulate(years) {
     const total_blocks = Math.floor(years * BLOCKS_YEAR);
     const sample_every = Math.max(1, Math.floor(total_blocks / 200));
@@ -338,24 +600,21 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     for (let block = 0; block < total_blocks; block++) {
       const n = adoption(block);
       const e = emission(supply, n);
-      early_total += e / n;        // Cumulative eWatts for a single miner from block 1
+      early_total += e / n;
 
       if (supply >= THRESHOLD && mature_at_year === null) {
         mature_at_year = block / BLOCKS_YEAR;
       }
 
-      // Sample point (cost computed from pre-emission supply, which is correct)
       if (block % sample_every === 0 || block === total_blocks - 1) {
         points.push({
           block, year: block / BLOCKS_YEAR, supply, emission: e,
-          emission_per_miner: e / n,  // per-miner (decays monotonically)
-          cost: P_TARGET / mult(supply),  // cost = P_target / M(S)
+          cost: P_TARGET / mult(supply),
           n_active: n,
           early_daily: (e / n) * BLOCKS_DAY,
         });
       }
 
-      // Track supply at year boundaries for inflation calculation
       const currYearIdx = Math.floor(block / BLOCKS_YEAR);
       while (yearly_supply.length <= currYearIdx + 1) {
         yearly_supply.push(supply);
@@ -365,10 +624,8 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       supply += e;
     }
 
-    // Post-loop: final supply
     yearly_supply.push(supply);
 
-    // Compute year-over-year inflation
     const yearly_inflation = [];
     for (let y = 1; y < yearly_supply.length - 1; y++) {
       const prev = yearly_supply[y - 1];
@@ -381,7 +638,6 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     return { points, mature_at_year, early_total, supply_final: supply, yearly_inflation };
   }
 
-  // ── Formatting helpers ───────────────────────────────────────────
   function formatN(n) {
     if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + 'M miners';
     if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k miners';
@@ -435,15 +691,12 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     };
   }
 
-  // ── Render all charts ────────────────────────────────────────────
   function render() {
-    // Destroy previous charts before re-rendering
     Object.values(charts).forEach(c => c.destroy());
     charts = {};
 
     const sim = simulate(20);
 
-    // Update metric cards
     document.getElementById('m-mature').textContent =
       sim.mature_at_year ? sim.mature_at_year.toFixed(1) + ' years' : '>20 years';
     document.getElementById('m-supply20').textContent =
@@ -458,14 +711,14 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     const yearLabels = sim.points.map(p => p.year.toFixed(1));
 
-    // ── A: Emission per miner per block (log scale) ────────────────
+    // A: Emission per block
     charts.a = new Chart(document.getElementById('chart-a'), {
       type: 'line',
       data: {
         labels: yearLabels,
         datasets: [{
-          label: 'Emission per miner',
-          data: sim.points.map(p => Math.max(0.001, p.emission_per_miner)),
+          label: 'Emission per block',
+          data: sim.points.map(p => p.emission),
           borderColor: '#378ADD',
           backgroundColor: 'rgba(55,138,221,0.08)',
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
@@ -474,7 +727,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: commonOpts('eWatts/block (log)', true)
     });
 
-    // ── B: Cost per eWatt (log scale, $ prefix) ────────────────────
+    // B: Cost per eWatt
     const costOpts = commonOpts('USD per eWatt (log)', true);
     costOpts.scales.y.ticks.callback = v => '$' + v;
     charts.b = new Chart(document.getElementById('chart-b'), {
@@ -492,7 +745,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: costOpts
     });
 
-    // ── C: Cumulative supply (billions, linear) ────────────────────
+    // C: Cumulative supply
     charts.c = new Chart(document.getElementById('chart-c'), {
       type: 'line',
       data: {
@@ -508,7 +761,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: commonOpts('Supply (billions)', false)
     });
 
-    // ── D: Early miner daily earnings (log scale) ──────────────────
+    // D: Early adopter daily
     charts.d = new Chart(document.getElementById('chart-d'), {
       type: 'line',
       data: {
@@ -524,7 +777,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: commonOpts('eWatts/day (log)', true)
     });
 
-    // ── E: Inflation comparison (log scale, with legend) ───────────
+    // E: Inflation comparison
     const infYears = sim.yearly_inflation.filter(d => d.inflation > 0 && d.inflation < 5000 && d.year <= 20);
     const eOpts = commonOpts('Annual inflation %', true);
     eOpts.scales.y.ticks.callback = v => v + '%';
@@ -564,13 +817,13 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: eOpts
     });
 
-    // ── F: Cost sensitivity vs network size ────────────────────────
+    // F: Sensitivity
     const sensN = [];
     const sensCost = [];
     for (let i = 0; i <= 40; i++) {
       const n = Math.round(1000 + (1000000 - 1000) * (i / 40));
       sensN.push(Math.round(n / 1000) + 'k');
-      sensCost.push(P_TARGET * n / N_CAL);  // cost ∝ n / N_cal
+      sensCost.push(P_TARGET * n / N_CAL);
     }
     const fOpts = commonOpts('USD per eWatt', false, 'Actual active miners');
     fOpts.scales.y.ticks.callback = v => '$' + v.toFixed(1);
@@ -590,20 +843,20 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     });
   }
 
-  // ── Slider hooks ─────────────────────────────────────────────────
   const targetSlider = document.getElementById('target-slider');
   const timeSlider = document.getElementById('time-slider');
   const targetDisplay = document.getElementById('target-display');
   const timeDisplay = document.getElementById('time-display');
 
   function updateFromSliders() {
-    // Logarithmic scale: 10^3 to 10^6.3 ≈ 1,000 to 2,000,000
+    // Logarithmic scale for target: 10^3 to 10^6.3 (1000 to 2M)
     targetN = Math.round(Math.pow(10, parseFloat(targetSlider.value)));
     timeToTarget = parseFloat(timeSlider.value);
 
     targetDisplay.textContent = formatN(targetN);
     timeDisplay.textContent = formatTime(timeToTarget);
 
+    // Debounce render so dragging stays smooth
     clearTimeout(renderTimeout);
     renderTimeout = setTimeout(render, 60);
   }
@@ -621,7 +874,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     });
   });
 
-  // Initialize
+  // Initialize display
   updateFromSliders();
 
   // Re-render on color scheme change
