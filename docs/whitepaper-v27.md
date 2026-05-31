@@ -1,7 +1,9 @@
-# Ewatts Protocol v27 — Final
+# Ewatts Protocol v27 — Final (Deprecated)
 
 **DRAM-Bound Proof-of-Energy — Whitepaper**
-*May 2026*
+*May 2026 — Superseded by v28*
+
+**See [whitepaper-v28.md](whitepaper-v28.md) for the current specification.**
 
 **Ewatts is not a store of value. It is a ruler.**
 
