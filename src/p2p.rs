@@ -268,9 +268,10 @@ impl P2pNode {
                                         request_response::Message::Request { request, channel, .. } => {
                                             match request {
                                                 P2pMessage::BlockRequest { from_height, to_height } => {
-                                                    let blocks = crate::store::load_blocks().unwrap_or_default();
+                                                    // Load blocks starting from requested height (avoids full scan)
+                                                    let blocks = crate::store::load_blocks_since(from_height).unwrap_or_default();
                                                     let filtered: Vec<Block> = blocks.into_iter()
-                                                        .filter(|b| b.header.height >= from_height && b.header.height <= to_height)
+                                                        .filter(|b| b.header.height <= to_height)
                                                         .collect();
                                                     debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(

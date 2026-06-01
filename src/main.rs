@@ -294,12 +294,11 @@ pub(crate) async fn cmd_start(args: &[String]) {
     let dag_size = constants::TESTNET_DAG_SIZE;
 
     loop {
-        let blocks = crate::store::load_blocks().unwrap_or_default();
-        let height = blocks.len() as u64;
+        let height = crate::store::block_count().unwrap_or(0) as u64;
         let prev_hash = if height == 0 {
             [0u8; 32]
         } else {
-            blocks.last().unwrap().header.hash()
+            crate::store::latest_block_hash().ok().flatten().unwrap_or([0u8; 32])
         };
 
         // Dynamic difficulty adjustment
@@ -448,49 +447,45 @@ async fn serve_dashboard(port: &str) {
                 let request = String::from_utf8_lossy(&buf[..n]);
                 
                 let response = if request.starts_with("GET /api/v2/info") {
-                    // Exchange API v2: comprehensive node info
-                    let blocks = crate::store::load_blocks().unwrap_or_default();
+                    // Exchange API v2: comprehensive node info (light — no full block load)
+                    let height = crate::store::block_count().unwrap_or(0);
                     let state = crate::store::load_utxo_set().ok();
-                    let last = blocks.last();
+                    let tip_hash = crate::store::latest_block_hash().ok().flatten();
                     json_response(200, &serde_json::to_string(&serde_json::json!({
                         "jsonrpc": "2.0",
                         "result": {
-                            "height": blocks.len(),
+                            "height": height,
                             "supply": state.as_ref().map(|s| s.total_supply()).unwrap_or(0),
                             "supply_ewatt": state.as_ref().map(|s| s.total_supply() as f64 / crate::constants::UNITS_PER_EWATT as f64).unwrap_or(0.0),
                             "utxo_count": state.as_ref().map(|s| s.utxo_count()).unwrap_or(0),
-                            "latest_block": last.map(|b| serde_json::json!({
-                                "height": b.header.height,
-                                "hash": hex::encode(b.header.hash()),
-                                "timestamp": b.header.timestamp,
-                                "transactions": b.body.transactions.len(),
-                            })),
+                            "latest_block_hash": tip_hash.map(|h| hex::encode(h)),
                             "network": "testnet",
                             "version": crate::constants::PROTOCOL_VERSION,
                             "consensus": "MBPoW",
                         }
                     })).unwrap())
                 } else if request.starts_with("GET /api/status") || request.contains("/status") {
-                    // Full status response
-                    let blocks = crate::store::load_blocks().unwrap_or_default();
-                    let height = if blocks.is_empty() { 0 } else { blocks.len() as u64 - 1 };
+                    // Full status response — avoid loading ALL blocks.
+                    // Use block_count for height and load only recent blocks for the list.
+                    let height = crate::store::block_count().unwrap_or(0);
                     let state = crate::store::load_utxo_set().ok();
                     let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
                     let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
                     let mempool = crate::mempool::pending_count();
-                    let last = blocks.last();
-                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
-                    let emission = last.map(|b| b.header.emission_rate).unwrap_or(0);
-                    let diff = last.map(|b| b.header.difficulty_target).unwrap_or(0);
-                    let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
+                    let peers = std::fs::read_to_string("p2p_peers.txt")
+                        .ok().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0);
+                    // Load only the most recent 100 blocks for the list
+                    let recent_start = if height > 100 { height - 100 } else { 0 };
+                    let recent_blocks = crate::store::load_blocks_since(recent_start as u64).unwrap_or_default();
+                    let vr = recent_blocks.last().map(|b| b.header.vr_block).unwrap_or(0);
+                    let emission = recent_blocks.last().map(|b| b.header.emission_rate).unwrap_or(0);
+                    let diff = recent_blocks.last().map(|b| b.header.difficulty_target).unwrap_or(0);
+                    let blk: Vec<serde_json::Value> = recent_blocks.iter().map(|b| serde_json::json!({
                         "height": b.header.height, "hash": hex::encode(b.header.hash()),
                         "vr": b.header.vr_block, "reward": b.header.emission_rate,
                         "diff": b.header.difficulty_target, "time": b.header.timestamp,
                         "txs": b.body.transactions.len(),
                     })).collect();
-                    // Attempt to read peer count from shared status file
-                    let peers = std::fs::read_to_string("p2p_peers.txt")
-                        .ok().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0);
                     let status = serde_json::json!({
                         "height": height, "supply": supply, "utxos": utxos,
                         "vr": vr, "emission": emission, "difficulty": diff,
@@ -499,15 +494,18 @@ async fn serve_dashboard(port: &str) {
                     });
                     json_response(200, &serde_json::to_string(&status).unwrap())
                 } else if request.starts_with("GET /api/block") {
-                    let blocks = crate::store::load_blocks().unwrap_or_default();
-                    let block = blocks.last().cloned();
-                    match block {
-                        Some(b) => json_response(200, &serde_json::to_string(&serde_json::json!({
-                            "height": b.header.height,
-                            "hash": hex::encode(b.header.hash()),
-                            "txs": b.body.transactions.len(),
-                            "timestamp": b.header.timestamp,
-                        })).unwrap()),
+                    // Return latest block info (light — only loads one block from disk)
+                    let tip_hash = crate::store::latest_block_hash().ok().flatten();
+                    match tip_hash {
+                        Some(hash) => {
+                            let height = crate::store::block_count().unwrap_or(0);
+                            json_response(200, &serde_json::to_string(&serde_json::json!({
+                                "height": if height > 0 { height - 1 } else { 0 },
+                                "hash": hex::encode(hash),
+                                "txs": 0,
+                                "timestamp": 0,
+                            })).unwrap())
+                        },
                         None => json_response(404, "{\"error\":\"No blocks\"}"),
                     }
                 } else if request.starts_with("GET /api/peers") {
@@ -851,17 +849,11 @@ pub fn mine_block_with_key(
 
     // Validate commitment against recent bandwidth history
     let recent: Vec<u64> = {
-        let all_blocks = crate::store::load_blocks().unwrap_or_default();
-        let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
-        let start = all_blocks.len().saturating_sub(window_len);
-        if start < all_blocks.len() {
-            all_blocks[start..]
-                .iter()
-                .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_mgbps))
-                .collect()
-        } else {
-            vec![]
-        }
+        let window_start = height.saturating_sub(constants::COMMIT_WINDOW_BLOCKS);
+        let window_blocks = crate::store::load_blocks_since(window_start).unwrap_or_default();
+        window_blocks.iter()
+            .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_mgbps))
+            .collect()
     };
     commitment::validate_commitment(&commit, &recent)
         .map_err(|e| format!("Commitment invalid: {}", e))?;
@@ -881,18 +873,11 @@ pub fn mine_block_with_key(
     // Estimate n_active: average total commit / current miner's commit
     // If ce_int > 0, use it as reference per-miner commitment
     let n_active_est = if ce_int > 0 {
-        let all_blocks = crate::store::load_blocks().unwrap_or_default();
-        let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
-        let window_start = if all_blocks.len() > window_len {
-            all_blocks.len() - window_len
-        } else { 0 };
-        let sum_commit: u64 = if window_start < all_blocks.len() && window_start < height as usize {
-            all_blocks[window_start..].iter().map(|b| b.header.total_effective_commit).sum()
-        } else { 0 };
-        let avg_commit = if all_blocks.len() > window_start {
-            let count = all_blocks.len() - window_start;
-            if count > 0 { sum_commit / count as u64 } else { 0 }
-        } else { 0 };
+        let window_start = height.saturating_sub(constants::COMMIT_WINDOW_BLOCKS);
+        let window_blocks = crate::store::load_blocks_since(window_start).unwrap_or_default();
+        let sum_commit: u64 = window_blocks.iter().map(|b| b.header.total_effective_commit).sum();
+        let count = window_blocks.len();
+        let avg_commit = if count > 0 { sum_commit / count as u64 } else { 0 };
         if avg_commit > 0 && ce_int > 0 {
             std::cmp::max(1, avg_commit / ce_int)
         } else {
@@ -1054,12 +1039,11 @@ fn cmd_simulate(args: &[String]) {
         Err(e) => { println!("Error loading state: {}", e); return; }
     };
 
-    let blocks = crate::store::load_blocks().unwrap_or_default();
-    let mut height = blocks.len() as u64;
+    let mut height = crate::store::block_count().unwrap_or(0) as u64;
     let mut prev_hash = if height == 0 {
         [0u8; 32]
     } else {
-        blocks.last().unwrap().header.hash()
+        crate::store::latest_block_hash().ok().flatten().unwrap_or([0u8; 32])
     };
 
     println!("Simulating {} blocks starting from #{}...", n, height);
@@ -1527,10 +1511,13 @@ fn cmd_dashboard_sync() {
             }
 
         } else if request.starts_with("GET /api/blocks") {
-            let blocks = crate::store::load_blocks().unwrap_or_default();
+            // Paginate: return only recent blocks (last 100) to avoid loading everything
+            let count = crate::store::block_count().unwrap_or(0);
+            let recent_start = if count > 100 { count - 100 } else { 0 };
+            let recent_blocks = crate::store::load_blocks_since(recent_start as u64).unwrap_or_default();
             let json = serde_json::json!({
-                "count": blocks.len(),
-                "blocks": blocks.iter().map(|b| serde_json::json!({
+                "count": count,
+                "blocks": recent_blocks.iter().map(|b| serde_json::json!({
                     "height": b.header.height,
                     "hash": hex::encode(b.header.hash()),
                     "vr": b.header.vr_block,
@@ -1561,16 +1548,17 @@ fn cmd_dashboard_sync() {
             })).unwrap())
 
         } else if request.starts_with("GET /api/status") {
-            let blocks = crate::store::load_blocks().unwrap_or_default();
-            let height = blocks.len();
+            // Light status — no full blocks load
+            let height = crate::store::block_count().unwrap_or(0);
             let state = crate::store::load_utxo_set().ok();
             let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
             let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
             let mempool = crate::mempool::pending_count();
-            let last = blocks.last();
+            let recent_blocks = crate::store::load_blocks_since(height.saturating_sub(100) as u64).unwrap_or_default();
+            let last = recent_blocks.last();
             let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
             let emission = last.map(|b| b.header.emission_rate).unwrap_or(0) as u64;
-            let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
+            let blk: Vec<serde_json::Value> = recent_blocks.iter().map(|b| serde_json::json!({
                 "height": b.header.height, "hash": hex::encode(b.header.hash()),
                 "vr": b.header.vr_block, "reward": b.header.emission_rate,
                 "time": b.header.timestamp,
@@ -1716,14 +1704,16 @@ fn cmd_info() {
     }
     match crate::store::load_utxo_set() {
         Ok(state) => {
-            let blocks = crate::store::load_blocks().unwrap_or_default();
+            let block_count = crate::store::block_count().unwrap_or(0);
             println!("Ewatts Node");
-            println!("  Blocks: {}", blocks.len());
+            println!("  Blocks: {}", block_count);
             println!("  UTXOs:  {}", state.utxo_count());
             println!("  Supply: {}", state.total_supply());
             // Show recent VR if blocks exist
-            if let Some(last) = blocks.last() {
-                println!("  VR:     {}", crate::vr::format_vr_int(last.header.vr_block));
+            if let Some(tip_hash) = crate::store::latest_block_hash().ok().flatten() {
+                if let Some(last) = crate::store::get_block_by_hash(&tip_hash) {
+                    println!("  VR:     {}", crate::vr::format_vr_int(last.header.vr_block));
+                }
             }
         }
         Err(e) => println!("Error: {}", e),

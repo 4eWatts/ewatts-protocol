@@ -1,15 +1,29 @@
 use crate::block::Block;
 use crate::state::UtxoSet;
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Mutex;
 
 const DATA_DIR: &str = "ewatts_data";
 
+/// Maximum number of blocks to keep in the in-memory BLOCK_CACHE.
+/// Prevents unbounded memory growth while keeping recent blocks
+/// available for fast lookups (gossip, mining, RPC).
+const MAX_CACHED_BLOCKS: usize = 10_000;
+
 /// In-memory block cache to avoid O(N) load_blocks on every gossip event.
-/// Invalidated whenever a new block is saved.
+/// Only holds the most recent `MAX_CACHED_BLOCKS`. Older blocks are
+/// still available from disk (blocks.jsonl) and loaded on demand.
 static BLOCK_CACHE: Mutex<Option<Vec<Block>>> = Mutex::new(None);
+
+/// Truncate the block cache to the most recent `MAX_CACHED_BLOCKS`.
+fn truncate_cache(cache: &mut Vec<Block>) {
+    if cache.len() > MAX_CACHED_BLOCKS {
+        let drain_count = cache.len() - MAX_CACHED_BLOCKS;
+        cache.drain(0..drain_count);
+    }
+}
 
 /// Invalidate the block cache (call after saving a new block).
 pub fn invalidate_cache() {
@@ -25,8 +39,19 @@ pub fn cached_block_count() -> usize {
             return blocks.len();
         }
     }
-    // Fall back to disk
-    load_blocks().unwrap_or_default().len()
+    // Fall back to disk — fast line count without parsing blocks
+    block_count().unwrap_or(0)
+}
+
+/// Fast block count by counting lines in blocks.jsonl (no block parsing).
+pub fn block_count() -> Result<usize, String> {
+    let path = format!("{}/blocks.jsonl", DATA_DIR);
+    if !Path::new(&path).exists() {
+        return Ok(0);
+    }
+    let file = fs::File::open(&path).map_err(|e| format!("open: {}", e))?;
+    let reader = BufReader::new(file);
+    Ok(reader.lines().filter_map(|l| l.ok()).filter(|l| !l.trim().is_empty()).count())
 }
 
 /// Return the tip height (0-indexed) from cache. Returns None if no blocks.
@@ -36,15 +61,15 @@ pub fn chain_tip_height() -> Option<u64> {
             if blocks.is_empty() {
                 return None;
             }
-            return Some(blocks.len() as u64 - 1);
+            return Some(blocks.last().map(|b| b.header.height).unwrap_or(0));
         }
     }
-    // Fall back to disk
-    let blocks = load_blocks().unwrap_or_default();
-    if blocks.is_empty() {
+    // Fall back to disk count
+    let count = block_count().ok()?;
+    if count == 0 {
         None
     } else {
-        Some(blocks.len() as u64 - 1)
+        Some((count - 1) as u64)
     }
 }
 
@@ -55,8 +80,86 @@ pub fn chain_tip_hash() -> Option<[u8; 32]> {
             return blocks.last().map(|b| b.header.hash());
         }
     }
-    let blocks = load_blocks().unwrap_or_default();
-    blocks.last().map(|b| b.header.hash())
+    // Fast path: read last line from disk without loading all blocks
+    latest_block_hash().ok().flatten()
+}
+
+/// Read only the last block hash from disk (fast, no full parse of all blocks).
+pub fn latest_block_hash() -> Result<Option<[u8; 32]>, String> {
+    let path = format!("{}/blocks.jsonl", DATA_DIR);
+    if !Path::new(&path).exists() {
+        return Ok(None);
+    }
+    let file = fs::File::open(&path).map_err(|e| format!("open: {}", e))?;
+    let reader = BufReader::new(file);
+    let mut last_line = String::new();
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("read: {}", e))?;
+        if !line.trim().is_empty() {
+            last_line = line;
+        }
+    }
+    if last_line.is_empty() {
+        return Ok(None);
+    }
+    let block: Block = serde_json::from_str(&last_line).map_err(|e| format!("parse: {}", e))?;
+    Ok(Some(block.header.hash()))
+}
+
+/// Get a block by hash from the cache, or load on demand from disk.
+pub fn get_block_by_hash(target_hash: &[u8; 32]) -> Option<Block> {
+    // Check cache first
+    if let Ok(cache) = BLOCK_CACHE.lock() {
+        if let Some(blocks) = &*cache {
+            for block in blocks.iter().rev() {
+                if block.header.hash() == *target_hash {
+                    return Some(block.clone());
+                }
+            }
+        }
+    }
+    // Cache miss: scan disk (linear, but only done once per uncached request)
+    let path = format!("{}/blocks.jsonl", DATA_DIR);
+    if !Path::new(&path).exists() {
+        return None;
+    }
+    let file = fs::File::open(&path).ok()?;
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        let line = line.ok()?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(block) = serde_json::from_str::<Block>(&line) {
+            if block.header.hash() == *target_hash {
+                return Some(block);
+            }
+        }
+    }
+    None
+}
+
+/// Load blocks from disk starting at a given height (inclusive).
+/// More efficient than loading all blocks when only recent history is needed.
+pub fn load_blocks_since(from_height: u64) -> Result<Vec<Block>, String> {
+    let path = format!("{}/blocks.jsonl", DATA_DIR);
+    if !Path::new(&path).exists() {
+        return Ok(vec![]);
+    }
+    let file = fs::File::open(&path).map_err(|e| format!("open: {}", e))?;
+    let reader = BufReader::new(file);
+    let mut blocks = Vec::new();
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("read: {}", e))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let block: Block = serde_json::from_str(&line).map_err(|e| format!("parse: {}", e))?;
+        if block.header.height >= from_height {
+            blocks.push(block);
+        }
+    }
+    Ok(blocks)
 }
 
 fn ensure_dir() -> std::io::Result<()> {
@@ -95,10 +198,11 @@ pub fn save_block(block: &Block) -> Result<(), String> {
     file.flush().map_err(|e| format!("flush: {}", e))?;
     file.sync_data().map_err(|e| format!("sync: {}", e))?;
 
-    // Append to cache if it's loaded
+    // Append to cache if it's loaded, then truncate to MAX_CACHED_BLOCKS
     if let Ok(mut cache) = BLOCK_CACHE.lock() {
         if let Some(ref mut blocks) = *cache {
             blocks.push(block.clone());
+            truncate_cache(blocks);
         }
     }
 
@@ -126,12 +230,57 @@ pub fn load_blocks() -> Result<Vec<Block>, String> {
         }
     }
 
-    // Populate cache
+    // Populate cache — only keep the most recent MAX_CACHED_BLOCKS
     if let Ok(mut cache) = BLOCK_CACHE.lock() {
-        *cache = Some(blocks.clone());
+        let mut cached = blocks.clone();
+        truncate_cache(&mut cached);
+        *cache = Some(cached);
     }
 
     Ok(blocks)
+}
+
+/// Prune blocks from disk that are before a given height.
+/// Reads all blocks, filters out old ones, writes back (tmp + rename).
+/// Does NOT automatically update the cache (caller should invalidate_cache if needed).
+pub fn prune_blocks(before_height: u64) -> Result<usize, String> {
+    let path = format!("{}/blocks.jsonl", DATA_DIR);
+    if !Path::new(&path).exists() {
+        return Ok(0);
+    }
+    let file = fs::File::open(&path).map_err(|e| format!("open: {}", e))?;
+    let reader = BufReader::new(file);
+    let mut kept = Vec::new();
+    let mut pruned = 0usize;
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("read: {}", e))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(block) = serde_json::from_str::<Block>(&line) {
+            if block.header.height < before_height {
+                pruned += 1;
+                continue;
+            }
+        }
+        kept.push(line);
+    }
+    if pruned == 0 {
+        return Ok(0);
+    }
+    // Write back using tmp + atomic rename
+    let tmp = format!("{}/blocks.jsonl.tmp", DATA_DIR);
+    let mut out = fs::File::create(&tmp).map_err(|e| format!("create tmp: {}", e))?;
+    for line in &kept {
+        writeln!(out, "{}", line).map_err(|e| format!("write: {}", e))?;
+    }
+    out.flush().map_err(|e| format!("flush: {}", e))?;
+    out.sync_all().map_err(|e| format!("sync: {}", e))?;
+    fs::rename(&tmp, &path).map_err(|e| format!("rename: {}", e))?;
+
+    // Invalidate cache since disk has changed significantly
+    invalidate_cache();
+    Ok(pruned)
 }
 
 pub fn has_data() -> bool {
@@ -178,8 +327,18 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
     let path = format!("{}/chain_store.json", DATA_DIR);
     if Path::new(&path).exists() {
         if let Ok(data) = std::fs::read_to_string(&path) {
-            if let Ok(store) = serde_json::from_str::<crate::chain::ChainStore>(&data) {
+            if let Ok(mut store) = serde_json::from_str::<crate::chain::ChainStore>(&data) {
                 if store.has_genesis() {
+                    // Populate block_cache from blocks.jsonl (block_cache is #[serde(skip)]
+                    // so it's empty after deserialization)
+                    if let Ok(blocks) = load_blocks() {
+                        for block in &blocks {
+                            let bh = block.header.hash();
+                            if store.get_entry(&bh).is_some() {
+                                store.add_block_to_cache(block.clone());
+                            }
+                        }
+                    }
                     return store;
                 }
             }
