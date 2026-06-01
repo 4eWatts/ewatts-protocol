@@ -98,7 +98,7 @@ impl P2pNode {
             for attempt in 1..=3 {
                 match swarm.dial(addr.clone()) {
                     Ok(()) => {
-                        debug!("P2P: Dialing bootstrap {} (attempt {})", addr, attempt);
+                        info!("P2P: Dialing bootstrap {} (attempt {})", addr, attempt);
                         break;
                     }
                     Err(e) => {
@@ -142,7 +142,7 @@ impl P2pNode {
         let parent_known = store.get_block(&block.header.previous_hash).is_some();
         if !parent_known && height > 0 {
             // Orphan: queue for later
-            trace!("P2P: Orphan block #{} (parent unknown), queuing", height);
+            debug!("P2P: Orphan block #{} (parent unknown), queuing", height);
             store.add_orphan(block.clone());
             return Ok(());
         }
@@ -171,10 +171,10 @@ impl P2pNode {
                 }
             }
             crate::reorg::ForkDecision::Sidechain => {
-                trace!("P2P: Sidechain block #{} stored (not heaviest)", height);
+                debug!("P2P: Sidechain block #{} stored (not heaviest)", height);
             }
             crate::reorg::ForkDecision::Orphan => {
-                trace!("P2P: Block #{} stored as orphan", height);
+                debug!("P2P: Block #{} stored as orphan", height);
             }
             crate::reorg::ForkDecision::Reject(msg) => {
                 return Err(format!("Block rejected: {}", msg));
@@ -231,7 +231,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            debug!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            trace!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peers.remove(&peer_id);
                         }
                         SwarmEvent::Behaviour(P2pEvent::Ping(_)) => {}
@@ -246,7 +246,7 @@ impl P2pNode {
                                                 Self::accept_block(&block, &mut self.swarm);
                                             }
                                             Err(e) => {
-                                                trace!("P2P: Gossip block #{} rejected: {}", block.header.height, e);
+                                                debug!("P2P: Gossip block #{} rejected: {}", block.header.height, e);
                                             }
                                         }
                                     }
@@ -254,7 +254,7 @@ impl P2pNode {
                                         let tx_hash_prefix = tx.hash()[0];
                                         match crate::mempool::submit(tx, state) {
                                             Ok(()) => {}
-                                            Err(e) => trace!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash_prefix, e),
+                                            Err(e) => debug!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash_prefix, e),
                                         }
                                     }
                                     _ => {}
@@ -273,7 +273,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height <= to_height)
                                                         .collect();
-                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    trace!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
@@ -284,7 +284,7 @@ impl P2pNode {
                                         request_response::Message::Response { response, .. } => {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
-                                                    debug!("P2P: Synced {} blocks from peer", blocks.len());
+                                                    info!("P2P: Synced {} blocks from peer", blocks.len());
                                                     for block in &blocks {
                                                         let h = block.header.height;
                                                         match Self::validate_and_apply_block(block, state, &mut chain_store) {
@@ -292,7 +292,7 @@ impl P2pNode {
                                                                 Self::accept_block(block, &mut self.swarm);
                                                             }
                                                             Err(e) => {
-                                                                trace!("P2P: Sync block #{} rejected: {}", h, e);
+                                                                debug!("P2P: Sync block #{} rejected: {}", h, e);
                                                             }
                                                         }
                                                     }

@@ -6,3 +6,5 @@ ewatts_data_peer/
 liblinks/
 p2p_peers.txt
 *.real
+testnet_cert_*.sh
+testnet_cert_*.txt
