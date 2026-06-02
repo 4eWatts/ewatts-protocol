@@ -423,6 +423,9 @@ impl P2pNode {
     }
 
     /// Save block to disk and gossip compact block to peers.
+    /// Uses a deterministic nonce derived from the block hash so that
+    /// every node gossips the same CompactBlock for the same block.
+    /// This lets gossipsub's message-ID dedup prevent infinite relay loops.
     fn accept_block(block: &Block, swarm: &mut Swarm<EwattsBehaviour>) {
         let hash = block.header.hash();
         let h = block.header.height;
@@ -433,8 +436,10 @@ impl P2pNode {
         }
         info!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
 
-        // Gossip as compact block
-        let nonce = rand::random::<u64>();
+        // Deterministic nonce: first 8 bytes of block hash.
+        // Every node produces the same CompactBlock for the same block,
+        // so gossipsub deduplicates by message ID.
+        let nonce = u64::from_le_bytes(hash[..8].try_into().unwrap_or([0u8; 8]));
         let cb = block_to_compact(block, nonce);
         Self::gossip_compact(swarm, cb);
     }
@@ -677,8 +682,9 @@ impl P2pNode {
                     chain_store.set_chain_tip(&hash).ok();
                 }
 
-                // Gossip as compact block
-                let nonce = rand::random::<u64>();
+                // Gossip as compact block (deterministic nonce from block hash)
+                let block_hash = block.header.hash();
+                let nonce = u64::from_le_bytes(block_hash[..8].try_into().unwrap_or([0u8; 8]));
                 let cb = block_to_compact(&block, nonce);
                 Self::gossip_compact(&mut self.swarm, cb);
             }
@@ -687,7 +693,8 @@ impl P2pNode {
     }
 
     pub fn gossip_block(&mut self, block: &Block) {
-        let nonce = rand::random::<u64>();
+        let block_hash = block.header.hash();
+        let nonce = u64::from_le_bytes(block_hash[..8].try_into().unwrap_or([0u8; 8]));
         let cb = block_to_compact(block, nonce);
         Self::gossip_compact(&mut self.swarm, cb);
     }
