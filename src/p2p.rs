@@ -214,6 +214,14 @@ impl P2pNode {
         let has_bootstrap = self.bootstrap_addr.is_some();
         let mut sync_complete = !mine || chain_store.chain_tip_height() > 0 || !has_bootstrap;
 
+        // Use tokio::time::interval for mining: ticks survive event processing.
+        // Unlike sleep() created each loop iteration (which resets on every event),
+        // interval catches up after a busy period — if mining was delayed by a
+        // sybil storm, tick() returns immediately when the storm clears.
+        let mut mine_interval = tokio::time::interval(Duration::from_secs(10));
+        // Call tick() once now so the first block fires after 10s, not immediately
+        mine_interval.tick().await;
+
         loop {
             tokio::select! {
                 event = self.swarm.select_next_some() => {
@@ -310,11 +318,7 @@ impl P2pNode {
                     }
                 }
 
-                _ = async { if mine && sync_complete {
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                } else {
-                    futures::future::pending::<()>().await;
-                }} => {
+                _ = mine_interval.tick() => {
                     if mine && sync_complete {
                         let tip_height = chain_store.chain_tip_height();
                         let height = tip_height + 1;
