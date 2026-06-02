@@ -237,6 +237,12 @@ pub fn peek() -> Vec<Transaction> {
 }
 
 /// Number of pending transactions.
+/// Find a pending transaction by its full hash. Returns None if not in mempool.
+pub fn get_tx_by_hash(tx_hash: &[u8; 32]) -> Option<Transaction> {
+    let pool = get_pool();
+    pool.as_ref()?.pending.iter().find(|pt| pt.tx_hash == *tx_hash).map(|pt| pt.tx.clone())
+}
+
 pub fn pending_count() -> usize {
     let pool_opt = MEMPOOL.lock().unwrap();
     pool_opt.as_ref().map(|p| p.pending.len()).unwrap_or(0)
