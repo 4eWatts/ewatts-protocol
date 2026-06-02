@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eWatts: Energy-backed neutral settlement layer</title>
-<meta name="description" content="A neutral settlement layer any computer with RAM can mine. Supply expands at energy cost, like gold. Private by default. No pre-mine, no token sale.">
+<meta name="description" content="A 3-layer protocol: deterministic state machine (Layer 1), economic hypothesis on memory-bound computation (Layer 2), adversarial consensus testing (Layer 3).">
 <meta property="og:title" content="eWatts: Energy-backed neutral settlement layer">
-<meta property="og:description" content="A settlement layer any computer with RAM can mine. Supply expands at energy cost, transactions are private by default. No pre-mine, no fundraise.">
+<meta property="og:description" content="A 3-layer protocol grounded in memory-bound PoW. Private by default. No pre-mine, no fundraise.">
 <meta property="og:url" content="https://ewatts.org">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="eWatts: Energy-backed neutral settlement layer">
-<meta name="twitter:description" content="Any computer with RAM can mine. Supply expands at energy cost. Private by default.">
+<meta name="twitter:description" content="3-layer protocol: deterministic state machine, economic hypothesis, adversarial consensus. Any computer with RAM can mine.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="logo.png">
@@ -24,7 +24,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#
 nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
 .logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
-.nav-links { display:flex; gap:20px; }
+.nav-links { display:flex; gap:20px; flex-wrap:wrap; }
 .nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
 .nav-links a:hover { color:#c8c8cc; }
 
@@ -51,12 +51,14 @@ hr { border:none; height:1px; background:#1a1a2a; margin:0; }
   .container { max-width:100%; padding:0 16px; }
   .hero h1 { font-size:32px; max-width:100%; }
   .hero p { max-width:100%; }
-  nav { margin-bottom:16px; }
+  nav { margin-bottom:16px; flex-direction:column; gap:8px; }
+  .nav-links { gap:12px; justify-content:center; }
   .cards, .cards-2 { grid-template-columns:1fr; gap:8px; }
   .section { padding:32px 0; }
   .hero { padding:4px 0 32px; }
-  .nav-links a { margin-left:12px; font-size:12px; }
+  .nav-links a { font-size:12px; }
 }
+
 .card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:20px; }
 .card h3 { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
 .card p { font-size:13px; color:#5a5a72; line-height:1.6; }
@@ -67,8 +69,8 @@ hr { border:none; height:1px; background:#1a1a2a; margin:0; }
 table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; }
 table.specs tr { border-bottom:1px solid #1a1a2a; }
 table.specs tr:last-child { border:none; }
-table.specs td { padding:10px 0; vertical-align:top; }
-table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
+table.specs td { padding:10px 4px; vertical-align:top; }
+table.specs td:first-child { color:#6b6b88; width:200px; padding-right:12px; }
 table.specs td:last-child { color:#c8c8cc; }
 code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
 
@@ -116,6 +118,14 @@ footer a:hover { color:#c8c8cc; }
 .diagram-item .arrow { display:block; margin:8px auto; color:#2a2a3a; font-size:16px; }
 .diagram-item span { display:block; font-size:11px; margin-top:4px; opacity:0.6; }
 
+.dashboard-frame { width:100%; margin-top:16px; border-radius:8px; overflow:hidden; border:1px solid #1a1a2a; }
+.dashboard-frame iframe { width:100%; height:700px; border:none; display:block; }
+
+.param-highlight { color:#3b82f6; font-weight:500; }
+
+.whitepaper-link { display:inline-block; margin-top:12px; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; border:1px solid #1a3a5a; color:#5a9cf6; transition:all .12s; }
+.whitepaper-link:hover { border-color:#3b82f6; color:#fff; }
+
 </style>
 <script type="application/ld+json">
 {
@@ -124,7 +134,7 @@ footer a:hover { color:#c8c8cc; }
   "name": "eWatts",
   "applicationCategory": "Blockchain",
   "operatingSystem": "Linux, macOS, Windows",
-  "description": "A neutral settlement layer anchored to energy cost. Supply expands at energy cost. Any computer with RAM can mine. Private by default. Open source, no pre-mine, no fundraise.",
+  "description": "A 3-layer protocol: deterministic state machine (Layer 1), economic hypothesis on memory-bound computation (Layer 2), adversarial consensus (Layer 3). Private by default. No pre-mine, no fundraise.",
   "url": "https://ewatts.org",
   "sameAs": [
     "https://github.com/4Ewatts/ewatts-protocol"
@@ -138,7 +148,7 @@ footer a:hover { color:#c8c8cc; }
     "@type": "Person",
     "name": "Gustavo"
   },
-  "abstract": "eWatts is a proof-of-work cryptocurrency that uses random access to DRAM as its physical bottleneck. DRAM latency has been flat for 20 years (1-2%/year vs 20-30% for SHA-256 ASICs), ensuring any computer with RAM can mine at similar efficiency. Dual-layer design: mining is DRAM-bound (creates coins at energy cost), transactions are fast and private (<3ms per signature). Supply expands at energy cost (elastic, not fixed). Privacy is the default mode. No pre-mine, no token sale, no founder allocation."
+  "abstract": "eWatts is a 3-layer protocol: a deterministic state machine (Layer 1) running memory-bound PoW, evaluated under economic substrate hypotheses (Layer 2), and stress-tested in adversarial distributed environments (Layer 3). DRAM latency has been flat for 20 years (1-2%/year vs 20-30% for SHA-256 ASICs). No pre-mine, no token sale, no founder allocation."
 }
 </script>
 </head>
@@ -146,27 +156,40 @@ footer a:hover { color:#c8c8cc; }
 
 <div class="container">
 
+<!-- ════════════════════════════════════════════════ -->
+<!-- NAVIGATION -->
+<!-- ════════════════════════════════════════════════ -->
 <nav>
   <div class="logo">eWatts<span>.org</span></div>
   <div class="nav-links">
+    <a href="#hero">Home</a>
+    <a href="#layer1">Layer 1</a>
+    <a href="#layer2">Layer 2</a>
+    <a href="#layer3">Layer 3</a>
+    <a href="#features">Features</a>
+    <a href="#appendix">Appendix</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="architecture.html">Architecture</a>
     <a href="explorer.html">Explorer</a>
     <a href="wallet.html">Wallet</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="#protocol">Protocol</a>
-    <a href="#mine">Mine</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
 
-<div class="hero">
-  <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
+<!-- ════════════════════════════════════════════════ -->
+<!-- HERO -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="hero" id="hero">
+  <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;flex-wrap:wrap;">
     <span style="color:#6ac86a;">Phase 2: Testnet</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>106 tests</span>
+    <span>106 tests passing</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>0 warnings</span>
+    <span>0 failed</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>fully audited</span>
+    <span>7 deprecated (v27)</span>
+    <span style="color:#2a2a3a;">|</span>
+    <span>3-layer architecture</span>
   </div>
   <h1>Energy-backed neutral settlement layer<br><span style="color:#5a5a72;font-weight:400;">PoW with stable memory. Private. Fair.</span></h1>
   <p style="margin-top:16px; font-size:14px; color:#6b6b8a;">
@@ -184,158 +207,285 @@ footer a:hover { color:#c8c8cc; }
   <div class="links">
     <a href="#mine" class="btn btn-primary">Mine a block</a>
     <a href="install.sh" class="btn btn-outline" style="border-color:#22c55e;color:#22c55e;">Quick install</a>
-    <a href="ewatts_economics.html" class="btn btn-outline" style="border-color:#3b82f6;color:#3b82f6;">Economic model</a>
+    <a href="#dashboard" class="btn btn-outline" style="border-color:#3b82f6;color:#3b82f6;">Economic model</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">Source code</a>
   </div>
 </div>
 
 <hr>
 
-<!-- ============= WHY THIS MATTERS ============= -->
+<!-- ════════════════════════════════════════════════ -->
+<!-- SYSTEM SUMMARY -->
+<!-- ════════════════════════════════════════════════ -->
 <section class="section" style="padding-top:20px;">
-  <div class="section-label">Why this matters</div>
-  <h2>Neutral infrastructure for a connected world</h2>
+  <div class="section-label">Architecture Overview</div>
+  <h2>A 3-layer system with rigid separation</h2>
 
-  <div style="display:flex;flex-direction:column;gap:20px;margin-top:20px;">
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">A settlement layer with a physical anchor</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Energy cost has been the most stable price reference over the last decades. Not arbitrary,
-        not fixed, but physically bounded. That is the anchor eWatts is built on. Supply expands
-        at energy cost, proportional to real activity, not political calendars. For cross-border
-        trade, remittances, and privacy-preserving transactions, this combination of properties
-        didn't exist before.
-      </p>
-    </div>
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Private by default</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Every transaction protects sender, recipient, and amount by default. Changing that
-        requires 95% of miners and 95% of nodes. Privacy is the default mode, not an opt-in.
-      </p>
-    </div>
-
+  <div class="system-summary">
+    <strong>eWatts</strong> is a deterministic monetary state machine (Layer 1), evaluated under physical substrate hypotheses (Layer 2), and stress-tested in adversarial distributed environments (Layer 3).
   </div>
+
+  <div class="diagram">
+    <div class="layer-card layer-1" style="margin:0;flex:1;min-width:200px;">
+      <h3>Layer 1</h3>
+      <div class="tag" style="display:inline-block;">PROTOCOL CORE</div>
+      <p style="margin-top:8px;">Deterministic state machine. Execution truth. Block validity, emission, consensus.</p>
+      <span style="display:block;font-size:11px;color:#5a5a72;margin-top:8px;">Can influence protocol: YES</span>
+    </div>
+    <div class="layer-card layer-2" style="margin:0;flex:1;min-width:200px;">
+      <h3>Layer 2</h3>
+      <div class="tag" style="display:inline-block;">ECONOMIC HYPOTHESIS</div>
+      <p style="margin-top:8px;">Interpretation layer. Memory-bound vs ASIC-bound stability. Falsifiable.</p>
+      <span style="display:block;font-size:11px;color:#5a5a72;margin-top:8px;">Can influence protocol: NO</span>
+    </div>
+    <div class="layer-card layer-3" style="margin:0;flex:1;min-width:200px;">
+      <h3>Layer 3</h3>
+      <div class="tag" style="display:inline-block;">ADVERSARIAL CONSENSUS</div>
+      <p style="margin-top:8px;">Robustness engine. Network noise, fork choice, adversarial objectives.</p>
+      <span style="display:block;font-size:11px;color:#5a5a72;margin-top:8px;">Can influence protocol: NO</span>
+    </div>
+  </div>
+
+  <p style="margin-top:16px;font-size:13px;color:#5a5a72;">
+    The separation is critical: protocol is verifiable, hypothesis is falsifiable, adversarial layer is experimental. No cross-contamination.
+  </p>
 </section>
 
 <hr>
 
-<!-- ============= PROTOCOL DETAILS ============= -->
-<section class="section" id="protocol">
-  <div class="section-label">Protocol</div>
-  <h2>Core design</h2>
+<!-- ════════════════════════════════════════════════ -->
+<!-- LAYER 1 — PROTOCOL CORE -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="layer1">
+  <div class="section-label">Layer 1</div>
+  <h2>Protocol Core — Deterministic State Machine</h2>
+  <p class="intro">A single system of deterministic execution that any node can independently verify.</p>
 
-  <div class="cards-2">
+  <div class="layer-card layer-1">
+    <h3>
+      <span class="tag">PROTOCOL CORE</span>
+      <span style="font-size:12px;font-weight:400;color:#5a5a72;">S_{t+1} = f(S_t, B_t)</span>
+    </h3>
+    <p>The system is a state machine where <code>S_t</code> is global state (UTXO + commitments + metadata), <code>B_t</code> is a valid block, and <code>f</code> is the deterministic transition function.</p>
+  </div>
+
+  <div class="cards-2" style="margin-top:16px;">
     <div class="card">
-      <h3>Mining runs on standard RAM</h3>
-      <p>No ASICs, no GPUs required. Any computer with RAM can mine — a machine from five years ago performs at the same efficiency as one built today. <a href="ewatts_economics.html" style="color:#3b82f6;">Explore the economic model.</a></p>
+      <h3>Block validity rules</h3>
+      <p>A block is valid if:</p>
+      <ul>
+        <li>Proof-of-work satisfies difficulty threshold</li>
+        <li>Previous state exists</li>
+        <li>UTXO transition is consistent</li>
+        <li>Commitments are verifiable</li>
+        <li>Emission invariants are not violated</li>
+      </ul>
     </div>
     <div class="card">
-      <h3>Private by default</h3>
-      <p>Sender, recipient, and amount are hidden. Each transaction uses ring signatures (11 possible keys — an observer can't tell which is yours), one-time stealth addresses (no two payments to the same person can be linked), and Pedersen commitments that hide amounts while keeping total supply auditable.</p>
+      <h3>Emission function (u64 deterministic)</h3>
+      <p>Emission is a function of state and block height. No external input, no discretionary adjustment, no governance tinkering. <code>E_t = g(height, state)</code>.</p>
     </div>
     <div class="card">
-      <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The emission formula anchors each eWatt to the energy cost of production, a universal physical unit.</p>
+      <h3>Consensus rule</h3>
+      <p>In absence of network noise: the valid chain is the one with greatest accumulated work (or equivalent substrate-weighted metric defined in Layer 2).</p>
     </div>
     <div class="card">
-      <h3>Governance designed for stability</h3>
-      <p>Major changes require 95% of miners and 95% of nodes. Governance evolves from founder-led to technical maintainers to community stewardship as the network grows.</p>
+      <h3>Security invariants</h3>
+      <ul>
+        <li>No double spend</li>
+        <li>No inflation beyond schedule</li>
+        <li>Deterministic replay</li>
+        <li>State convergence under valid propagation</li>
+      </ul>
     </div>
   </div>
-</section>
 
-<hr>
-
-<!-- ============= SPECS ============= -->
-<section class="section">
-  <div class="section-label">Specifications</div>
-  <h2>Parameters</h2>
-  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1e6e3a;border-radius:5px;">
+  <div style="margin-top:20px;padding:14px 16px;background:#0a1628;border:1px solid #1a3a5a;border-radius:5px;">
     <div style="display:flex;gap:10px;align-items:flex-start;">
-      <span style="color:#3b82f6;font-size:16px;">&#9432;</span>
+      <span style="color:#5a9cf6;font-size:16px;">&#9432;</span>
       <div>
-        <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
+        <strong style="color:#c8c8cc;font-size:13px;">Testnet status</strong>
         <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
-          eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
-          Mining is the only way to acquire coins. Founder outputs are time-locked on-chain
-          (<code>spendable_after = max(50000, block + 40000)</code>). Mining public key published before block 1.
+          106 tests passing, 0 failed, 7 deprecated (v27 formula). Phase 2 (Testnet) active. Protocol fully auditable and runnable today.
         </p>
       </div>
     </div>
   </div>
 
-  <table class="specs">
-    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
-    <tr><td>Target block time</td><td>600 seconds</td></tr>
-    <tr><td>Signature verification</td><td>&lt;3 ms per MLSAG signature (ring of 11)</td></tr>
-    <tr><td>Ring size</td><td>11</td></tr>
-    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
-    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
-    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
-    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
-    <tr><td>BASE_EMISSION</td><td>100 eWatt/block</td></tr>
-    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
-    <tr><td>Ramp-up (blocks 1-10k)</td><td>80% cap per miner, excess burned</td></tr>
-    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
-    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
-    <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
-    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
-  </table>
+  <div style="margin-top:16px;">
+    <a href="whitepaper-v28.md" class="whitepaper-link">Read the whitepaper (v28)</a>
+    <a href="architecture.html" class="whitepaper-link" style="margin-left:8px;">Full architecture page</a>
+  </div>
 </section>
 
 <hr>
 
-<!-- ============= ROADMAP ============= -->
-<section class="section" id="roadmap">
-  <div class="section-label">Roadmap</div>
-  <h2>Phases</h2>
+<!-- ════════════════════════════════════════════════ -->
+<!-- LAYER 2 — ECONOMIC HYPOTHESIS -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="layer2">
+  <div class="section-label">Layer 2</div>
+  <h2>Economic Hypothesis — Interpretation Layer</h2>
+  <p class="intro">Defines the economic meaning of the system without interfering with the protocol.</p>
+
+  <div class="layer-card layer-2">
+    <h3>
+      <span class="tag">ECONOMIC HYPOTHESIS</span>
+    </h3>
+    <p>Monetary systems anchored in physical computation substrates exhibit different long-term stability properties depending on the improvement rate of their underlying physical constraints.</p>
+  </div>
+
+  <div class="cards-2" style="margin-top:16px;">
+    <div class="card">
+      <h3>Substrate classes</h3>
+      <p><strong>Class A — Energy-bound (ASIC-like):</strong> cost approximates energy consumption. Fast efficiency improvement. Competitive hardware arms race.</p>
+      <p style="margin-top:8px;"><strong>Class B — Memory-bound (DRAM-latency):</strong> cost approximates memory access and latency physics. Slower improvement curve (1-2% annual). More stable cost structure.</p>
+    </div>
+    <div class="card">
+      <h3>Improvement rate differential</h3>
+      <p>Define <code>&Delta; = rate(substrate improvement)</code>. ASIC has high &Delta;; DRAM latency has low &Delta;.</p>
+      <p style="margin-top:8px;"><strong>Hypothesis:</strong> lower &Delta; yields a more stable monetary emission regime.</p>
+    </div>
+    <div class="card">
+      <h3>Falsifiability conditions</h3>
+      <p>The hypothesis is false if:</p>
+      <ul>
+        <li>Substrate advantage converges quickly (&Delta; becomes irrelevant)</li>
+        <li>System becomes economically dominated by secondary abstraction layer</li>
+        <li>Cost of attack decouples from physical constraint</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>V3 emission formula</h3>
+      <p><code>E = total_eff x M(S) x C_node / 1e18</code></p>
+      <p style="margin-top:6px;">Where <code>total_eff</code> is total effective commitment, <code>M(S)</code> is the bootstrap multiplier (exponential decay from 100,000x), and <code>C_node = $0.0020625/block</code> is the cost-per-node anchor.</p>
+    </div>
+  </div>
+
+  <div class="rule-box" style="margin-top:16px;">
+    <h4>Cross-layer boundaries</h4>
+    <table class="rule-table">
+      <tr><td>Layer 2</td><td class="no">NO</td><td style="color:#5a5a72;">Does not define consensus rules</td></tr>
+      <tr><td>Layer 2</td><td class="no">NO</td><td style="color:#5a5a72;">Does not define validation logic</td></tr>
+      <tr><td>Layer 2</td><td class="no">NO</td><td style="color:#5a5a72;">Does not affect protocol execution</td></tr>
+      <tr><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;color:#5a5a72;">Interpretative framework only. Measurable. Falsifiable.</td></tr>
+    </table>
+  </div>
+
+  <p style="margin-top:16px;font-size:13px;color:#5a5a72;">
+    See <a href="reflexivity-oracle-trap.md" style="color:#3b82f6;">Reflexivity and the Oracle Trap</a> for the structural risk analysis of physically-anchored monetary systems.
+  </p>
+</section>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- LAYER 3 — ADVERSARIAL CONSENSUS -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="layer3">
+  <div class="section-label">Layer 3</div>
+  <h2>Adversarial Consensus — Robustness Engine</h2>
+  <p class="intro">Models system behavior under strategic, noisy, and adversarial conditions.</p>
+
+  <div class="layer-card layer-3">
+    <h3>
+      <span class="tag">ADVERSARIAL CONSENSUS</span>
+    </h3>
+    <p>Unlike Layer 1's assumption of a single canonical chain, here multiple competing valid chains can exist simultaneously. The system's robustness is measured by how it converges under chaos.</p>
+  </div>
+
+  <div class="cards-2" style="margin-top:16px;">
+    <div class="card">
+      <h3>Threat model</h3>
+      <p>Nodes may behave as:</p>
+      <ul>
+        <li>Honest</li>
+        <li>Delayed or partitioned</li>
+        <li>Selfish or conflicting-state</li>
+        <li>Withholding-capable</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Network model</h3>
+      <p>System operates under latency variance, message duplication, reordering, partial partitions, and probabilistic loss. Adversaries control timing and topology but not cryptography.</p>
+    </div>
+    <div class="card">
+      <h3>Fork choice</h3>
+      <p>Each node selects chain C maximizing:</p>
+      <p><code>Score(C) = W(C) - C_attack(C)</code></p>
+      <p>Where <code>W(C)</code> is accumulated work and <code>C_attack(C)</code> is a cost-adjusted adversarial penalty model.</p>
+    </div>
+    <div class="card">
+      <h3>System invariants</h3>
+      <ul>
+        <li>Safety: no double spend</li>
+        <li>Bounded divergence: E[&Delta;S] &lt; &epsilon;</li>
+        <li>Convergence under finite delay</li>
+        <li>Work monotonicity</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;padding:14px 16px;background:#1a1a0a;border:1px solid #3a3a1a;border-radius:5px;">
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:#c8c84a;font-size:16px;">&#9888;</span>
+      <div>
+        <strong style="color:#c8c8cc;font-size:13px;">Phase 1 adversarial test results</strong>
+        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
+          Current implementation validates delay stochasticity, message duplication, partial convergence, and state divergence checks (implemented in <code>shuffle.rs</code>). Explicit adversarial scheduler, formal fork-choice scoring functions, and measurable &Delta;S metrics are in development for Phase 3.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule-box" style="margin-top:16px;">
+    <h4>Module-to-layer mapping</h4>
+    <table class="rule-table">
+      <tr><td><code>smoke.rs</code></td><td style="width:auto;">Layer 1</td><td>Pipeline correctness, round-robin mining</td></tr>
+      <tr><td><code>tests.rs</code></td><td>Layer 1</td><td>Private tx, founder lock, double-spend, reorg</td></tr>
+      <tr><td><code>shuffle.rs</code></td><td>Layer 3</td><td>Block propagation under network noise</td></tr>
+      <tr><td><code>reorg.rs</code></td><td>Layer 1</td><td>Fork resolution engine</td></tr>
+      <tr><td><code>commitment.rs</code></td><td>Layer 1</td><td>Bandwidth commitment validation</td></tr>
+      <tr><td><code>reward.rs</code></td><td>Layer 1+2</td><td>Emission math (L1) + economic interpretation (L2)</td></tr>
+      <tr><td>(future)</td><td>Layer 3</td><td>Strategic miner competition simulation</td></tr>
+    </table>
+  </div>
+</section>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- FEATURES (Mine, Private, No Premine, Fair Launch) -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="features">
+  <div class="section-label">Features</div>
+  <h2>Core design</h2>
 
   <div class="cards-2">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 1 &mdash; Foundation</h3>
-        <span style="font-size:10px;color:#5a5a72;font-weight:600;">DONE</span>
-      </div>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
-        Protocol implementation in Rust, MBPoW mining, privacy layer (stealth addresses, ring signatures,
-        Pedersen commitments). Local testnet. Full code audit and formal verification of critical paths.
-        106 tests passing, 0 warnings.
-      </p>
-    </div>
-    <div class="card" style="border-color:#3b82f6;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 2 &mdash; Testnet</h3>
-        <span style="font-size:10px;color:#3b82f6;font-weight:600;">NOW</span>
-      </div>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
-        Public testnet with incentivized mining. Community of Rust contributors. Mining pool support.
-        Basic wallet and exchange integration. Governance discussion with early contributors.
-      </p>
+      <h3>Mining runs on standard RAM</h3>
+      <p>No ASICs, no GPUs required. Any computer with RAM can mine. A machine from five years ago performs at the same efficiency as one built today. <a href="#dashboard" style="color:#3b82f6;">Explore the economic model.</a></p>
     </div>
     <div class="card">
-      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
-        Mainnet launch. Decentralized governance via lazy consensus and technical maintainers.
-        Security audit results published. Reference wallet with GUI. DEX and CEX listings.
-      </p>
+      <h3>Private by default</h3>
+      <p>Sender, recipient, and amount are hidden. Each transaction uses ring signatures (11 possible keys), one-time stealth addresses (no two payments to the same person can be linked), and Pedersen commitments that hide amounts while keeping total supply auditable.</p>
     </div>
     <div class="card">
-      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 4 &mdash; Maturity</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
-        Community-driven governance with constitutional framework. Academic papers published on
-        memory-bound monetary economics and the oracle trap. Cross-chain bridges.
-        Hardware wallet support. Adoption in trade finance and remittance corridors.
-      </p>
+      <h3>Money supply follows energy cost</h3>
+      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. The v28 emission formula anchors each eWatt to the energy cost of production.</p>
+    </div>
+    <div class="card">
+      <h3>No pre-mine, no token sale</h3>
+      <p>eWatts has no fundraising, no investor allocation, and no entity controlling its treasury. Mining is the only way to acquire coins. Founder outputs are time-locked on-chain (<code>max(50000, block + 40000)</code>).</p>
     </div>
   </div>
 </section>
 
 <hr>
 
-<!-- ============= GET STARTED ============= -->
+<!-- ════════════════════════════════════════════════ -->
+<!-- GET STARTED -->
+<!-- ════════════════════════════════════════════════ -->
 <section class="section" id="mine">
   <div class="section-label">Get started</div>
   <h2>Mine in 5 minutes</h2>
@@ -366,49 +516,159 @@ $ ./target/release/ewatts-protocol dash</pre>
 
 <hr>
 
-<!-- ============= CODE ============= -->
-<section class="section">
-  <div class="section-label">Source</div>
-  <h2>Code structure</h2>
-  <pre class="code-block"><span class="cm">src/</span>
-  <span class="fn">privacy.rs</span>      Stealth addresses, MLSAG, Pedersen commitments, range proofs
-  <span class="fn">block.rs</span>        Block, transaction, merkle root, MlsagData serialization
-  <span class="fn">state.rs</span>        UTXO set, supply tracking, MLSAG verification
-  <span class="fn">mempool.rs</span>      Transaction pool, validation, broadcast
-  <span class="fn">wallet.rs</span>       Key generation, UTXO scanning, private transaction construction
-  <span class="fn">reward.rs</span>       Emission formula, VR computation, ramp-up cap
-  <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
-  <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
-  <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 2 (Testnet), 106 tests passing, 0 warnings, deployed testnet. MIT License. Code is auditable and runnable today.</p>
-</section>
-
-<section class="section" id="specs">
+<!-- ════════════════════════════════════════════════ -->
+<!-- APPENDIX — u64 Parameters -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="appendix">
   <div class="section-label">Appendix</div>
   <h2>Protocol parameters (u64)</h2>
-  <p style="font-size:13px;color:#6b6b8a;margin-bottom:12px;">Complete set of economic constants that define the emission function (whitepaper v28). All values in u64 fixed-point precision.</p>
+  <p class="intro">Complete set of economic and protocol constants from <code>src/constants.rs</code>. Whitepaper v28.</p>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Block timing</h3>
   <table class="specs">
-    <tr><td>M_MAX</td><td><code>100,000</code></td><td style="color:#6b6b8a;">Bootstrap multiplier at block 1</td></tr>
-    <tr><td>S_THRESHOLD</td><td><code>10,000,000,000</code></td><td style="color:#6b6b8a;">Formal maturity (eWatts, not units)</td></tr>
-    <tr><td>N_CALIBRATION</td><td><code>100,000</code></td><td style="color:#6b6b8a;">Miners at which cost = P_target</td></tr>
-    <tr><td>P_TARGET</td><td><code>$1.00</code></td><td style="color:#6b6b8a;">Target cost per eWatt at maturity</td></tr>
-    <tr><td>J_PER_GB</td><td><code>6.0 J</code></td><td style="color:#6b6b8a;">Energy per GB of effective bandwidth</td></tr>
-    <tr><td>BLOCKS_PER_YEAR</td><td><code>52,560</code></td><td style="color:#6b6b8a;">144 blocks/day × 365 days</td></tr>
-    <tr><td>W_NODE</td><td><code>75 W</code></td><td style="color:#6b6b8a;">Power consumption per mining node</td></tr>
-    <tr><td>COST_PER_BLOCK</td><td><code>$0.002063</code></td><td style="color:#6b6b8a;">Energy cost per block per node</td></tr>
-    <tr><td>EMISSION_PRECISION</td><td><code>1,000,000,000</code></td><td style="color:#6b6b8a;">Fixed-point precision (1e9)</td></tr>
+    <tr><td>TARGET_BLOCK_TIME_SECS</td><td>600</td><td style="color:#6b6b8a;">Mainnet block target (10 min)</td></tr>
+    <tr><td>BLOCKS_PER_DAY</td><td>144</td><td style="color:#6b6b8a;">Blocks per 24h at target</td></tr>
+    <tr><td>BLOCKS_PER_YEAR</td><td>52,560</td><td style="color:#6b6b8a;">365d x 144 (corrected v3)</td></tr>
+    <tr><td>TESTNET_BLOCK_TIME</td><td>60</td><td style="color:#6b6b8a;">Testnet block target (1 min)</td></tr>
+    <tr><td>VR_WINDOW_BLOCKS</td><td>1,000</td><td style="color:#6b6b8a;">VR computation window</td></tr>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">DAG (Proof-of-Work)</h3>
+  <table class="specs">
+    <tr><td>DAG_INITIAL_SIZE_BYTES</td><td><code>8 GB</code></td><td style="color:#6b6b8a;">Initial DAG size (mainnet)</td></tr>
+    <tr><td>DAG_ELEMENT_SIZE</td><td>64 bytes</td><td style="color:#6b6b8a;">Size of each DAG element</td></tr>
+    <tr><td>DAG_GROWTH_RATE_BYTES_PER_YEAR</td><td><code>512 MB</code></td><td style="color:#6b6b8a;">Annual DAG growth</td></tr>
+    <tr><td>TESTNET_DAG_SIZE</td><td><code>4 MB</code></td><td style="color:#6b6b8a;">Testnet DAG size</td></tr>
+    <tr><td>DAG_EPOCH_BLOCKS</td><td>2,016</td><td style="color:#6b6b8a;">Epoch length (~14 days)</td></tr>
+    <tr><td>DAG_MIX_ROUNDS</td><td>256</td><td style="color:#6b6b8a;">Mix rounds per proof</td></tr>
+    <tr><td>BASE_ACCESSES</td><td>1,000,000,000</td><td style="color:#6b6b8a;">Base memory accesses per proof</td></tr>
+    <tr><td>VERIFICATION_SAMPLE_RATE</td><td>0.001</td><td style="color:#6b6b8a;">Verification sampling (0.1%)</td></tr>
+    <tr><td>DIFFICULTY_WINDOW_BLOCKS</td><td>100</td><td style="color:#6b6b8a;">Difficulty adjustment window</td></tr>
+    <tr><td>DIFFICULTY_BOUND_MIN</td><td>0.5</td><td style="color:#6b6b8a;">Difficulty floor adjustment</td></tr>
+    <tr><td>DIFFICULTY_BOUND_MAX</td><td>2.0</td><td style="color:#6b6b8a;">Difficulty ceiling adjustment</td></tr>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Emission &amp; economy</h3>
+  <table class="specs">
+    <tr><td>GENESIS_SUPPLY</td><td>1,000,000</td><td style="color:#6b6b8a;">Initial supply (eWatt)</td></tr>
+    <tr><td>INITIAL_REWARD</td><td>50,000,000</td><td style="color:#6b6b8a;">Initial reward precision</td></tr>
+    <tr><td>HALVING_INTERVAL</td><td>50,000 blocks</td><td style="color:#6b6b8a;">Halving interval (deprecated v27)</td></tr>
+    <tr><td>M_MAX</td><td>100,000</td><td style="color:#6b6b8a;">Bootstrap multiplier at block 1 (v28)</td></tr>
+    <tr><td>S_THRESHOLD_UNITS</td><td><code>10^16</code></td><td style="color:#6b6b8a;">Maturity threshold (10B eWatt base units)</td></tr>
+    <tr><td>N_CALIBRATION</td><td>100,000</td><td style="color:#6b6b8a;">Reference network size</td></tr>
+    <tr><td>P_TARGET_MICRO</td><td>1,000,000</td><td style="color:#6b6b8a;">Target production cost ($1.00/eWatt micro-USD)</td></tr>
+    <tr><td>LN_M_MAX_PRECISION</td><td>11,512,925</td><td style="color:#6b6b8a;">ln(100,000) x 1e6 for bootstrap decay</td></tr>
+    <tr><td>EMISSION_PRECISION</td><td>1,000,000,000</td><td style="color:#6b6b8a;">Fixed-point precision (1e9)</td></tr>
+    <tr><td>COMMIT_PRECISION</td><td>1,000,000,000</td><td style="color:#6b6b8a;">Commitment precision (1e9)</td></tr>
+    <tr><td>VR_PRECISION</td><td>1,000,000</td><td style="color:#6b6b8a;">VR precision (1e6)</td></tr>
+    <tr><td>EFF_PRECISION</td><td>1,000,000</td><td style="color:#6b6b8a;">Efficiency precision (1e6)</td></tr>
+    <tr><td>CAP_PRECISION</td><td>1,000,000</td><td style="color:#6b6b8a;">Ramp-up cap precision (1e6)</td></tr>
+    <tr><td>RATE_PRECISION</td><td>1,000,000</td><td style="color:#6b6b8a;">Rate ratio precision (1e6)</td></tr>
+    <tr><td>UNITS_PER_EWATT</td><td>1,000,000</td><td style="color:#6b6b8a;">1 eWatt = 1,000,000 base units</td></tr>
+    <tr><td>DECIMAL_PLACES</td><td>6</td><td style="color:#6b6b8a;">Decimal precision</td></tr>
+    <tr><td>J_PER_GB</td><td>6.0 J</td><td style="color:#6b6b8a;">Energy per GB of memory access</td></tr>
+    <tr><td>J_PER_KWH</td><td>3,600,000</td><td style="color:#6b6b8a;">Joules per kWh</td></tr>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Privacy &amp; mempool</h3>
+  <table class="specs">
+    <tr><td>RING_SIGNATURE_SIZE</td><td>11</td><td style="color:#6b6b8a;">Ring size for MLSAG signatures</td></tr>
+    <tr><td>PUBKEY_HASH_SIZE</td><td>20 bytes</td><td style="color:#6b6b8a;">P2PKH address size</td></tr>
+    <tr><td>MAX_BLOCK_TXS</td><td>10,000</td><td style="color:#6b6b8a;">Max transactions per block</td></tr>
+    <tr><td>MAX_MEMPOOL_SIZE</td><td>10,000 txs</td><td style="color:#6b6b8a;">Max mempool capacity</td></tr>
+    <tr><td>MAX_PEERS</td><td>125</td><td style="color:#6b6b8a;">Max P2P peers</td></tr>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Locking &amp; governance</h3>
+  <table class="specs">
+    <tr><td>FOUNDER_LOCK_BLOCKS</td><td>50,000</td><td style="color:#6b6b8a;">Founder lock minimum (~347 days)</td></tr>
+    <tr><td>FOUNDER_LOCK_ADDITIONAL</td><td>40,000</td><td style="color:#6b6b8a;">Additional lock offset</td></tr>
+    <tr><td>MIN_COMMIT_WINDOW</td><td>4,300 blocks</td><td style="color:#6b6b8a;">Commit window (~30 days)</td></tr>
+    <tr><td>COMMIT_WINDOW_BLOCKS</td><td>4,300</td><td style="color:#6b6b8a;">Historical bandwidth window</td></tr>
+    <tr><td>VR_TARGET_UTILIZATION</td><td>50%</td><td style="color:#6b6b8a;">Target VR utilization</td></tr>
+    <tr><td>RAMP_UP_BLOCKS</td><td>10,000</td><td style="color:#6b6b8a;">Ramp-up duration (~70 days)</td></tr>
+    <tr><td>RAMP_UP_CAP</td><td>80%</td><td style="color:#6b6b8a;">Single miner cap during ramp-up</td></tr>
     <tr><td>PROTOCOL_VERSION</td><td><code>0x0004</code></td><td style="color:#6b6b8a;">Consensus rules (v3 emission formula)</td></tr>
   </table>
-  <p style="margin-top:12px;font-size:12px;color:#5a5a72;">See <a href="architecture.html" style="color:#3b82f6;">3-layer architecture</a> for the formal system design, and <a href="ewatts_economics.html" style="color:#3b82f6;">interactive dashboard</a> for adoption scenario simulation.</p>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Quantum migration (future)</h3>
+  <table class="specs">
+    <tr><td>QUANTUM_ACTIVATION_BLOCK</td><td>3,153,600</td><td style="color:#6b6b8a;">Quantum migration epoch (~60 years)</td></tr>
+    <tr><td>PQ_MINER_SUPERMAJORITY</td><td>90%</td><td style="color:#6b6b8a;">Required supermajority for PQ</td></tr>
+    <tr><td>PQ_SIG_SCHEME</td><td>FALCON-1024</td><td style="color:#6b6b8a;">Post-quantum signature scheme</td></tr>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;color:#e0e0e0;margin-top:24px;margin-bottom:4px;">Deprecated (v27, retained for migration)</h3>
+  <table class="specs">
+    <tr><td>BASE_EMISSION</td><td>100 eWatt/block</td><td style="color:#6b6b8a;">v27 base rate (replaced by v28 formula)</td></tr>
+    <tr><td>BASE_EMISSION_UNITS</td><td>100,000,000</td><td style="color:#6b6b8a;">v27 base units</td></tr>
+    <tr><td>EMISSION_FLOOR_MULTIPLIER</td><td>0.05x</td><td style="color:#6b6b8a;">v27 floor (replaced by bootstrap decay)</td></tr>
+    <tr><td>EMISSION_CEILING_MULTIPLIER</td><td>20.0x</td><td style="color:#6b6b8a;">v27 ceiling (replaced by bootstrap decay)</td></tr>
+    <tr><td>EFFICIENCY_PENALTY_THRESHOLD</td><td>0.7</td><td style="color:#6b6b8a;">v27 efficiency threshold</td></tr>
+    <tr><td>EFFICIENCY_CAP_THRESHOLD</td><td>1.3</td><td style="color:#6b6b8a;">v27 efficiency cap</td></tr>
+    <tr><td>MIN_COMMIT_GBS</td><td>1.0 GB/s</td><td style="color:#6b6b8a;">v27 minimum commitment</td></tr>
+  </table>
+
+  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;">
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:#5a5a72;font-size:16px;">&#9432;</span>
+      <div>
+        <strong style="color:#c8c8cc;font-size:13px;">Parameter pairs summing to u64::MAX (reward.rs boundary tests)</strong>
+        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
+          The <code>reward.rs</code> v27 test suite uses <code>u64::MAX</code> as a boundary input to verify emission behavior at extreme network sizes (1 miner vs u64::MAX effective bandwidth). The deprecated formula <code>compute_emission_rate_v27_deprecated(1, u64::MAX)</code> tests the single-miner bootstrap case at maximum network capacity. Equivalent v3 boundary tests are pending implementation alongside the v3 economic test suite.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px;font-size:13px;color:#5a5a72;">
+    Full parameter source: <code>src/constants.rs</code>.
+    Whitepaper: <a href="whitepaper-v28.md" style="color:#3b82f6;">whitepaper-v28.md</a>.
+    Economic simulation: <a href="#dashboard" style="color:#3b82f6;">dashboard below</a>.
+  </p>
 </section>
 
+<hr>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- DASHBOARD -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="section" id="dashboard">
+  <div class="section-label">Economic Dashboard</div>
+  <h2>Interactive simulation</h2>
+  <p class="intro">Adoption scenario simulator built from the v28 emission formula. Adjust parameters and explore the economic regime.</p>
+
+  <div class="dashboard-frame">
+    <iframe src="ewatts_economics.html" title="eWatts Economic Dashboard" loading="lazy"></iframe>
+  </div>
+
+  <p style="margin-top:12px;font-size:13px;color:#5a5a72;">
+    <a href="ewatts_economics.html" style="color:#3b82f6;" target="_blank">Open full screen</a>
+    &nbsp;&middot;&nbsp;
+    <a href="whitepaper-v28.md" style="color:#3b82f6;">Whitepaper v28</a>
+    &nbsp;&middot;&nbsp;
+    <a href="energy-anchor-technical-note.md" style="color:#3b82f6;">Energy anchor technical note</a>
+  </p>
+</section>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- FOOTER -->
+<!-- ════════════════════════════════════════════════ -->
 <footer>
   <div>
     <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     <a href="https://ewatts.org">ewatts.org</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="whitepaper-v28.md">Whitepaper v28</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
     <a href="MINING.md">Mining Guide</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="architecture.html">3-Layer Architecture</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="reflexivity-oracle-trap.md">Oracle Trap</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     MIT License
   </div>
