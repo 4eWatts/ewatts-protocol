@@ -13,6 +13,9 @@ body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#
 nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #1a1a2a; margin-bottom:16px; }
 .logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
 .search-box { display:flex; gap:6px; }
 .search-box input { background:#10101a; border:1px solid #2a2a3a; border-radius:4px; padding:6px 12px; color:#d4d4dc; font-size:13px; width:280px; font-family:'JetBrains Mono',monospace; }
 .search-box input:focus { outline:none; border-color:#3b82f6; }
@@ -50,21 +53,21 @@ tr:hover td { background:#0c0c18; }
 <body>
 <div class="container">
 <nav>
-  <div style="display:flex;align-items:center;gap:16px;">
-    <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">explorer</span></div>
-    <div class="nav-links" style="display:flex;gap:16px;">
-      <a href="index.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Home</a>
-      <a href="wallet.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Wallet</a>
-      <a href="architecture.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Architecture</a>
-      <a href="ewatts_economics.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Economic Model</a>
-      <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank" style="color:#5a5a72;text-decoration:none;font-size:13px;">GitHub</a>
-    </div>
-  </div>
-  <div class="search-box">
-    <input id="searchInput" type="text" placeholder="Block height, tx hash, or address..." onkeydown="if(event.key==='Enter')search()">
-    <button onclick="search()">Search</button>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">explorer</span></div>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="explorer.html">Explorer</a>
+    <a href="wallet.html">Wallet</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
+
+<div class="search-box" style="margin-bottom:16px;">
+  <input id="searchInput" type="text" placeholder="Block height, tx hash, or address..." onkeydown="if(event.key==='Enter')search()">
+  <button onclick="search()">Search</button>
+</div>
 
 <div id="content">
   <div class="loading">Loading chain data...</div>
