@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "protocol_version": 4,
+  "genesis": {
+    "timestamp": "Wed Jun  3 09:07:24 PM UTC 2026",
+    "supply": 1000000000000000,
+    "founder_pubkey": "",
+    "block_hash": ""
+  },
+  "params": {
+    "target_block_time_secs": 600,
+    "dag_initial_size_bytes": 8589934592,
+    "dag_growth_bytes_per_year": 536870912,
+    "base_emission_units": 100000000,
+    "m_max": 100000,
+    "s_threshold_units": 10000000000000000,
+    "emission_floor": 0.05,
+    "emission_ceiling": 20.0,
+    "ramp_up_blocks": 10000,
+    "ramp_up_cap": 0.8,
+    "founder_lock_blocks": 50000,
+    "founder_lock_additional": 40000,
+    "min_commit_gbps": 1.0,
+    "commit_window_blocks": 4300,
+    "j_per_gb": 6.0,
+    "ring_size": 11,
+    "max_peers": 125
+  }
+}
