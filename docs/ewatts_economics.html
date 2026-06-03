@@ -10,7 +10,8 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; }
 .container { max-width:1120px; margin:0 auto; padding:0 20px; }
-nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+nav { position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.nav-inner { max-width:1120px; margin:0 auto; padding:0 20px; display:flex; justify-content:space-between; align-items:center; height:46px; }
 .logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
 .nav-links { display:flex; gap:20px; }
@@ -66,14 +67,16 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 </head>
 <body>
 <nav>
-  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;">economic model</span></div>
-  <div class="nav-links">
-    <a href="index.html">Home</a>
-    <a href="explorer.html">Explorer</a>
-    <a href="wallet.html">Wallet</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="ewatts_economics.html">Economic Model</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
+  <div class="nav-inner">
+    <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">economic model</span></div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="explorer.html">Explorer</a>
+      <a href="wallet.html">Wallet</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="ewatts_economics.html">Economic Model</a>
+      <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
+    </div>
   </div>
 </nav>
 
