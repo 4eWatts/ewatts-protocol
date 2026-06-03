@@ -231,6 +231,11 @@ pub(crate) async fn cmd_start(args: &[String]) {
             let mut s = crate::state::UtxoSet::genesis(genesis_supply, &genesis_pk);
             let mut store = crate::store::load_chain_store();
             for block in &blocks {
+                // Validate block integrity (catches disk tampering)
+                if let Err(e) = crate::store::validate_block_integrity(block) {
+                    eprintln!("CRITICAL: {} — disk corruption detected. Halting.", e);
+                    std::process::exit(1);
+                }
                 let hash = block.header.hash();
                 if store.block_diffs.get(&hash).is_some() {
                     let _ = s.apply_block_and_track(block, block.header.height);

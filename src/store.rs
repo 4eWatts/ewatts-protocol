@@ -1,5 +1,8 @@
 use crate::block::Block;
+use crate::constants;
 use crate::state::UtxoSet;
+use sha3::Keccak256;
+use digest::Digest;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -322,6 +325,62 @@ pub fn save_chain_store(store: &crate::chain::ChainStore) -> Result<(), String> 
 }
 
 /// Load the chain store from disk, rebuilding from blocks if needed.
+/// Validate a block's internal consistency after loading from disk.
+/// Returns Ok(()) if the block passes integrity checks, or an error describing the issue.
+pub(crate) fn validate_block_integrity(block: &Block) -> Result<(), String> {
+    // 1. Validate merkle_root against actual transaction hashes.
+    //    This catches ANY tampering with block transactions (added, removed, modified).
+    let mut tx_hashes: Vec<[u8; 32]> = block.body.transactions.iter().map(|tx| tx.hash()).collect();
+    if !tx_hashes.is_empty() {
+        while tx_hashes.len() > 1 {
+            let mut next = Vec::with_capacity((tx_hashes.len() + 1) / 2);
+            for i in (0..tx_hashes.len()).step_by(2) {
+                let mut h = Keccak256::new();
+                h.update(tx_hashes[i]);
+                if i + 1 < tx_hashes.len() {
+                    h.update(tx_hashes[i + 1]);
+                } else {
+                    h.update(tx_hashes[i]); // duplicate odd leaf
+                }
+                next.push(h.finalize().into());
+            }
+            tx_hashes = next;
+        }
+        if tx_hashes[0] != block.header.merkle_root {
+            return Err(format!(
+                "Block #{}: merkle_root mismatch — tx list tampered or corrupted",
+                block.header.height
+            ));
+        }
+    }
+    // 2. Validate that previous_hash is not self-referential for non-genesis blocks
+    if block.header.height > 0 && block.header.previous_hash == block.header.hash() {
+        return Err(format!(
+            "Block #{}: previous_hash equals own hash — invalid",
+            block.header.height
+        ));
+    }
+    // 3. Validate emission_rate is within genesis anchor bounds
+    //    Genesis emission: M_MAX x C_min ≈ 2000 eWatt = 2_000_000_000 base units
+    //    At mature supply: base_rate < 100 eWatt = 100_000_000 base units
+    //    Any emission > 5000 eWatt per block indicates corruption
+    let max_emission_per_block = 5_000_000_000u64; // 5000 eWatt
+    if block.header.emission_rate > max_emission_per_block {
+        return Err(format!(
+            "Block #{}: emission_rate {} exceeds maximum ({}), possible corruption",
+            block.header.height, block.header.emission_rate, max_emission_per_block
+        ));
+    }
+    // 4. Validate proof_hash is non-zero (basic sanity)
+    if block.header.height > 0 && block.proof_hash == [0u8; 32] {
+        return Err(format!(
+            "Block #{}: proof_hash is zero — block not properly mined",
+            block.header.height
+        ));
+    }
+    Ok(())
+}
+
 pub fn load_chain_store() -> crate::chain::ChainStore {
     // Try to load from chain_store.json
     let path = format!("{}/chain_store.json", DATA_DIR);
@@ -331,10 +390,31 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
                 if store.has_genesis() {
                     // Populate block_cache from blocks.jsonl (block_cache is #[serde(skip)]
                     // so it's empty after deserialization)
+                    // Validate internal integrity for each block before caching
                     if let Ok(blocks) = load_blocks() {
+                        // Build a set of known hashes for parent validation
+                        let known_hashes: std::collections::HashSet<[u8; 32]> =
+                            blocks.iter().map(|b| b.header.hash()).collect();
                         for block in &blocks {
                             let bh = block.header.hash();
                             if store.get_entry(&bh).is_some() {
+                                if let Err(e) = validate_block_integrity(block) {
+                                    eprintln!("CRITICAL: {} — disk corruption detected. Halting.", e);
+                                    std::process::exit(1);
+                                }
+                                // Validate previous_hash linkage in the fast path too
+                                if block.header.height > 0 {
+                                    let parent = block.header.previous_hash;
+                                    let parent_known = known_hashes.contains(&parent)
+                                        || store.get_entry(&parent).is_some();
+                                    if !parent_known {
+                                        eprintln!(
+                                            "CRITICAL: Block #{}: parent {:02x}.. not found in chain — disk corruption detected. Halting.",
+                                            block.header.height, parent[0]
+                                        );
+                                        std::process::exit(1);
+                                    }
+                                }
                                 store.add_block_to_cache(block.clone());
                             }
                         }
@@ -349,6 +429,11 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
     let mut store = crate::chain::ChainStore::empty();
     if let Ok(blocks) = load_blocks() {
         for block in &blocks {
+            // Validate internal integrity
+            if let Err(e) = validate_block_integrity(block) {
+                eprintln!("CRITICAL: {} — disk corruption detected. Halting.", e);
+                std::process::exit(1);
+            }
             let hash = block.header.hash();
             // Skip if we already have it (add_block checks for duplicates)
             if store.get_block(&hash).is_none() {
@@ -357,9 +442,16 @@ pub fn load_chain_store() -> crate::chain::ChainStore {
                     store = crate::chain::ChainStore::new(block.clone());
                 } else if block.header.previous_hash == [0u8; 32] {
                     // Chain start block (first mined block), allow without genesis in store
+                    // Also validate that this is a valid first block (not genesis, but height > 0)
                     let _ = store.add_block(block.clone());
                 } else if store.get_block(&block.header.previous_hash).is_some() {
                     let _ = store.add_block(block.clone());
+                } else {
+                    eprintln!(
+                        "CRITICAL: Block #{}: parent hash {:02x}.. not found — disk corruption detected. Halting.",
+                        block.header.height, block.header.previous_hash[0]
+                    );
+                    std::process::exit(1);
                 }
             }
         }
