@@ -39,9 +39,10 @@ tr:hover td { background:#0c0c18; }
 .tx-type { font-size:10px; padding:2px 6px; border-radius:3px; }
 .tx-private { background:#1a3a1a; color:#22c55e; }
 .tx-public { background:#3a1a1a; color:#ef4444; }
+.nav-links a:hover { color:#c8c8cc !important; }
 @media (max-width:720px) {
   .stats { grid-template-columns:1fr 1fr; }
-  nav { flex-direction:column; gap:8px; }
+  nav { flex-direction:column; gap:8px; align-items:flex-start; }
   .search-box input { width:200px; }
 }
 </style>
@@ -49,7 +50,16 @@ tr:hover td { background:#0c0c18; }
 <body>
 <div class="container">
 <nav>
-  <div class="logo">eWatts<span>.org</span> <span style="font-size:11px;color:#3b82f6;font-weight:400;">explorer</span></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">explorer</span></div>
+    <div class="nav-links" style="display:flex;gap:16px;">
+      <a href="index.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Home</a>
+      <a href="wallet.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Wallet</a>
+      <a href="architecture.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Architecture</a>
+      <a href="ewatts_economics.html" style="color:#5a5a72;text-decoration:none;font-size:13px;">Economic Model</a>
+      <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank" style="color:#5a5a72;text-decoration:none;font-size:13px;">GitHub</a>
+    </div>
+  </div>
   <div class="search-box">
     <input id="searchInput" type="text" placeholder="Block height, tx hash, or address..." onkeydown="if(event.key==='Enter')search()">
     <button onclick="search()">Search</button>
@@ -70,7 +80,12 @@ tr:hover td { background:#0c0c18; }
 </div>
 
 <script>
-const API = window.location.origin + '/api';
+// Try live testnet node. When accessing via https://ewatts.org (GitHub Pages),
+// the browser may block mixed HTTP content — in that case, use the direct link below.
+const LIVE_NODE = 'http://178.104.193.51:8080';
+const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? window.location.origin + '/api'
+  : LIVE_NODE + '/api';
 
 async function api(path) {
   const r = await fetch(API + path);
@@ -124,7 +139,17 @@ async function loadHome() {
     html += '</table>';
     el.innerHTML = html;
   } catch(e) {
-    el.innerHTML = `<div class="error">Failed to load chain data: ${e.message}. Make sure the eWatts daemon is running.</div>`;
+    el.innerHTML = `
+      <div class="error" style="padding:32px 20px;">
+        <div style="font-size:15px;margin-bottom:12px;">Could not reach the testnet node.</div>
+        <div style="color:#6b6b8a;font-size:13px;margin-bottom:16px;">
+          The explorer connects to <code style="color:#d4d4dc;background:#1a1a2a;padding:2px 6px;border-radius:3px;">${LIVE_NODE}</code>.<br>
+          If you're on HTTPS (ewatts.org), your browser may block the HTTP connection.<br>
+          Open the explorer directly from the node to bypass this:
+        </div>
+        <a href="${LIVE_NODE}/explorer.html" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:8px 18px;border-radius:4px;font-size:13px;">Open Live Explorer →</a>
+      </div>
+    `;
   }
 }
 
