@@ -80,9 +80,9 @@ tr:hover td { background:#0c0c18; }
 </div>
 
 <script>
-// Try live testnet node. When accessing via https://ewatts.org (GitHub Pages),
-// the browser may block mixed HTTP content — in that case, use the direct link below.
-const LIVE_NODE = 'http://178.104.193.51:8080';
+// HTTPS endpoint — works from ewatts.org without mixed-content issues.
+// Cert is self-signed: browser may show a one-time security warning on first visit.
+const LIVE_NODE = 'https://178.104.193.51:8443';
 const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
   ? window.location.origin + '/api'
   : LIVE_NODE + '/api';
@@ -147,7 +147,8 @@ async function loadHome() {
           If you're on HTTPS (ewatts.org), your browser may block the HTTP connection.<br>
           Open the explorer directly from the node to bypass this:
         </div>
-        <a href="${LIVE_NODE}/explorer.html" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:8px 18px;border-radius:4px;font-size:13px;">Open Live Explorer →</a>
+        <a href="${LIVE_NODE}/api/status" target="_blank" style="display:inline-block;background:#1a1a2a;color:#3b82f6;text-decoration:none;padding:8px 18px;border-radius:4px;font-size:13px;border:1px solid #3b82f6;">Trust certificate →</a>
+        <span style="color:#5a5a72;font-size:12px;display:block;margin-top:8px;">Open the link above, accept the self-signed cert, then reload this page.</span>
       </div>
     `;
   }
