@@ -70,7 +70,7 @@ log "Node0 started (PID=$N0_PID, P2P=$BASE_P2P, dash=$BASE_DASH, diff=$DIFFICULT
 
 sleep 25
 
-PID0=$(grep -oP 'P2P Node ID: \K\S+' "$SOAK_DIR/node0/stdout.log" | head -1)
+PID0=$(grep -a -oP 'P2P Node ID: \K\S+' "$SOAK_DIR/node0/stdout.log" | head -1)
 if [ -z "$PID0" ]; then
   log "ERROR: Could not get Node0 peer ID"; tail -20 "$SOAK_DIR/node0/stdout.log" >> "$LOG"; exit 1
 fi
