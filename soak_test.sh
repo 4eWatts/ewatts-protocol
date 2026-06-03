@@ -9,6 +9,9 @@ BIN="$REPO/target/release/ewatts-protocol"
 SOAK_DIR="/tmp/ewatts-soak"
 LOG="$SOAK_DIR/soak.log"
 
+# PID-tracked helpers (no lock — soak runs for hours, cert scripts are brief)
+SKIP_LOCK=1 source "$REPO/scripts/ewatts_common.sh"
+
 # ── Config per mode ────────────────────────────────────────────────────
 # Always runs light mode to avoid restart spikes on night cycle.
 MODE="${1:-light}"
@@ -29,12 +32,12 @@ BASE_P2P=25050
 BASE_DASH=26050
 
 # ── Cleanup previous ───────────────────────────────────────────────────
-ewatts_kill() {
-  ps aux | grep -E "target/release/ewatts-protocol" | grep -v grep | \
-    awk '{print $2}' | xargs -r kill "$@" 2>/dev/null || true
-  sleep 1
-}
-ewatts_kill
+# Kill only previously tracked PIDs (or stale ones from prior runs)
+kill_tracked 2>/dev/null
+# Also clean any orphans from potentially aborted runs
+ps aux | grep -E "target/release/ewatts-protocol" | grep -v grep | \
+  awk '{print $2}' | xargs -r kill 2>/dev/null || true
+sleep 1
 
 # ── Setup directories ──────────────────────────────────────────────────
 rm -rf "$SOAK_DIR" 2>/dev/null
@@ -62,6 +65,7 @@ cd "$SOAK_DIR/node0"
 $BIN start --p2p --p2p-port $BASE_P2P --dash-port $BASE_DASH --difficulty $DIFFICULTY \
   > "$SOAK_DIR/node0/stdout.log" 2>&1 &
 N0_PID=$!
+track_pid $N0_PID
 log "Node0 started (PID=$N0_PID, P2P=$BASE_P2P, dash=$BASE_DASH, diff=$DIFFICULTY)"
 
 sleep 25
@@ -83,6 +87,7 @@ for i in $(seq 1 $((NODE_COUNT - 1))); do
   $BIN start --p2p --p2p-port $BPORT --dash-port $DPORT --difficulty $DIFFICULTY \
     --bootstrap "/ip4/127.0.0.1/tcp/$BASE_P2P/p2p/$PID0" > "$SOAK_DIR/node$i/stdout.log" 2>&1 &
   PIDS[$i]=$!
+  track_pid $!
   log "Node$i started (PID=${PIDS[$i]}, P2P=$BPORT, dash=$DPORT)"
 done
 
@@ -142,6 +147,7 @@ while true; do
           --bootstrap "/ip4/127.0.0.1/tcp/$BASE_P2P/p2p/$PID0" > "$SOAK_DIR/node$i/stdout.log" 2>&1 &
       fi
       PIDS[$i]=$!
+      track_pid $!
       log "Node$i restarted (PID=${PIDS[$i]})"
     fi
   done
