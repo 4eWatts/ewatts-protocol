@@ -338,29 +338,58 @@ footer a:hover { color:#c8c8cc; }
 <!-- ============= GET STARTED ============= -->
 <section class="section" id="mine">
   <div class="section-label">Get started</div>
-  <h2>Mine in 5 minutes</h2>
-  <p class="intro">You need a computer with Rust installed. Minimum 4 GB of free DRAM. No GPU, no ASIC, no token purchase.</p>
-  <p style="margin-top:8px;font-size:13px;color:#5a5a72;">Quick install: <code>curl -sSf https://ewatts.org/install.sh | bash</code></p>
+  <h2>Mine in 5 minutes (Windows, Mac, Linux)</h2>
+  <p class="intro">Any computer with 4 GB of RAM can mine. No GPU, no ASIC, no token purchase. Just RAM.</p>
+  
+  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #3b3b1a;border-radius:5px;font-size:13px;color:#c8c8c8;">
+    <strong>⚠️ Disk space:</strong> Compilation uses ~1.5 GB temporarily. Blockchain is &lt;50 MB.
+  </div>
 
-  <pre class="code-block"><span class="cm"># Install Rust</span>
+  <div style="margin-top:20px;">
+    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐚 Windows (PowerShell)</h3>
+    <p style="font-size:12px;color:#5a5a72;">Abra o PowerShell. Cole os comandos UM DE CADA VEZ:</p>
+    <pre class="code-block" style="font-size:12px;"><span class="cm"># Passo 1 — Instalar Rust (~1 minuto)</span>
+PS&gt; curl.exe --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+<span class="cm"># FECHE E REABRA o PowerShell</span>
+<span class="cm"># Passo 2 — Baixar e compilar (~6 minutos)</span>
+PS&gt; git clone https://github.com/4Ewatts/ewatts-protocol.git
+PS&gt; cd ewatts-protocol
+PS&gt; cargo build --release
+
+<span class="cm"># Passo 3 — Conectar na testnet e minerar</span>
+PS&gt; .\target\release\ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1
+
+<span class="cm"># Abra http://localhost:8080 no navegador para ver o dashboard</span></pre>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐧 Linux / Mac</h3>
+    <pre class="code-block" style="font-size:12px;"><span class="cm"># Instalar Rust</span>
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ source ~/.cargo/env
 
-<span class="cm"># Clone</span>
+<span class="cm"># Baixar e compilar</span>
 $ git clone https://github.com/4Ewatts/ewatts-protocol.git
 $ cd ewatts-protocol
 $ cargo build --release
 
-<span class="cm"># Initialize state and mine</span>
-$ ./target/release/ewatts-protocol init
-$ ./target/release/ewatts-protocol mine
-
-<span class="cm"># Start dashboard on port 8080</span>
-$ ./target/release/ewatts-protocol dash</pre>
+<span class="cm"># Conectar na testnet pública</span>
+$ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1</pre>
+  </div>
 
   <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-    <a href="install.sh" class="btn btn-primary">Quick install script</a>
-    <a href="MINING.md" class="btn btn-outline">Mining guide</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Dev tasks (good first issue)</a>
+    <a href="MINING.md" class="btn btn-primary">📖 Mining guide (detalhado)</a>
+    <a href="install.sh" class="btn btn-outline" style="border-color:#22c55e;color:#22c55e;">Quick install (Linux/Mac)</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Reportar problemas</a>
+  </div>
+
+  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;color:#5a5a72;">
+    <strong style="color:#8b8baa;">Problemas comuns:</strong><br>
+    • <strong>Porta ocupada:</strong> troque <code>--dash-port 8080</code> para <code>--dash-port 8081</code><br>
+    • <strong>Antivírus bloqueando:</strong> adicione a pasta <code>target\release\</code> como exceção<br>
+    • <strong>Disco cheio:</strong> rode <code>cargo clean</code> para liberar ~1.5 GB<br>
+    • <strong>Git não encontrado:</strong> instale em git-scm.com (Windows) ou <code>apt install git</code> (Linux)
   </div>
 </section>
 
