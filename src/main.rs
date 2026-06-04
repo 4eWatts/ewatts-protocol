@@ -636,22 +636,36 @@ fn cmd_init() {
             println!("Error: {}", e);
             return;
         }
-        let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
+        // Add genesis key + miner key to wallet so wallet balance is accurate
+        let mut gen_wallet = crate::wallet::Wallet::load();
         
-        // Create and save miner keypair (so start command reuses it)
+        // Create and save miner keypair
         let mut miner_seed = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut miner_seed);
         let _ = crate::store::save_miner_key(&miner_seed);
         let miner_sk = ed25519_dalek::SigningKey::from_bytes(&miner_seed);
         let miner_pk = miner_sk.verifying_key().to_bytes();
-        // Add miner key to wallet for UTXO scanning
-        let rng = &mut rand::thread_rng();
-        let (addr, key) = crate::privacy::StealthAddress::generate(rng);
+        
+        // Wallet entry 1: genesis fund key (owns the initial 1M eWatt)
+        let rng1 = &mut rand::thread_rng();
+        let (addr1, key1) = crate::privacy::StealthAddress::generate(rng1);
         gen_wallet.keys.push(crate::wallet::StealthKeyEntry {
-            view_secret: key.view.to_bytes(),
-            spend_secret: key.spend.to_bytes(),
-            spend_key: addr.spend_key.compress().to_bytes(),
-            view_key: addr.view_key.compress().to_bytes(),
+            view_secret: key1.view.to_bytes(),
+            spend_secret: key1.spend.to_bytes(),
+            spend_key: addr1.spend_key.compress().to_bytes(),
+            view_key: addr1.view_key.compress().to_bytes(),
+            legacy_public_key: pubkey.to_vec(),  // = genesis public key
+            label: "genesis".to_string(),
+        });
+        
+        // Wallet entry 2: miner key (owns mining rewards)
+        let rng2 = &mut rand::thread_rng();
+        let (addr2, key2) = crate::privacy::StealthAddress::generate(rng2);
+        gen_wallet.keys.push(crate::wallet::StealthKeyEntry {
+            view_secret: key2.view.to_bytes(),
+            spend_secret: key2.spend.to_bytes(),
+            spend_key: addr2.spend_key.compress().to_bytes(),
+            view_key: addr2.view_key.compress().to_bytes(),
             legacy_public_key: miner_pk.to_vec(),
             label: "miner".to_string(),
         });
