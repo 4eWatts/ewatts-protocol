@@ -39,7 +39,8 @@ pub const DAG_ACCELERATION_YEARS: u32 = 2;
 
 // ─── Precision / Units ───────────────────────────────────────────────
 pub const DECIMAL_PLACES: u32 = 6;
-pub const UNITS_PER_EWATT: u64 = 1_000_000;  // 1 eWatt = 1,000,000 base units
+pub const UNITS_PER_EWATT: u64 = 1_000_000;  // 1 eWatt = 1,000,000 base units (mining precision)
+pub const ECENTS_PER_EWATT: u64 = 100;       // 1 eWatt = 100 ecents (transaction precision)
 
 pub const EMISSION_PRECISION: u64 = 1_000_000_000;        // 1e9 for emission rates
 pub const COMMIT_PRECISION: u64 = 1_000_000_000;          // 1e9 for effective commit

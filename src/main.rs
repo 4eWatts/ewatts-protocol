@@ -37,6 +37,15 @@ use rand::RngCore;
 use ed25519_dalek::Signer;
 use curve25519_dalek::traits::Identity;
 
+/// Format amount in base units as user-facing eWatt with 2 decimal places.
+/// Example: format_ewatt(1_250_000) -> "1.25 eW"
+pub fn format_ewatt(amount_base_units: u64) -> String {
+    let ewatt = amount_base_units / constants::UNITS_PER_EWATT;
+    let rem = amount_base_units % constants::UNITS_PER_EWATT;
+    let ecents = rem * constants::ECENTS_PER_EWATT / constants::UNITS_PER_EWATT;
+    format!("{}.{:02} eW", ewatt, ecents)
+}
+
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let args: Vec<String> = env::args().collect();
@@ -366,10 +375,10 @@ pub(crate) async fn cmd_start(args: &[String]) {
                     recent_timestamps.remove(0);
                 }
 
-                let reward_ewatt = block.body.transactions[0].outputs.iter()
-                    .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
-                println!("  Block #{} mined — reward {:.6} Ewatt — UTXOs: {} — diff={}",
-                    height, reward_ewatt, guard.utxo_count(), difficulty);
+                let reward_base = block.body.transactions[0].outputs.iter()
+                    .map(|o| o.amount).sum::<u64>();
+                println!("  Block #{} mined — reward {} — UTXOs: {} — diff={}",
+                    height, format_ewatt(reward_base), guard.utxo_count(), difficulty);
             }
             Err(e) => {
                 drop(state_guard);
@@ -989,13 +998,13 @@ fn cmd_mine() {
                 return;
             }
 
-            let reward_ewatt = block.body.transactions[0].outputs.iter()
-                .map(|o| o.amount).sum::<u64>() as f64 / constants::UNITS_PER_EWATT as f64;
+            let reward_base = block.body.transactions[0].outputs.iter()
+                .map(|o| o.amount).sum::<u64>();
 
             println!();
             println!("Block #{} mined!", height);
             println!("  Hash:   {}", hex::encode(&block_hash[..8]));
-            println!("  Reward: {:.6} Ewatt", reward_ewatt);
+            println!("  Reward: {}", format_ewatt(reward_base));
             println!("  VR:     {}",
                 crate::vr::format_vr_int(block.header.vr_block));
             println!("  UTXOs:  {}", state.utxo_count());
@@ -1230,10 +1239,10 @@ fn cmd_wallet(args: &[String]) {
             let owned = wallet.scan_utxos(&state);
             let mut total = 0u64;
             for o in &owned {
-                println!("  UTXO: {:x}..{}  amount={}", o.key.tx_hash[0], o.key.output_index, o.entry.amount);
+                println!("  UTXO: {:x}..{}  amount={} ({})", o.key.tx_hash[0], o.key.output_index, o.entry.amount, format_ewatt(o.entry.amount));
                 total += o.entry.amount;
             }
-            println!("  Total balance: {} ({:.6} Ewatt)", total, total as f64 / constants::UNITS_PER_EWATT as f64);
+            println!("  Total balance: {} ({})", total, format_ewatt(total));
             println!("  Wallet keys: {}", wallet.keys.len());
         }
         "send" => {
