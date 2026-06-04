@@ -72,7 +72,7 @@ table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
 table.specs td:last-child { color:#c8c8cc; }
 code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
 
-pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow-x:auto; margin-top:16px; color:#b0b0c0; }
+pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow:auto; margin-top:16px; color:#b0b0c0; white-space:pre-wrap; word-break:break-word; }
 pre.code-block .cm { color:#5a5a72; }
 pre.code-block .fn { color:#3b82f6; }
 
@@ -342,39 +342,39 @@ footer a:hover { color:#c8c8cc; }
   <p class="intro">Any computer with 4 GB of RAM can mine. No GPU, no ASIC, no token purchase. Just RAM.</p>
   
   <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #3b3b1a;border-radius:5px;font-size:13px;color:#c8c8c8;">
-    <strong>⚠️ Disk space:</strong> Compilation uses ~1.5 GB temporarily. Blockchain is &lt;50 MB.
+    <strong>⚠️ Disk space:</strong> Compilation uses ~1.5 GB temporarily. Blockchain data is &lt;50 MB.
   </div>
 
   <div style="margin-top:20px;">
     <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐚 Windows (PowerShell)</h3>
-    <p style="font-size:12px;color:#5a5a72;">Abra o PowerShell. Cole os comandos UM DE CADA VEZ:</p>
-    <pre class="code-block" style="font-size:12px;"><span class="cm"># Passo 1 — Instalar Rust (~1 minuto)</span>
+    <p style="font-size:12px;color:#5a5a72;">Open PowerShell. Paste commands ONE AT A TIME:</p>
+    <pre class="code-block" style="font-size:12px;white-space:pre-wrap;word-break:break-all;"><span class="cm"># Step 1 — Install Rust (~1 min)</span>
 PS&gt; curl.exe --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-<span class="cm"># FECHE E REABRA o PowerShell</span>
-<span class="cm"># Passo 2 — Baixar e compilar (~6 minutos)</span>
+<span class="cm"># CLOSE and REOPEN PowerShell</span>
+<span class="cm"># Step 2 — Download and compile (~6 min)</span>
 PS&gt; git clone https://github.com/4Ewatts/ewatts-protocol.git
 PS&gt; cd ewatts-protocol
 PS&gt; cargo build --release
 
-<span class="cm"># Passo 3 — Conectar na testnet e minerar</span>
+<span class="cm"># Step 3 — Connect to testnet and mine</span>
 PS&gt; .\target\release\ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1
 
-<span class="cm"># Abra http://localhost:8080 no navegador para ver o dashboard</span></pre>
+<span class="cm"># Open http://localhost:8080 in your browser</span></pre>
   </div>
 
   <div style="margin-top:16px;">
     <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐧 Linux / Mac</h3>
-    <pre class="code-block" style="font-size:12px;"><span class="cm"># Instalar Rust</span>
+    <pre class="code-block" style="font-size:12px;white-space:pre-wrap;word-break:break-all;"><span class="cm"># Install Rust</span>
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ source ~/.cargo/env
 
-<span class="cm"># Baixar e compilar</span>
+<span class="cm"># Download and compile</span>
 $ git clone https://github.com/4Ewatts/ewatts-protocol.git
 $ cd ewatts-protocol
 $ cargo build --release
 
-<span class="cm"># Conectar na testnet pública</span>
+<span class="cm"># Connect to public testnet</span>
 $ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1</pre>
   </div>
 
@@ -385,11 +385,11 @@ $ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 
   </div>
 
   <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;color:#5a5a72;">
-    <strong style="color:#8b8baa;">Problemas comuns:</strong><br>
-    • <strong>Porta ocupada:</strong> troque <code>--dash-port 8080</code> para <code>--dash-port 8081</code><br>
-    • <strong>Antivírus bloqueando:</strong> adicione a pasta <code>target\release\</code> como exceção<br>
-    • <strong>Disco cheio:</strong> rode <code>cargo clean</code> para liberar ~1.5 GB<br>
-    • <strong>Git não encontrado:</strong> instale em git-scm.com (Windows) ou <code>apt install git</code> (Linux)
+    <strong style="color:#8b8baa;">Troubleshooting:</strong><br>
+    • <strong>Port in use:</strong> change <code>--dash-port 8080</code> to <code>--dash-port 8081</code><br>
+    • <strong>Antivirus blocking:</strong> add <code>target\release\</code> folder as exception<br>
+    • <strong>Disk full:</strong> run <code>cargo clean</code> to free ~1.5 GB<br>
+    • <strong>Git not found:</strong> install from git-scm.com (Windows) or <code>apt install git</code> (Linux)
   </div>
 </section>
 
