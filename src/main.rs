@@ -839,7 +839,7 @@ pub fn mine_block_with_key(
 
     // Create commitment (u64 fields: mGB/s, MB, ms)
     let declared_mgbps = (wr.gbps.max(constants::MIN_COMMIT_GBS) * 1000.0) as u64;
-    let work_mbytes_val = (wr.gb_processed.max(0.0001) * 1000.0) as u64;
+    let work_mbytes_val = ((wr.gb_processed.max(0.001) * 1000.0) as u64).max(1);
     let time_ms_val = sol.elapsed_ms.max(1);
     let mut commit = commitment::Commitment {
         miner_id: miner_pk,
@@ -864,8 +864,9 @@ pub fn mine_block_with_key(
         .map_err(|e| format!("Commitment invalid: {}", e))?;
 
     // Compute effective commitment (integer math)
-    let work_mb = (wr.gb_processed * 1000.0) as u64; // GB → MB (approx)
-    let time_msec = sol.elapsed_ms.max(1);
+    // Use work_mbytes_val (clamped) to avoid zero-work at low difficulty
+    let work_mb = work_mbytes_val.max(1);
+    let time_msec = time_ms_val.max(1);
     let bw_mgb = declared_mgbps.max(1);
     let eff_int = commitment::compute_efficiency_int(work_mb, bw_mgb, time_msec);
     // Convert mGB/s to COMMIT_PRECISION units: 1 mGB/s = 1_000_000 precision units
@@ -873,33 +874,19 @@ pub fn mine_block_with_key(
     let ce_int = commitment::effective_commitment_int(bw_prec, eff_int);
     header.miner_effective_commit = ce_int;
 
-    // v3: Emission rate based on total supply and estimated active miners
+    // v3: Emission rate based on total supply and total effective commitment.
+    // For solo miners, total_eff = ce_int (their own effective commitment).
+    // For multi-miner scenarios, this would be the sum of all commitments.
     let total_supply = state.total_supply();
-    // Estimate n_active: average total commit / current miner's commit
-    // If ce_int > 0, use it as reference per-miner commitment
-    let n_active_est = if ce_int > 0 {
-        let window_start = height.saturating_sub(constants::COMMIT_WINDOW_BLOCKS);
-        let window_blocks = crate::store::load_blocks_since(window_start).unwrap_or_default();
-        let sum_commit: u64 = window_blocks.iter().map(|b| b.header.total_effective_commit).sum();
-        let count = window_blocks.len();
-        let avg_commit = if count > 0 { sum_commit / count as u64 } else { 0 };
-        if avg_commit > 0 && ce_int > 0 {
-            std::cmp::max(1, avg_commit / ce_int)
-        } else {
-            1
-        }
-    } else {
-        1
-    };
-    let em_prec = crate::reward::compute_emission_rate_v3(total_supply, n_active_est);
+    let em_prec = crate::reward::compute_emission_rate_v3(total_supply, ce_int);
     header.total_effective_commit = ce_int;
 
-    // Reward in EMISSION_PRECISION units (solo miner = full emission)
-    let miner_reward_int = em_prec;
-    let mut reward_list_int = vec![(miner_pk.to_vec(), miner_reward_int)];
+    // Reward: solo miner gets full emission (post ramp-up cap)
+    let mut reward_list_int = vec![(miner_pk.to_vec(), em_prec)];
     let burned_int = crate::reward::apply_ramp_up_cap_int(height, &mut reward_list_int);
     header.coinbase_burn = burned_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
     let post_burn_reward_int = reward_list_int[0].1;
+    // emission_rate stored in base units
     header.emission_rate = post_burn_reward_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
 
     // VR (integer)
