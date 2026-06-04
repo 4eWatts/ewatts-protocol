@@ -155,12 +155,18 @@ pub fn compute_block_rewards_v3(
     }).collect()
 }
 
-/// Founder outputs locked until max(50000, block + 40000)
+/// Founder outputs locked.
+/// Mainnet: max(50000, block + 40000) blocks (~347 days)
+/// Testnet: max(500, block) blocks (~8 minutes at 1s block time)
 pub fn founder_lock_block(block_number: u64) -> u64 {
-    if block_number < constants::RAMP_UP_BLOCKS {
+    if block_number >= constants::RAMP_UP_BLOCKS {
+        return 0;
+    }
+    #[cfg(feature = "testnet")] {
+        return std::cmp::max(constants::TESTNET_FOUNDER_LOCK, block_number);
+    }
+    #[cfg(not(feature = "testnet"))] {
         std::cmp::max(constants::FOUNDER_LOCK_BLOCKS, block_number + constants::FOUNDER_LOCK_ADDITIONAL)
-    } else {
-        0 // no lock after ramp-up
     }
 }
 
