@@ -938,10 +938,22 @@ pub fn mine_block_with_key(
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
     let reward_base_units = post_burn_reward_int.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
+
+    // Use reward::founder_lock_block so coinbase lock matches state validation
+    let coinbase_lock = crate::reward::founder_lock_block(height);
+    let pk_hash = TxOutput::hash_pubkey(&miner_pk);
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput::new_locked(reward_base_units, miner_pk.to_vec(), height)],
+        outputs: vec![TxOutput {
+            amount: reward_base_units,
+            pubkey_hash: pk_hash,
+            spendable_after: coinbase_lock,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
+        }],
         ring_size: 1,
         signatures: vec![],
         mlsag: None, ring_members: None,

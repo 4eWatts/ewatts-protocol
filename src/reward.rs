@@ -277,6 +277,10 @@ mod tests_v3 {
 mod tests {
     use super::*;
     #[test] fn test_founder_lock() {
+        // testnet: block+0 with 500-block lock; mainnet: 50000-block lock
+        #[cfg(feature = "testnet")]
+        assert_eq!(founder_lock_block(500), 500);
+        #[cfg(not(feature = "testnet"))]
         assert!(founder_lock_block(500) >= 50000);
         assert_eq!(founder_lock_block(15000), 0);
     }
