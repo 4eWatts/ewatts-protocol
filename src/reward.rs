@@ -1,50 +1,28 @@
 use crate::constants;
-use std::sync::OnceLock;
 
 // ─── Bootstrap Multiplier Table (v3) ──────────────────────────────────
-// Pre-computed lookup table for M(S) = M_MAX × exp(-k × S / S_threshold)
-// in EMISSION_PRECISION units (1e9 per unit).
-//
-// Table built ONCE via OnceLock. Linear interpolation between entries
-// is bit-exact deterministic across all platforms.
-//
-// 4096 entries × 8 bytes = 32 KB. Covers S ∈ [0, S_THRESHOLD_UNITS).
+// Generated offline at build time. All nodes use exactly the same 4096
+// values regardless of architecture, libc version, or FPU behavior.
+// NO f64.exp() at runtime. Bit-exact deterministic across all platforms.
+
+include!("bootstrap_table.rs");
 
 const BOOTSTRAP_TABLE_SIZE: usize = 4096;
-
-static BOOTSTRAP_TABLE: OnceLock<[u64; BOOTSTRAP_TABLE_SIZE]> = OnceLock::new();
-
-fn get_bootstrap_table() -> &'static [u64; BOOTSTRAP_TABLE_SIZE] {
-    BOOTSTRAP_TABLE.get_or_init(|| {
-        let mut table = [0u64; BOOTSTRAP_TABLE_SIZE];
-        let k = constants::LN_M_MAX_PRECISION as f64 / 1_000_000.0;
-        let m_max = constants::M_MAX as f64;
-        let precision = constants::EMISSION_PRECISION as f64;
-        for i in 0..BOOTSTRAP_TABLE_SIZE {
-            let frac = i as f64 / (BOOTSTRAP_TABLE_SIZE - 1) as f64;
-            let exponent = -k * frac;  // frac = S / S_threshold
-            let mult_f = (m_max * exponent.exp()).max(1.0).min(m_max);
-            table[i] = (mult_f * precision).round() as u64;
-        }
-        table
-    })
-}
 
 /// v3: Compute bootstrap multiplier M(S) in EMISSION_PRECISION units.
 ///
 /// Uses pre-computed lookup table with linear interpolation.
-/// Bit-exact deterministic across all platforms.
+/// No floating-point at runtime. Bit-exact deterministic.
 pub fn bootstrap_multiplier(total_supply_units: u64) -> u64 {
     let s_threshold = constants::S_THRESHOLD_UNITS;
     if total_supply_units >= s_threshold {
         return constants::EMISSION_PRECISION;
     }
-    let table = get_bootstrap_table();
     let n = BOOTSTRAP_TABLE_SIZE;
     let idx = ((total_supply_units as u128 * (n - 1) as u128) / s_threshold as u128) as usize;
     let idx = idx.min(n - 2);
-    let lo = table[idx];
-    let hi = table[idx + 1];
+    let lo = BOOTSTRAP_TABLE[idx];
+    let hi = BOOTSTRAP_TABLE[idx + 1];
     let seg_start = (idx as u128 * s_threshold as u128) / (n - 1) as u128;
     let seg_end = ((idx + 1) as u128 * s_threshold as u128) / (n - 1) as u128;
     let seg_w = seg_end.saturating_sub(seg_start);
@@ -150,6 +128,33 @@ pub fn compute_block_rewards_int(
     }).collect()
 }
 
+/// v3: Compute per-miner rewards in one pass. Integrates v3 emission rate
+/// with proportional commitment distribution and ramp-up cap.
+/// total_supply_units: current chain supply (determines bootstrap multiplier)
+/// commitments: slice of (effective_commitment, miner_id) pairs
+/// Returns Vec<(miner_pubkey_vec, reward_in_base_units)>
+pub fn compute_block_rewards_v3(
+    block_number: u64,
+    total_supply_units: u64,
+    commitments: &[(u64, [u8; 32])],
+) -> Vec<(Vec<u8>, u64)> {
+    let total_eff: u64 = commitments.iter().map(|(c, _)| c).sum();
+    if total_eff == 0 { return vec![]; }
+    let emission_prec = compute_emission_rate_v3(total_supply_units, total_eff);
+    // Proportional distribution in EMISSION_PRECISION units
+    let mut rewards_prec: Vec<(Vec<u8>, u64)> = commitments.iter().map(|(c, mid)| {
+        let r = ((*c as u128).saturating_mul(emission_prec as u128) / total_eff as u128) as u64;
+        (mid.to_vec(), r)
+    }).collect();
+    // Apply ramp-up cap, track burned
+    apply_ramp_up_cap_int(block_number, &mut rewards_prec);
+    // Convert to base units
+    rewards_prec.iter().map(|(pk, r)| {
+        let base = r.saturating_mul(constants::UNITS_PER_EWATT) / constants::EMISSION_PRECISION;
+        (pk.clone(), base)
+    }).collect()
+}
+
 /// Founder outputs locked until max(50000, block + 40000)
 pub fn founder_lock_block(block_number: u64) -> u64 {
     if block_number < constants::RAMP_UP_BLOCKS {
@@ -189,19 +194,17 @@ mod tests_v3 {
 
     #[test]
     fn test_emission_v3_genesis() {
-        // At genesis: solo miner, S=0, total_eff = 1e9 (one miner at 1 GB/s)
-        let total_eff = 1_000_000_000u64;  // COMMIT_PRECISION for 1 GB/s
+        // Solo miner at genesis: M=M_MAX, total_eff=1e9
+        // E_prec = 1e9 × 1e14 × 2,062,500 / 1e18 ≈ 2.0625e11
+        // ≈ 206,250 eW/block
+        let total_eff = 1_000_000_000u64;
         let em = compute_emission_rate_v3(0, total_eff);
-        assert!(em > 0, "Emission must be positive at genesis, got {}", em);
-        // At M=M_MAX (~100k): ~0.002063 × 100k = ~206.3 eW equivalent
-        // But with only 1 GB/s of total_eff: E = 1e9 × 100k × 2,062,500 / 1e18
-        // = 1e9 × 1e5 × 2.0625e6 / 1e18 = 2.0625e20 / 1e18 = 206.25
-        // Actually that's wrong — recalculating...
-        // At genesis with M=M_MAX, total_eff=1e9:
-        // E_prec = 1e9 × 1e14 × 2,062,500 / 1e18 = 1e23 × 2e6 / 1e18 = 2e11 = 200 eW approx
-        // This is correct for a solo miner at genesis with M=100k
-        assert!(em > 10_000_000,
-            "Genesis emission should be large: got {} prec", em);
+        let base = emission_prec_to_units(em);
+        let ewatt = base as f64 / constants::UNITS_PER_EWATT as f64;
+        let ratio = ewatt / 206.25;
+        assert!((ratio - 1.0).abs() < 0.01,
+            "Genesis: expected ~206 ewatt/block, got {} (ratio: {})",
+            ewatt, ratio);
     }
 
     #[test]
@@ -214,7 +217,7 @@ mod tests_v3 {
         let expected_eW = 206.25f64;
         let got_eW = base_units as f64 / constants::UNITS_PER_EWATT as f64;
         let ratio = got_eW / expected_eW;
-        assert!(ratio > 0.95 && ratio < 1.05,
+        assert!((ratio - 1.0).abs() < 0.001,
             "Mature emission (total_eff=1e14): expected ~206.25 eW/block, got {} eW/block (ratio: {})",
             got_eW, ratio);
     }
@@ -226,9 +229,41 @@ mod tests_v3 {
         let te2 = 100_000u64 * 1_000_000_000u64;
         let em1 = compute_emission_rate_v3(constants::S_THRESHOLD_UNITS, te1);
         let em2 = compute_emission_rate_v3(constants::S_THRESHOLD_UNITS, te2);
-        assert!(em2 >= em1 * 2 || (em2 as u128 * 1000 > em1 as u128 * 1999),
-            "Doubling total_eff should double emission: {} vs 2×{}",
-            em2, em1);
+        let ratio = em2 as f64 / em1 as f64;
+        assert!((ratio - 2.0).abs() < 0.002,
+            "Doubling total_eff should double emission: ratio {}", ratio);
+    }
+    #[test]
+    fn test_emission_v3_zero_eff() {
+        assert_eq!(compute_emission_rate_v3(0, 0), 0);
+    }
+
+    #[test]
+    fn test_compute_block_rewards_v3_proportional() {
+        let commits = vec![(3_000_000_000u64, [1u8;32]), (1_000_000_000u64, [2u8;32])];
+        let rewards = compute_block_rewards_v3(300, 0, &commits);
+        assert_eq!(rewards.len(), 2);
+        let ratio = rewards[0].1 as f64 / rewards[1].1 as f64;
+        assert!((ratio - 3.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_block_rewards_v3_empty() {
+        assert!(compute_block_rewards_v3(300, 0, &[]).is_empty());
+    }
+
+    #[test]
+    fn test_compute_block_rewards_v3_solo() {
+        let supply = constants::S_THRESHOLD_UNITS;
+        let eff = 1_000_000_000u64;
+        let direct = emission_prec_to_units(compute_emission_rate_v3(supply, eff));
+        // block after ramp-up (>=10000) so no 80% cap applies
+        let rewards = compute_block_rewards_v3(20000, supply, &[(eff, [1u8;32])]);
+        assert!(!rewards.is_empty());
+        let ratio = rewards[0].1 as f64 / direct as f64;
+        assert!((ratio - 1.0).abs() < 0.001,
+            "Solo reward mismatch: reward={} direct={} ratio={}",
+            rewards[0].1, direct, ratio);
     }
 }
 
