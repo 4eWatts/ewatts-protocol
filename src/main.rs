@@ -637,6 +637,24 @@ fn cmd_init() {
             return;
         }
         let mut gen_wallet = crate::wallet::Wallet::load(); gen_wallet.new_key("genesis");
+        
+        // Also add the miner key to the wallet so wallet balance shows mining rewards
+        if let Ok(miner_seed) = crate::store::load_miner_key() {
+            let miner_sk = ed25519_dalek::SigningKey::from_bytes(&miner_seed);
+            let miner_pk = miner_sk.verifying_key().to_bytes();
+            // Add miner key to wallet with legacy public key for UTXO scanning
+            let rng = &mut rand::thread_rng();
+            let (addr, key) = crate::privacy::StealthAddress::generate(rng);
+            gen_wallet.keys.push(crate::wallet::StealthKeyEntry {
+                view_secret: key.view.to_bytes(),
+                spend_secret: key.spend.to_bytes(),
+                spend_key: addr.spend_key.compress().to_bytes(),
+                view_key: addr.view_key.compress().to_bytes(),
+                legacy_public_key: miner_pk.to_vec(),
+                label: "miner".to_string(),
+            });
+            gen_wallet.save();
+        }
         println!("Genesis: 1,000,000 Ewatt to {} (testnet bootstrap)", hex::encode(pubkey));
         
         // Create and save the genesis block (height 0, no coinbase)
