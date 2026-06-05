@@ -53,8 +53,8 @@ fi
 # Step 4: Build for ARM
 echo "[4/4] Building ARM binary..."
 cargo build --release --features testnet --target aarch64-unknown-linux-gnu 2>&1 | tail -1 || {
-    echo "  SKIP: ARM build failed (may need aarch64 gcc)."
-    echo "  Install with: sudo apt install aarch64-linux-gnu-gcc"
+    echo "  SKIP: ARM build failed (need aarch64 cross-toolchain)."
+    echo "  Quick fix: zig as cross-linker (see docs/cross-compile.md)"
     exit 0
 }
 
