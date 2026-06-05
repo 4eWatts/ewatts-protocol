@@ -99,6 +99,45 @@ tr:hover td { background:#0e0e18; }
 <tr><td><code>wallet.rs</code></td><td>mnemonic_to_entropy: checksum verification also used <code>entropy[0] >> 5</code> (internally consistent, out of spec).</td><td class="bug-medium">Medium: corrected to SHA256 alongside entropy_to_mnemonic.</td></tr>
 </table>
 
+<h2>Phase 1 — Adversarial Tests</h2>
+<p>Node resilience under adversarial conditions. Coverage: invalid proofs, double-spend, inflation, bandwidth attacks, malformed blocks, reorg handling.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase1.sh"><code>testnet_cert_phase1.sh</code></a></p>
+
+<h2>Phase 2 — Network Integration</h2>
+<p>Multi-node P2P networking: block propagation, peer discovery, chain sync, gossip.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase2.sh"><code>testnet_cert_phase2.sh</code></a></p>
+
+<h2>Phase 3 — Adversarial Resilience</h2>
+<p>Eclipse attacks, byzantine peers, network partitions, reorg under adversarial conditions.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase3.sh"><code>testnet_cert_phase3.sh</code></a></p>
+
+<h2>Phase 4 — Endurance Run</h2>
+<p>Long-running node stability under continuous load: memory, CPU, disk, peer connectivity over 24h+.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase4.sh"><code>testnet_cert_phase4.sh</code></a></p>
+
+<h2>Phase 5 — Ledger Corruption &amp; Byzantine Resilience</h2>
+<p>State corruption recovery, byzantine fault tolerance, UTXO consistency under partial writes.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase5.sh"><code>testnet_cert_phase5.sh</code></a></p>
+
+<h2>Phase 6 — Edge Cases</h2>
+<table>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr><td>T6.1-T6.3</td><td>Edge case transitions: graceful shutdown, restart, state consistency.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+<tr><td>T6.4</td><td>Atomic write under SIGKILL during apply_block. State not corrupted.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+<tr><td>T6.5</td><td>Supply conservation after multi-block mining: total UTXOs = expected emission.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+</table>
+<p>Scripts: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6.sh"><code>testnet_cert_phase6.sh</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t64.sh"><code>t6.4</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t65.sh"><code>t6.5</code></a></p>
+
+<h2>Phase 7 — Economic Model &amp; Protocol Invariants</h2>
+<p>Validates v3 emission formula, bootstrap multiplier, ramp-up cap 80%, founder lock, double-spend detection.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase7.sh"><code>testnet_cert_phase7.sh</code></a></p>
+
+<p style="margin:12px 0; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+Note: Phase 8 (final certification) reviews above. Some Phase 7 shell tests have gaps (JSON malformed, ambiguous HTTP codes).
+These gaps are addressed by the Rust <strong>economic_*</strong> and <strong>p10_*</strong> tests below,
+which validate the same invariants through direct state access with specific error message matching.
+</p>
+
 <h2>Phase 8 — Protocol Core Integrity</h2>
 <table>
 <tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
