@@ -172,45 +172,188 @@ which validate the same invariants through direct state access with specific err
 <tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
 
-<h2>Full Test Inventory (158 passing)</h2>
-<p>All tests in the <code>src/tests.rs</code> integration suite plus module-level unit tests.</p>
+<h2>Full Test Listing (174 tests)</h2>
+<p>All individual <code>#[test]</code> functions across the codebase. Grouped by source module.</p>
 <table>
-<tr><th>Module / Area</th><th>Tests</th><th>Type</th><th>Status</th></tr>
-<tr><td>BIP39 mnemonic (roundtrip, known vectors, seed derivation)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Block (header hash, tx hash, nonce, private tx hash)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Chain (fork LCA, simple chain, orphan resolution)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Commitment (eff, cap, penalty, sign, sig validation)</td><td>8</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>DAG (deterministic, cache, epoch, wraparound, memory, benchmark)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Difficulty (adjust, clamp, half, avg time)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Mempool (submit, peek, take, drain, confirm, dedup)</td><td>9</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>P2P (compact block, block request, peer manager, token bucket)</td><td>10</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Mining pool (basic, rewards, share detection)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Privacy / Crypto (MLSAG, Pedersen, range proofs, stealth addresses)</td><td>18</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Proof / PoW (mine, verify, merkle root, walk length)</td><td>6</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Reorg (detection, extend canonical, full reorg integrity)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Reward (founder lock, proportional, solo, v3 emission, bootstrap multiplier)</td><td>14</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Shuffle (2-3 node network, duplicates, latency)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Simulation (VR convergence, hashrate growth)</td><td>2</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Smoke / Adversarial (multi-agent mining, supply, reorg, external key)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>State (spend, double-spend, supply, wrong sig)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Store (block count, cache, prune, UTXO roundtrip, genesis/miner key)</td><td>18</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>VR (basic, doubles, zero, format)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Wallet (keygen, scan, create tx, private tx roundtrip)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Integration (mine & verify, multi-block, reorg, hash determinism)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Adversarial (invalid proof, zero reward, supply overflow, tampered commit, bandwidth)</td><td>8</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td>Monetary (founder lock, double-spend)</td><td>2</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Economic Invariants</strong> (coinbase lock, founder lock reject, double-spend signed)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Phase 8</strong> (MLSAG, Pedersen, stealth, coinbase lock, protocol ver, difficulty shock)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Phase 9</strong> (malicious decoys, key reuse, stealth scan, sybil)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Phase 10</strong> (founder adversarial, mnemonic edges, seed roundtrip, ramp-up cap)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Ignored (v27 deprecated)</strong></td><td>6</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">SKIP</td></tr>
-<tr><td><strong>Graph Reconstruction (Python)</strong></td><td>1</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
-<tr><td><strong>Total</strong></td><td><strong>174</strong></td><td></td><td><strong class="text-green">158 PASS</strong></td></tr>
+<tr><th>Test</th><th>Module</th><th>Status</th></tr>
+<tr><td><code>test_entropy_mnemonic_roundtrip</code></td><td>bip39</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_known_vector</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mnemonic_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_seed_derivation</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_different_nonce</code></td><td>block</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_header_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_private_tx_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_tx_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_fork_lca</code></td><td>chain</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_orphan_resolution</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_simple_chain</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_bad_sig</code></td><td>commitment</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_cap_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_eff_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_min_commitment_empty</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_penalty_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_sign</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_validate_commitment_short_sig</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_benchmark_64mb</code></td><td>dag</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_benchmark_progressive</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_cache_hit</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_deterministic</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_epoch_different</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_get_wraparound</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_dag_memory_sanity</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_adjust</code></td><td>difficulty</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_adjust_clamp</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_adjust_half</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_avg_time</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_confirm_mined</code></td><td>mempool</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_drain_clears_all</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_empty_start</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_get_tx_by_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_peek_all_returns_all</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_submit_and_peek</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_take_for_mining</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mempool_take_for_mining_respects_limit</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>compact_block_missing_tx_returns_none</code></td><td>p2p</td><td class="text-green">PASS</td></tr>
+<tr><td><code>compact_block_roundtrip_with_mempool</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>compact_block_short_ids_differ_by_nonce</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p2p_block_request_extreme_heights</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p2p_empty_block_response_valid</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p2p_garbage_deserialize_safe</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>peer_manager_evicts_lru</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>peer_manager_remove_and_reinsert</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>token_bucket_allows_burst_then_limits</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>token_bucket_refills_over_time</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_pool_basic</code></td><td>pool</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_pool_rewards</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_share_detects_block</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>privacy_commitment_verify</code></td><td>privacy</td><td class="text-green">PASS</td></tr>
+<tr><td><code>privacy_pedersen_binding</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>privacy_pedersen_homomorphic_add</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>privacy_range_proof_rejects_wrong</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>privacy_range_proof_verifies</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_hash_to_point_valid</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_hash_to_scalar_deterministic</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_malformed_sizes</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_min_ring_size</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_multi_layer</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_tampered_c0</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_tampered_response</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_wrong_msg_fails</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mlsag_wrong_ring_fails</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_pedersen_commitment</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_pedersen_homomorphic</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_range_proof</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_range_proof_large_bits_clamped</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_range_proof_verify_oversized_commitments</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_stealth_address_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_initial_mix_deterministic</code></td><td>proof</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_meets_difficulty_basic</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_merkle_root_verify</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_mine_and_verify</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_walk_length</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_extend_canonical</code></td><td>reorg</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_full_reorg_state_integrity</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_reorg_detection</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>econ_emission_rate_bounds</code></td><td>reward</td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>econ_founder_lock_enforced</code></td><td></td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>econ_ramp_up_cap_burns_excess</code></td><td></td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>econ_reward_proportionality</code></td><td></td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>econ_supply_cap_not_exceeded</code></td><td></td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>econ_zero_commitment_no_reward</code></td><td></td><td class="text-muted">SKIP</td></tr>
+<tr><td><code>test_bootstrap_multiplier_at_genesis</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_bootstrap_multiplier_at_threshold</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_compute_block_rewards_v3_empty</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_compute_block_rewards_v3_proportional</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_compute_block_rewards_v3_solo</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_emission_v3_genesis</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_emission_v3_mature</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_emission_v3_scales_with_eff</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_emission_v3_zero_eff</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_founder_lock</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_reward_honest_more_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_reward_proportional_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_solo_miner_reward_positive</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>shuffle_2nodes_5blocks_with_duplicates</code></td><td>shuffle</td><td class="text-green">PASS</td></tr>
+<tr><td><code>shuffle_3nodes_5blocks_no_chaos</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>shuffle_3nodes_5blocks_with_latency</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>shuffle_basic_2nodes_5blocks</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>simulation_hashrate_growth_baseline</code></td><td>simulation</td><td class="text-green">PASS</td></tr>
+<tr><td><code>simulation_vr_convergence_baseline</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_external_key_mining</code></td><td>smoke</td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_supply_increases_with_blocks</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_ten_block_chain</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_two_miner_chain</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>smoke_round_robin_2_agents</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>smoke_round_robin_3_agents</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>smoke_round_robin_uneven_blocks</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_double_spend</code></td><td>state</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_spend</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_supply</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_wrong_sig</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_block_count_empty</code></td><td>store</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_block_count_fast_vs_disk</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_cache_eviction_order</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_chain_tip_height</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_genesis_key_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_get_block_by_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_has_data</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_latest_block_hash</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_load_blocks_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_load_blocks_since</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_miner_key_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_multiple_saves_increment_count</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_prune_blocks</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_prune_noop_when_none_to_prune</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_save_and_count_block</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_save_chain_store_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_utxo_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_store_validate_block_integrity</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_invalid_proof_rejected</code></td><td>tests</td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_min_bandwidth_commitment_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_supply_overflow_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_tampered_commitment_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_wrong_height_accepted_by_state</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_wrong_parent_accepted_by_state</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>adv_zero_reward_block_accepted</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_coinbase_has_correct_lock</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_double_spend_key_image_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_founder_lock_rejects_premature_spend</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>integration_block_hash_determinism</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>integration_mine_and_verify</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>integration_multi_block_chain</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>integration_reorg_simulation</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>integration_verify_rejects_bad_solution</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>monetary_double_spend_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>monetary_founder_lock_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_founder_adversarial_no_early_spend</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_mnemonic_edge_cases</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_ramp_up_cap_multiminer</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_wallet_seed_roundtrip</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_coinbase_has_correct_lock</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_mlsag_multi_layer</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_mlsag_roundtrip_and_tamper</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_pedersen_blinding_verify</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_protocol_version_valid</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_stealth_address_uniqueness</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_difficulty_shock</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_key_image_reuse_after_reorg</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_malicious_decoys_anonymity</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_stealth_scanning_performance</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_sybil_emission_equivalence</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_format_vr_int_basic</code></td><td>vr</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_format_vr_zero</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_vr_basic_int</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_vr_doubles</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_vr_zero</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_create_private_tx_roundtrip</code></td><td>wallet</td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_create_tx_zero_amount_rejected</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_wallet_keygen</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>test_wallet_scan_empty</code></td><td></td><td class="text-green">PASS</td></tr>
+<tr><td><code>P9-1 Graph Reconstruction</code></td><td>scripts/</td><td class="text-green">PASS</td></tr>
 </table>
 
-<p>Test source on GitHub: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src"><code>src/</code></a> (module tests) &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/privacy.rs">privacy.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/wallet.rs">wallet.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/reward.rs">reward.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/scripts/privacy_chain_analysis.py">Python sim</a></p>
 
-<h2>Remaining</h2>
 <table>
 <tr><th>Test</th><th>Description</th><th>Type</th><th>Status</th></tr>
 <tr><td>P8-1</td><td>Supply conservation under reorg (multiple depths)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
