@@ -87,7 +87,8 @@ tr:hover td { background:#0e0e18; }
   <div class="summary-item"><span class="summary-num">174</span><span class="summary-label">Total</span></div>
 </div>
 
-<p>This round: 15 new tests written + 4 bugs fixed in existing code. <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">View commits &rarr;</a></p>
+<p>This round: 15 new tests written + 4 bugs fixed in existing code.</p>
+<p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
 
 <h2>Bugs Fixed</h2>
 <table>
@@ -131,6 +132,44 @@ tr:hover td { background:#0e0e18; }
 <tr><td><code>p10_wallet_seed_roundtrip</code></td><td>Known entropy to 24 words and back. Random roundtrip 5x.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 <tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
+
+<h2>Full Test Inventory (158 passing)</h2>
+<p>All tests in the <code>src/tests.rs</code> integration suite plus module-level unit tests.</p>
+<table>
+<tr><th>Module / Area</th><th>Tests</th><th>Type</th><th>Status</th></tr>
+<tr><td>BIP39 mnemonic (roundtrip, known vectors, seed derivation)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Block (header hash, tx hash, nonce, private tx hash)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Chain (fork LCA, simple chain, orphan resolution)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Commitment (eff, cap, penalty, sign, sig validation)</td><td>8</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>DAG (deterministic, cache, epoch, wraparound, memory, benchmark)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Difficulty (adjust, clamp, half, avg time)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Mempool (submit, peek, take, drain, confirm, dedup)</td><td>9</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>P2P (compact block, block request, peer manager, token bucket)</td><td>10</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Mining pool (basic, rewards, share detection)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Privacy / Crypto (MLSAG, Pedersen, range proofs, stealth addresses)</td><td>18</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Proof / PoW (mine, verify, merkle root, walk length)</td><td>6</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Reorg (detection, extend canonical, full reorg integrity)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Reward (founder lock, proportional, solo, v3 emission, bootstrap multiplier)</td><td>14</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Shuffle (2-3 node network, duplicates, latency)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Simulation (VR convergence, hashrate growth)</td><td>2</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Smoke / Adversarial (multi-agent mining, supply, reorg, external key)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>State (spend, double-spend, supply, wrong sig)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Store (block count, cache, prune, UTXO roundtrip, genesis/miner key)</td><td>18</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>VR (basic, doubles, zero, format)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Wallet (keygen, scan, create tx, private tx roundtrip)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Integration (mine & verify, multi-block, reorg, hash determinism)</td><td>5</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Adversarial (invalid proof, zero reward, supply overflow, tampered commit, bandwidth)</td><td>8</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td>Monetary (founder lock, double-spend)</td><td>2</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Economic Invariants</strong> (coinbase lock, founder lock reject, double-spend signed)</td><td>3</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Phase 8</strong> (MLSAG, Pedersen, stealth, coinbase lock, protocol ver, difficulty shock)</td><td>7</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Phase 9</strong> (malicious decoys, key reuse, stealth scan, sybil)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Phase 10</strong> (founder adversarial, mnemonic edges, seed roundtrip, ramp-up cap)</td><td>4</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Ignored (v27 deprecated)</strong></td><td>6</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">SKIP</td></tr>
+<tr><td><strong>Graph Reconstruction (Python)</strong></td><td>1</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>174</strong></td><td></td><td><strong class="text-green">158 PASS</strong></td></tr>
+</table>
+
+<p>Test source on GitHub: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src"><code>src/</code></a> (module tests) &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/privacy.rs">privacy.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/wallet.rs">wallet.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/reward.rs">reward.rs</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/scripts/privacy_chain_analysis.py">Python sim</a></p>
 
 <h2>Remaining</h2>
 <table>
