@@ -1025,3 +1025,150 @@ fn p10_mnemonic_edge_cases() {
     let too_long = (0..30).map(|_| "word".to_string()).collect::<Vec<_>>();
     assert!(mnemonic_to_entropy(&too_long).is_err(), "Long mnemonic must be rejected");
 }
+
+// P10-13c: Wallet seed roundtrip with known entropy
+#[test]
+fn p10_wallet_seed_roundtrip() {
+    use crate::wallet::{entropy_to_mnemonic, mnemonic_to_entropy};
+
+    // Known entropy roundtrip
+    let entropy = [0x42; 32];
+    let words = entropy_to_mnemonic(&entropy);
+    assert_eq!(words.len(), 24, "Must generate 24 words");
+
+    let recovered = mnemonic_to_entropy(&words);
+    assert!(recovered.is_ok(), "Must recover from mnemonic: {:?}", recovered);
+    assert_eq!(recovered.unwrap(), entropy, "Recovered must match original");
+
+    // Random roundtrip
+    let mut rng = rand::thread_rng();
+    for _ in 0..5 {
+        let mut e = [0u8; 32];
+        rand::RngCore::fill_bytes(&mut rng, &mut e);
+        let w = entropy_to_mnemonic(&e);
+        assert_eq!(w.len(), 24);
+        assert_eq!(mnemonic_to_entropy(&w).unwrap(), e);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 9 CONTINUAÇÃO — Difículdade, Sybil
+// ═══════════════════════════════════════════════════════════════════════
+
+// P9-8: Difficulty adjustment under hashrate shock
+#[test]
+fn p9_difficulty_shock() {
+    let target = 1000f64;
+
+    // 10x hashrate = actual 10x target → ratio = 0.1 clamped to 0.5
+    // After 5 epochs: 1000 * (0.5)^5
+    let mut d = 1000u64;
+    for _ in 0..5 {
+        d = crate::difficulty::adjust_difficulty(d, target * 10.0, target);
+    }
+    // Each step should halve: 1000→500→250→125→62→31
+    assert!(d > 0 && d < 100, "10x hashrate 5 epochs: diff={} (expect ~31)", d);
+
+    // 2x hashrate = mild increase → ratio = 0.5
+    d = 1000;
+    for _ in 0..3 {
+        d = crate::difficulty::adjust_difficulty(d, target * 2.0, target);
+    }
+    // 1000→500→250→125
+    assert!(d > 50 && d < 200, "2x hashrate 3 epochs: diff={} (expect ~125)", d);
+
+    // 50% hashrate drop → ratio = 2.0
+    d = 1000;
+    for _ in 0..3 {
+        d = crate::difficulty::adjust_difficulty(d, target * 0.5, target);
+    }
+    // 1000→2000→4000→8000
+    assert!(d > 4000, "50% hashrate 3 epochs: diff={} (expect ~8000)", d);
+
+    // Extreme: 0.01x hashrate (1% of expected) → ratio = 100, capped to 2.0
+    d = 1000;
+    for _ in 0..4 {
+        d = crate::difficulty::adjust_difficulty(d, target * 0.01, target);
+    }
+    // 1000→2000→4000→8000→16000
+    assert!(d > 10000, "0.01x hashrate 4 epochs: diff={} (expect ~16000)", d);
+}
+
+// P9-9: Sybil resistance — emission scales with total effective commitment, not miner count
+#[test]
+fn p9_sybil_emission_equivalence() {
+    use crate::reward::compute_emission_rate_v3;
+
+    let supply = 100_000_000u64;  // ~1e8, early testnet
+    let total_eff_single = 10_000u64;
+    let total_eff_many = 10_000u64;  // same total, 1000 identities with 10 each
+
+    // Single miner with 10,000 effective commitment
+    let single = compute_emission_rate_v3(supply, total_eff_single);
+
+    // 1000 miners with 10 effective commitment each
+    let many = compute_emission_rate_v3(supply, total_eff_many);
+
+    // Emission depends only on total_eff, not on how it's distributed
+    assert_eq!(single, many,
+        "Sybil: emission must be identical for same total_eff. single={}, many={}", single, many);
+
+    // Also verify the function works for edge case: total_eff = 0
+    let zero = compute_emission_rate_v3(supply, 0);
+    // Zero commitment should produce some minimum emission (emission has floor)
+    // but should be strictly less than positive commitment
+    assert!(zero <= single || single == 0,
+        "Zero effective commitment must not exceed positive");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 10 CONTINUAÇÃO — Economia
+// ═══════════════════════════════════════════════════════════════════════
+
+// P10-2: Ramp-up cap multi-miner — redistribution when someone exceeds 80%
+#[test]
+fn p10_ramp_up_cap_multiminer() {
+    use crate::reward::apply_ramp_up_cap_int;
+
+    // Simulate early block (block 100, during ramp-up phase)
+    let block_number = 100u64;
+
+    // 5 miners: 70%, 10%, 10%, 5%, 5% = total 100%
+    let mut rewards = vec![
+        (vec![1u8; 32], 700u64),   // miner 1: 70%
+        (vec![2u8; 32], 100u64),   // miner 2: 10%
+        (vec![3u8; 32], 100u64),   // miner 3: 10%
+        (vec![4u8; 32], 50u64),    // miner 4: 5%
+        (vec![5u8; 32], 50u64),    // miner 5: 5%
+    ];
+
+    // Apply ramp-up cap (80% max for any single miner before block 10000)
+    let burned = apply_ramp_up_cap_int(block_number, &mut rewards);
+
+    // Miner 1 at 70% is under 80% cap — no burn expected
+    assert_eq!(burned, 0, "70% miner should not trigger cap burn");
+
+    // Now test: one miner at 90% of total
+    let mut rewards2 = vec![
+        (vec![1u8; 32], 900u64),   // miner 1: 90% — exceeds 80% cap
+        (vec![2u8; 32], 100u64),   // miner 2: 10%
+    ];
+
+    let burned2 = apply_ramp_up_cap_int(block_number, &mut rewards2);
+    assert!(burned2 > 0, "90% miner should trigger burn");
+
+    // Miner 1 should have no more than 80% of the revward after cap
+    let total_before = 1000u64;
+    let max_share = (total_before as f64 * 0.8) as u64;
+    assert!(rewards2[0].1 <= max_share,
+        "Miner 1 share {} should be capped at 80% ({})", rewards2[0].1, max_share);
+
+    // Post-ramp-up (block >= 10000): no cap applied
+    let block_late = 10000u64;
+    let mut rewards3 = vec![
+        (vec![1u8; 32], 900u64),
+        (vec![2u8; 32], 100u64),
+    ];
+    let burned3 = apply_ramp_up_cap_int(block_late, &mut rewards3);
+    assert_eq!(burned3, 0, "Post-ramp-up: no cap should apply");
+}

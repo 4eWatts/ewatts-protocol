@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts — Test Suite Results</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #c0c0d0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; padding: 40px 20px; }
+h1 { color: #e0e0f0; font-size: 24px; margin-bottom: 8px; }
+h2 { color: #e0e0f0; font-size: 18px; margin: 32px 0 12px; padding-bottom: 4px; border-bottom: 1px solid #2a2a4a; }
+h3 { color: #c0c0d0; font-size: 15px; margin: 20px 0 8px; }
+p { margin: 8px 0; color: #8b8baa; font-size: 13px; }
+a { color: #6ac86a; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.summary { background: #16162a; border: 1px solid #2a2a4a; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.summary span { display: inline-block; margin-right: 24px; }
+.summary .num { font-size: 24px; font-weight: 600; display: block; }
+.summary .label { font-size: 11px; color: #5a5a72; text-transform: uppercase; letter-spacing: 0.5px; }
+.pass { color: #6ac86a; }
+.fail { color: #e74c3c; }
+.ignore { color: #8b8baa; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0 16px; }
+th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a4a; color: #5a5a72; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 5px 8px; border-bottom: 1px solid #1e1e38; }
+tr:hover td { background: #1a1a34; }
+.tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.tag-rust { background: #1a3a1a; color: #6ac86a; }
+.tag-py { background: #1a2a3a; color: #5a8aba; }
+.tag-sh { background: #3a2a1a; color: #c0a060; }
+.tag-sim { background: #2a1a3a; color: #a070c0; }
+.bug { color: #e8c84a; font-size: 11px; }
+.footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #2a2a4a; font-size: 11px; color: #5a5a72; }
+</style>
+</head>
+<body>
+
+<h1>eWatts — Test Suite Results</h1>
+<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
+
+<div class="summary">
+  <span><span class="num pass">155</span><span class="label">Passed</span></span>
+  <span><span class="num" style="color:#e74c3c;">0</span><span class="label">Failed</span></span>
+  <span><span class="num" style="color:#8b8baa;">6</span><span class="label">Ignored</span></span>
+  <span><span class="num" style="color:#8b8baa;">10</span><span class="label">Filtered</span></span>
+  <span><span class="num" style="color:#8b8baa;">171</span><span class="label">Total</span></span>
+</div>
+
+<p style="margin-bottom:20px;">Cobertura: 11 novos testes escritos nesta rodada + 4 bugs corrigidos no código existente.</p>
+
+<h2>Bugs corrigidos</h2>
+<table>
+<tr><th>Arquivo</th><th>Problema</th><th>Impacto</th></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: underflow usize em <code>16 - (bit_shift - 8)</code> quando bit_shift ≥ 6. A função nunca foi chamada por nenhum teste existente.</td><td class="bug">Crítico: afeta 8 das 24 palavras BIP39. Seed phrases geradas pelo CLI seriam inválidas.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: extração de 11-bit words incorreta (fórmulas 16-bit e 24-bit inconsistentes).</td><td class="bug">Grave: palavras BIP39 não correspondiam à entropia original.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: checksum usava <code>entropy[0] >> 5</code> em vez de SHA256 (BIP39 spec).</td><td class="bug">Médio: checksum não conforme spec, incompatível com outras wallets.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>mnemonic_to_entropy</code>: checksum verification também usava <code>entropy[0] >> 5</code> (consistente internamente, mas fora da spec).</td><td class="bug">Médio: corrigido para SHA256 junto com entropy_to_mnemonic.</td></tr>
+</table>
+
+<h2>Phase 8 — Protocol Core Integrity</h2>
+<table>
+<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr>
+  <td><code>p8_mlsag_roundtrip_and_tamper</code></td>
+  <td>MLSAG sign + verify com ring de 11. Tamper c0 rejeitado.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_mlsag_multi_layer</code></td>
+  <td>MLSAG 3 layers, transposição ring[ring_pos][layer], sign + verify.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_pedersen_blinding_verify</code></td>
+  <td>Commitment::verify com blinding correto, amount errado, blinding errado.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_stealth_address_uniqueness</code></td>
+  <td>1000 endereços gerados, zero duplicatas de spend_key. 1000 ephemeral keys únicos.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_coinbase_has_correct_lock</code></td>
+  <td>Coinbase de bloco minerado (test_mine) tem spendable_after = founder_lock_block(height).</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_protocol_version_valid</code></td>
+  <td>PROTOCOL_VERSION existe e é u16 positivo.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>economic_coinbase_has_correct_lock</code></td>
+  <td>Valida que founder_lock_block(15000) é 0 (pós-foundation).</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>economic_founder_lock_rejects_premature_spend</code></td>
+  <td>UTXO real de coinbase, tentativa de gasto antes do lock, erro "time-locked" específico + UTXO preservado.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>economic_double_spend_key_image_rejected</code></td>
+  <td>UTXO real assinado com ed25519, gasta com sucesso, key_image no spent_set, reuso rejeitado com "Double-spend".</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+</table>
+
+<h2>Phase 9 — Privacy & Network</h2>
+<table>
+<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr>
+  <td><code>p9_malicious_decoys_anonymity</code></td>
+  <td>Ring de 11: 10 decoys controlados pelo atacante + 1 real. MLSAG verifica — atacante não pode forjar signature para spender real.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p9_key_image_reuse_after_reorg</code></td>
+  <td>Spent_key_images cresce monotonicamente com novos blocos.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p9_stealth_scanning_performance</code></td>
+  <td>1000 endereços owned + 1000 not-owned. Wallet encontra todos os seus, zero falsos positivos.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+</table>
+
+<h2>Phase 10 — Economics & Performance</h2>
+<table>
+<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr>
+  <td><code>p10_founder_adversarial_no_early_spend</code></td>
+  <td>UTXO com spendable_after=100 rejeitado em heights 0,1,10,50,99. Solto no height 100 (falha em revealed_pubkey, não time-lock).</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p10_mnemonic_edge_cases</code></td>
+  <td>Mnemonic < 24 ou > 24 palavras é rejeitado.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p10_wallet_seed_roundtrip</code></td>
+  <td>Entropy conhecida → 24 palavras → recupera entropia original. Roundtrip aleatório 5x.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+</table>
+
+<h2>Próximos testes (pendentes)</h2>
+<table>
+<tr><th>Teste</th><th>Descrição</th><th>Tipo</th><th>Status</th></tr>
+<tr><td>P8-1</td><td>Supply conservation under reorg (múltiplas profundidades)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-2</td><td>Cross-platform determinism (x86 + QEMU ARM)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-3</td><td>Atomicity under crash real (SIGKILL durante apply_block)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-4</td><td>Emission v3 numerical correctness (10+ pontos, comparado com Python)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-8</td><td>Block validation completa (emission errada, coinbase > reward, timestamp futuro)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-10</td><td>Reorg deep (1000+ blocos)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-1</td><td>Graph reconstruction / chain analysis (100 wallets, clustering)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-2</td><td>Amount correlation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-3</td><td>Timing correlation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-4</td><td>Dust attack</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-5</td><td>Adversarial node (20/40/60% peers)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-6</td><td>Eclipse attack (iptables/tc)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-7</td><td>Long endurance 72h+</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-8</td><td>Difficulty adjustment under shock (10x, 100x, 0.5x hashrate)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-9</td><td>Sybil resistance (1000 identidades, mesmo commitment)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-13</td><td>Cold start sync (do block 0 até altura X)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-1</td><td>51% attack consistency (reorg 100+ blocos)</td><td><span class="tag tag-sim">Sim</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-2</td><td>Ramp-up cap multi-miner (2-5 miners, commits desiguais)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-3</td><td>Cartel mining (5 miners, 70% poder)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-4</td><td>Selfish mining</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-5</td><td>Spam economics (custo atacante vs custo rede)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-6</td><td>Long-term miner equilibrium (10 a 100k miners)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-7</td><td>Rich get richer (proporcionalidade vs superlinearidade)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-9</td><td>Exchange attack (ator compra 30% supply)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-10</td><td>P2P fuzzing (cargo-fuzz)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-11</td><td>RPC/JSON fuzzing</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-12</td><td>Memory/CPU/Disk profile sob load real</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+</table>
+
+<div class="footer">
+  <a href="index.html">&larr; Back to eWatts</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a> &bull; MIT License
+</div>
+
+</body>
+</html>

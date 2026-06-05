@@ -600,35 +600,33 @@ const BIP39_WORDS: &[&str] = &[
 
 /// Convert 32 bytes of entropy to a 24-word BIP39 mnemonic phrase.
 pub fn entropy_to_mnemonic(entropy: &[u8; 32]) -> Vec<String> {
-    let checksum_byte = entropy[0] >> 5;
+    // Concatenate 256 bits of entropy + 8 checksum bits = 264 bits = 24 x 11-bit words
+    // BIP39: checksum is first byte of SHA256(entropy) for 256-bit entropy
+    use sha2::{Sha256, Digest};
+    let hash = Sha256::digest(entropy);
+    let checksum_byte = hash[0];
+
     let mut bits = [0u8; 33];
     bits[..32].copy_from_slice(entropy);
     bits[32] = checksum_byte;
+
     let mut words = Vec::with_capacity(24);
     for i in 0..24 {
+        // Extract 11 bits starting at position i*11 in the 264-bit stream
+        // Stream is MSB-first within each byte, bytes concatenated
         let bit_offset = i * 11;
-        let byte_idx = bit_offset / 8;
-        let bit_shift = bit_offset % 8;
-        // Extract 11-bit word index starting at bit_offset
-        // 256+8=264 bits, 24 words of 11 bits each
-        let index = {
-            let window_shift = bit_shift % 8;
-            if window_shift <= 5 {
-                // 11 bits span at most 2 bytes: (8 - ws) + ws + min(ws, 3) = 8 + ws >= 11
-                let mut val = (bits[byte_idx] as u16) << 8;
-                if byte_idx + 1 < 33 { val |= bits[byte_idx + 1] as u16; }
-                (val >> (8 - window_shift)) & 0x7FF
-            } else {
-                // 11 bits span 3 bytes: from byte byte_idx, bit window_shift, into byte_idx+2
-                let mut val = (bits[byte_idx] as u32) << 16;
-                if byte_idx + 1 < 33 { val |= (bits[byte_idx + 1] as u32) << 8; }
-                if byte_idx + 2 < 33 { val |= bits[byte_idx + 2] as u32; }
-                // start position in 24-bit window: 23 - window_shift
-                // 11 bits: positions (23-ws) down to (13-ws)
-                // shift right by (13-ws) to align to LSB
-                ((val >> (13 - window_shift)) & 0x7FF) as u16
-            }
-        };
+        let byte_start = bit_offset / 8;
+        let bit_start_in_byte = bit_offset % 8;
+
+        // Load up to 3 bytes into a 24-bit window
+        let mut val: u32 = (bits[byte_start] as u32) << 16;
+        if byte_start + 1 < 33 { val |= (bits[byte_start + 1] as u32) << 8; }
+        if byte_start + 2 < 33 { val |= bits[byte_start + 2] as u32; }
+
+        // The 11 bits start at position (23 - bit_start_in_byte) in the 24-bit window.
+        // To bring them to LSB: shift = (23 - ws) - 10 = 13 - ws
+        let shift = 13 - bit_start_in_byte;
+        let index = ((val >> shift) & 0x7FF) as u16;
         words.push(BIP39_WORDS[index as usize].to_string());
     }
     words
@@ -665,10 +663,13 @@ pub fn mnemonic_to_entropy(words: &[String]) -> Result<[u8; 32], String> {
     if bit_string.len() < 33 {
         return Err("Mnemonic decoding failed".into());
     }
+    // BIP39 checksum: first byte of SHA256(entropy) for 256-bit entropy
+    use sha2::{Sha256, Digest};
     let mut entropy = [0u8; 32];
     entropy.copy_from_slice(&bit_string[..32]);
-    let expected_checksum = entropy[0] >> 5;
-    let actual_checksum = bit_string[32] >> 5;
+    let hash = Sha256::digest(&entropy);
+    let expected_checksum = hash[0];
+    let actual_checksum = bit_string[32];
     if expected_checksum != actual_checksum {
         return Err("Mnemonic checksum mismatch".into());
     }
