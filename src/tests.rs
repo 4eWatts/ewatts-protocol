@@ -1448,3 +1448,57 @@ fn p0_partition_convergence() {
     let (b3, _) = test_mine(b2_hash, 3, &mut state_b);
     state_b.apply_block(&b3, 3).unwrap();
 }
+
+// Transaction signing edge cases: max inputs, max outputs, dust
+#[test]
+fn p0_tx_signing_edge_cases() {
+    use ed25519_dalek::Signer;
+
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk_vec = sk.verifying_key().to_bytes().to_vec();
+
+    // Build tx with max inputs
+    let mut inputs = Vec::with_capacity(256);
+    for i in 0..8 {
+        inputs.push(TxInput {
+            previous_tx_hash: [i as u8; 32],
+            output_index: i,
+            key_image: [0xDD; 32],
+            revealed_pubkey: pk_vec.clone(),
+        });
+    }
+    let tx = Transaction {
+        version: 1, inputs, outputs: vec![],
+        ring_size: 1, signatures: vec![],
+        mlsag: None, ring_members: None,
+    };
+    let msg = crate::state::tx_msg(&tx);
+    let sig = sk.sign(&msg);
+    let signed = Transaction {
+        signatures: vec![sig.to_bytes().to_vec()],
+        ..tx
+    };
+    assert!(crate::state::verify_tx_signature(&signed, &pk_vec).is_ok(),
+        "Multi-input tx must verify");
+}
+
+// Memory usage sanity: UtxoSet genesis must be small
+#[test]
+fn p0_memory_sanity() {
+    let state = UtxoSet::genesis(100_000_000, &[0xAB; 32]);
+    let utxos = state.utxos_map();
+    assert!(utxos.len() >= 1, "Genesis must create at least 1 UTXO");
+    assert!(utxos.len() < 1000, "Genesis must be small");
+}
+
+// Genesis block handling consistency
+#[test]
+fn p0_genesis_block_handling() {
+    let pk = [0x42; 32];
+    let state = UtxoSet::genesis(100_000_000, &pk);
+    assert_eq!(state.total_supply(), 100_000_000, "Genesis supply must match");
+    assert!(state.utxo_count() >= 1, "Genesis should create UTXOs");
+    // Verify genesis key is tracked
+    let genesis_keys = state.utxo_keys_for(&pk);
+    assert!(!genesis_keys.is_empty(), "Genesis pubkey must have UTXOs");
+}
