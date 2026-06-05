@@ -70,8 +70,8 @@ echo ""
 
 # Check 1: BIP39 works on both platforms
 echo "[CHECK 1] BIP39 mnemonic generation..."
-X86_SEED=$("$BIN_X86" seed 2>/dev/null | head -1)
-ARM_SEED=$(QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 "$BIN_ARM" seed 2>/dev/null | head -1)
+X86_SEED=$("$BIN_X86" seed 2>/dev/null | tail -1)
+ARM_SEED=$(QEMU_LD_PREFIX=/usr/aarch64-linux-gnu qemu-aarch64 "$BIN_ARM" seed 2>/dev/null | tail -1)
 if [ -n "$X86_SEED" ] && [ -n "$ARM_SEED" ]; then
     echo "  x86: seed generated OK"
     echo "  ARM: seed generated OK"
