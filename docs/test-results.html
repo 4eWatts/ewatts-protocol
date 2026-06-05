@@ -4,224 +4,168 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eWatts — Test Suite Results</title>
+<meta name="description" content="eWatts protocol test suite results: 158 tests passing, 0 failures, 6 ignored.">
+<meta property="og:title" content="eWatts — Test Suite Results">
+<meta property="og:description" content="158 tests passing, 0 failures. Protocol core, privacy, and economics validation.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="eWatts — Test Suite Results">
+<meta name="twitter:description" content="158 tests passing, 0 failures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a2e; color: #c0c0d0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; padding: 40px 20px; }
-h1 { color: #e0e0f0; font-size: 24px; margin-bottom: 8px; }
-h2 { color: #e0e0f0; font-size: 18px; margin: 32px 0 12px; padding-bottom: 4px; border-bottom: 1px solid #2a2a4a; }
-h3 { color: #c0c0d0; font-size: 15px; margin: 20px 0 8px; }
-p { margin: 8px 0; color: #8b8baa; font-size: 13px; }
-a { color: #6ac86a; text-decoration: none; }
-a:hover { text-decoration: underline; }
-.summary { background: #16162a; border: 1px solid #2a2a4a; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
-.summary span { display: inline-block; margin-right: 24px; }
-.summary .num { font-size: 24px; font-weight: 600; display: block; }
-.summary .label { font-size: 11px; color: #5a5a72; text-transform: uppercase; letter-spacing: 0.5px; }
-.pass { color: #6ac86a; }
-.fail { color: #e74c3c; }
-.ignore { color: #8b8baa; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0 16px; }
-th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2a4a; color: #5a5a72; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-td { padding: 5px 8px; border-bottom: 1px solid #1e1e38; }
-tr:hover td { background: #1a1a34; }
-.tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
-.tag-rust { background: #1a3a1a; color: #6ac86a; }
-.tag-py { background: #1a2a3a; color: #5a8aba; }
-.tag-sh { background: #3a2a1a; color: #c0a060; }
-.tag-sim { background: #2a1a3a; color: #a070c0; }
-.bug { color: #e8c84a; font-size: 11px; }
-.footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #2a2a4a; font-size: 11px; color: #5a5a72; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+.container { max-width:1120px; margin:0 auto; padding:0 20px; }
+
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
+.nav-links a.active { color:#fff; }
+
+h1 { font-size:32px; font-weight:700; color:#fff; letter-spacing:-0.5px; margin-bottom:8px; }
+h2 { font-size:18px; font-weight:600; color:#fff; margin:40px 0 16px; padding-bottom:6px; border-bottom:1px solid #1a1a2a; }
+h3 { font-size:15px; font-weight:500; color:#d4d4dc; margin:24px 0 8px; }
+p { margin:8px 0; color:#5a5a72; font-size:14px; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#14141e; padding:1px 5px; border-radius:3px; }
+a { color:#3b82f6; text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+.summary { display:flex; gap:24px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:8px; padding:20px 24px; margin:16px 0; }
+.summary-item { display:flex; flex-direction:column; }
+.summary-num { font-size:28px; font-weight:700; letter-spacing:-0.3px; }
+.summary-label { font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+.text-green { color:#22c55e; }
+.text-red { color:#ef4444; }
+.text-muted { color:#5a5a72; }
+
+table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 16px; }
+th { text-align:left; padding:8px 10px; border-bottom:1px solid #1a1a2a; color:#5a5a72; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+td { padding:7px 10px; border-bottom:1px solid #14141e; vertical-align:top; }
+tr:hover td { background:#0e0e18; }
+
+.tag { display:inline-block; padding:1px 7px; border-radius:3px; font-size:10px; font-weight:600; letter-spacing:0.2px; }
+.tag-rust { background:#0a2a0a; color:#22c55e; }
+.tag-py { background:#0a1a2a; color:#60a5fa; }
+.tag-sh { background:#2a1a0a; color:#fbbf24; }
+.tag-sim { background:#1a0a2a; color:#a78bfa; }
+.bug-severe { color:#fbbf24; font-size:12px; }
+.bug-critical { color:#ef4444; font-size:12px; }
+.bug-medium { color:#fbbf24; font-size:12px; opacity:0.7; }
+.mono { font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+.footer { margin-top:48px; padding:20px 0; border-top:1px solid #1a1a2a; font-size:12px; color:#5a5a72; display:flex; gap:16px; }
 </style>
 </head>
 <body>
+<div class="container">
 
-<h1>eWatts — Test Suite Results</h1>
+<nav>
+  <div class="logo">eWatts<span>.org</span></div>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="index.html#spec">Spec</a>
+    <a href="index.html#economics">Economics</a>
+    <a href="index.html#roadmap">Roadmap</a>
+    <a href="explorer.html">Explorer</a>
+    <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
+    <a href="test-results.html" class="active">Tests</a>
+  </div>
+</nav>
+
+<h1>Test Suite Results</h1>
 <p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
 
 <div class="summary">
-  <span><span class="num pass">158</span><span class="label">Passed</span></span>
-  <span><span class="num" style="color:#e74c3c;">0</span><span class="label">Failed</span></span>
-  <span><span class="num" style="color:#8b8baa;">6</span><span class="label">Ignored</span></span>
-  <span><span class="num" style="color:#8b8baa;">10</span><span class="label">Filtered</span></span>
-  <span><span class="num" style="color:#8b8baa;">174</span><span class="label">Total</span></span>
+  <div class="summary-item"><span class="summary-num text-green">158</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">6</span><span class="summary-label">Ignored</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">10</span><span class="summary-label">Filtered</span></div>
+  <div class="summary-item"><span class="summary-num">174</span><span class="summary-label">Total</span></div>
 </div>
 
-<p style="margin-bottom:20px;">This round: 15 new tests written + 4 bugs fixed in existing code.</p>
+<p>This round: 15 new tests written + 4 bugs fixed in existing code. <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">View commits &rarr;</a></p>
 
 <h2>Bugs Fixed</h2>
 <table>
 <tr><th>File</th><th>Issue</th><th>Impact</th></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: usize underflow in <code>16 - (bit_shift - 8)</code> when bit_shift ≥ 6. Function was never called by any existing test.</td><td class="bug">Critical: affects 8 of 24 BIP39 words. All CLI-generated seed phrases would be invalid.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: 11-bit word extraction incorrect (16-bit and 24-bit formulas inconsistent).</td><td class="bug">Severe: BIP39 words did not match original entropy.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: checksum used <code>entropy[0] >> 5</code> instead of SHA256 (BIP39 spec).</td><td class="bug">Medium: non-compliant checksum, incompatible with other wallets.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>mnemonic_to_entropy</code>: checksum verification also used <code>entropy[0] >> 5</code> (internally consistent, but out of spec).</td><td class="bug">Medium: corrected to SHA256 alongside entropy_to_mnemonic.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: usize underflow in <code>16 - (bit_shift - 8)</code> when bit_shift ≥ 6. Function was never called by any existing test.</td><td class="bug-critical">Critical: 8 of 24 BIP39 words affected. All CLI seed phrases would be invalid.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: 11-bit word extraction incorrect (16-bit and 24-bit formulas inconsistent).</td><td class="bug-severe">Severe: BIP39 words did not match original entropy.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: checksum used <code>entropy[0] >> 5</code> instead of SHA256 (BIP39 spec).</td><td class="bug-medium">Medium: non-compliant checksum, incompatible with other wallets.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>mnemonic_to_entropy: checksum verification also used <code>entropy[0] >> 5</code> (internally consistent, out of spec).</td><td class="bug-medium">Medium: corrected to SHA256 alongside entropy_to_mnemonic.</td></tr>
 </table>
 
 <h2>Phase 8 — Protocol Core Integrity</h2>
 <table>
 <tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
-<tr>
-  <td><code>p8_mlsag_roundtrip_and_tamper</code></td>
-  <td>MLSAG sign + verify with ring of 11. Tampered c0 rejected.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_mlsag_multi_layer</code></td>
-  <td>MLSAG 3 layers, ring[ring_pos][layer] transpose, sign + verify.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_pedersen_blinding_verify</code></td>
-  <td>Commitment::verify with correct blinding, wrong amount, wrong blinding.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_stealth_address_uniqueness</code></td>
-  <td>1000 addresses generated, zero spend_key duplicates. 1000 unique ephemeral keys.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_coinbase_has_correct_lock</code></td>
-  <td>Mined block coinbase has spendable_after = founder_lock_block(height).</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_protocol_version_valid</code></td>
-  <td>PROTOCOL_VERSION exists and is a positive u16.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p8_difficulty_shock</code></td>
-  <td>Difficulty adjusts correctly under 10x, 2x, 0.5x, 0.01x hashrate shocks.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>economic_coinbase_has_correct_lock</code></td>
-  <td>Validates founder_lock_block(15000) is 0 (post-foundation).</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>economic_founder_lock_rejects_premature_spend</code></td>
-  <td>Real coinbase UTXO, spend attempted before lock, specific "time-locked" error + UTXO preserved.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>economic_double_spend_key_image_rejected</code></td>
-  <td>Real UTXO signed with ed25519, spends successfully, key_image tracked, reuse rejected with "Double-spend".</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
+<tr><td><code>p8_mlsag_roundtrip_and_tamper</code></td><td>MLSAG sign + verify with ring of 11. Tampered c0 rejected.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_mlsag_multi_layer</code></td><td>MLSAG 3 layers, ring[ring_pos][layer] transpose, sign + verify.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_pedersen_blinding_verify</code></td><td>Commitment::verify with correct blinding, wrong amount, wrong blinding.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_stealth_address_uniqueness</code></td><td>1000 addresses generated, zero spend_key duplicates. 1000 unique ephemeral keys.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_coinbase_has_correct_lock</code></td><td>Mined block coinbase has spendable_after = founder_lock_block(height).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_protocol_version_valid</code></td><td>PROTOCOL_VERSION exists and is a positive u16.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_difficulty_shock</code></td><td>Difficulty adjusts correctly under 10x, 2x, 0.5x, 0.01x hashrate shocks.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_coinbase_has_correct_lock</code></td><td>Founder_lock_block(15000) is 0 (post-foundation).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_founder_lock_rejects_premature_spend</code></td><td>Real coinbase UTXO, spend before lock, specific error + UTXO preserved.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_double_spend_key_image_rejected</code></td><td>Real UTXO signed with ed25519. First spend ok, key_image tracked, reuse fails with specific error.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
 
 <h2>Phase 9 — Privacy & Network</h2>
 <table>
 <tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
-<tr>
-  <td><code>p9_malicious_decoys_anonymity</code></td>
-  <td>Ring of 11: 10 decoys attacker-controlled + 1 real. MLSAG verifies, attacker cannot forge for real spender.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p9_key_image_reuse_after_reorg</code></td>
-  <td>Spent_key_images grows monotonically as blocks are added.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p9_stealth_scanning_performance</code></td>
-  <td>1000 owned + 1000 non-owned addresses. Wallet finds all its own, zero false positives.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p9_sybil_emission_equivalence</code></td>
-  <td>Same total_eff = same emission, proving 1000 identities get no advantage over 1.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
+<tr><td><code>p9_malicious_decoys_anonymity</code></td><td>Ring of 11: 10 attacker-controlled decoys + 1 real. MLSAG verifies, attacker cannot forge.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_key_image_reuse_after_reorg</code></td><td>Spent_key_images grows monotonically as blocks are added.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_stealth_scanning_performance</code></td><td>1000 owned + 1000 non-owned addresses. All found, zero false positives.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_sybil_emission_equivalence</code></td><td>Same total_eff = same emission. 1000 identities gain no advantage over 1.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow). Synthetic analysis.</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
 </table>
 
 <h2>Phase 10 — Economics & Performance</h2>
 <table>
 <tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
-<tr>
-  <td><code>p10_founder_adversarial_no_early_spend</code></td>
-  <td>UTXO with spendable_after=100 rejected at heights 0,1,10,50,99. Unlocked at height 100 (fails at revealed_pubkey, not time-lock).</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p10_mnemonic_edge_cases</code></td>
-  <td>Mnemonic < 24 or > 24 words is rejected.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p10_wallet_seed_roundtrip</code></td>
-  <td>Known entropy to 24 words and back. Random roundtrip 5x.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
-<tr>
-  <td><code>p10_ramp_up_cap_multiminer</code></td>
-  <td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap applied.</td>
-  <td><span class="tag tag-rust">Rust</span></td>
-  <td class="pass">PASS</td>
-</tr>
+<tr><td><code>p10_founder_adversarial_no_early_spend</code></td><td>UTXO locked at 100. Rejected at heights 0,1,10,50,99. Unlocked at 100 (different error).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_mnemonic_edge_cases</code></td><td>Mnemonic < 24 or > 24 words is rejected.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_wallet_seed_roundtrip</code></td><td>Known entropy to 24 words and back. Random roundtrip 5x.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
 
-<h2>Python Simulations</h2>
-<table>
-<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
-<tr>
-  <td><code>P9-1: Graph Reconstruction</code></td>
-  <td>100 wallets, 5000 txs, 3 clustering heuristics (amount, timing, value flow). Best precision: 21.53%. Moderate privacy.</td>
-  <td><span class="tag tag-py">Python</span></td>
-  <td class="pass">PASS</td>
-</tr>
-</table>
-
-<h2>Upcoming Tests</h2>
+<h2>Remaining</h2>
 <table>
 <tr><th>Test</th><th>Description</th><th>Type</th><th>Status</th></tr>
-<tr><td>P8-1</td><td>Supply conservation under reorg (multiple depths)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-2</td><td>Cross-platform determinism (x86 + QEMU ARM)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-3</td><td>Atomicity under real crash (SIGKILL during apply_block)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-4</td><td>Emission v3 numerical correctness (10+ points, Python cross-check)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-8</td><td>Full block validation (wrong emission, coinbase > reward, future timestamp)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-10</td><td>Deep reorg (1000+ blocks)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-2</td><td>Amount correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-3</td><td>Timing correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-4</td><td>Dust attack analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-5</td><td>Adversarial node (20/40/60% peer control)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-6</td><td>Eclipse attack (iptables/tc isolation)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-7</td><td>Long endurance (72h+ continuous run)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-13</td><td>Cold start sync (block 0 to target height)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-1</td><td>51% attack consistency (100+ block reorg)</td><td><span class="tag tag-sim">Sim</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-3</td><td>Cartel mining (5 miners, 70% power)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-4</td><td>Selfish mining simulation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-5</td><td>Spam economics (attacker cost vs network cost)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-6</td><td>Long-term miner equilibrium (10 to 100k miners)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-7</td><td>Rich get richer (proportionality vs superlinearity)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-9</td><td>Exchange attack (actor buys 30% of supply)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-10</td><td>P2P protocol fuzzing (cargo-fuzz)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-11</td><td>RPC/JSON API fuzzing</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-12</td><td>Memory/CPU/Disk profile under real load</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-1</td><td>Supply conservation under reorg (multiple depths)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P8-2</td><td>Cross-platform determinism (x86 + QEMU ARM)</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P8-3</td><td>Atomicity under real crash (SIGKILL during apply_block)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P8-4</td><td>Emission v3 numerical correctness (10+ points, Python cross-check)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P8-8</td><td>Full block validation (wrong emission, coinbase > reward, future timestamp)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P8-10</td><td>Deep reorg (1000+ blocks)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-2</td><td>Amount correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-3</td><td>Timing correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-4</td><td>Dust attack analysis</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-5</td><td>Adversarial node (20/40/60% peer control)</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-6</td><td>Eclipse attack (iptables/tc isolation)</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-7</td><td>Long endurance (72h+ continuous run)</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P9-13</td><td>Cold start sync (block 0 to target height)</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-1</td><td>51% attack consistency (100+ block reorg)</td><td><span class="tag tag-sim">Sim</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-3</td><td>Cartel mining (5 miners, 70% power)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-4</td><td>Selfish mining simulation</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-5</td><td>Spam economics (attacker cost vs network cost)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-6</td><td>Long-term miner equilibrium (10 to 100k miners)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-7</td><td>Rich get richer (proportionality vs superlinearity)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-9</td><td>Exchange attack (actor buys 30% of supply)</td><td><span class="tag tag-py">Python</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-10</td><td>P2P protocol fuzzing (cargo-fuzz)</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-11</td><td>RPC/JSON API fuzzing</td><td><span class="tag tag-rust">Rust</span></td><td class="text-muted">TODO</td></tr>
+<tr><td>P10-12</td><td>Memory/CPU/Disk profile under real load</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
 </table>
 
 <div class="footer">
-  <a href="index.html">&larr; Back to eWatts</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a> &bull; MIT License
+  <a href="index.html">&larr; Back to eWatts</a>
+  <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
+  <span>MIT License</span>
 </div>
 
+</div>
 </body>
 </html>
