@@ -1172,3 +1172,101 @@ fn p10_ramp_up_cap_multiminer() {
     let burned3 = apply_ramp_up_cap_int(block_late, &mut rewards3);
     assert_eq!(burned3, 0, "Post-ramp-up: no cap should apply");
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// P8-8: Full block validation — reject invalid blocks
+// ═══════════════════════════════════════════════════════════════════════
+
+#[test]
+fn p8_validation_rejects_invalid_blocks() {
+    use crate::block::{BlockHeader, BlockBody, Block, Transaction, TxOutput, TxInput};
+    use crate::proof::Solution;
+
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+
+    // Build a valid block to use as template
+    let (good_block, _) = test_mine(gen_hash, 1, &mut state);
+    assert!(state.apply_block(&good_block, 1).is_ok(), "Valid block must apply");
+    let b1_hash = good_block.header.hash();
+
+    // T8.8a: coinbase exceeds emission cap
+    let (mut state_b, _) = test_init(&pk);
+    let overflow_tx = Transaction {
+        version: 1, inputs: vec![],
+        outputs: vec![TxOutput {
+            amount: 999_999_999_999,  // way above BASE_EMISSION_UNITS * 20
+            pubkey_hash: [0u8; 20], spendable_after: 0,
+            stealth_dest: None, commitment_bytes: None,
+            range_proof_bytes: None, ephemeral: None,
+        }],
+        ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
+    };
+    let header = BlockHeader {
+        version: 1, previous_hash: [0u8; 32], merkle_root: [0u8; 32],
+        timestamp: 0, epoch: 0, height: 1, difficulty_target: 1,
+        total_effective_commit: 0, emission_rate: 0, miner_effective_commit: 0,
+        vr_block: 0, coinbase_burn: 0, nonce: 0, elapsed_ms: 0, proof_merkle_root: None,
+    };
+    let bad_block = Block {
+        header, proof_hash: [0u8; 32],
+        body: BlockBody { transactions: vec![overflow_tx], commitments: vec![] },
+    };
+    let r = state_b.apply_block(&bad_block, 1);
+    assert!(r.is_err(), "Coinbase exceeding cap must be rejected");
+    assert!(r.unwrap_err().contains("emission cap"), "Error must mention emission cap");
+
+    // T8.8b: wrong spendable_after on coinbase
+    let (mut state_c, _) = test_init(&pk);
+    let bad_lock_tx = Transaction {
+        version: 1, inputs: vec![],
+        outputs: vec![TxOutput {
+            amount: 1_000_000, pubkey_hash: [0u8; 20],
+            spendable_after: 0,  // should be founder_lock_block(1) != 0
+            stealth_dest: None, commitment_bytes: None,
+            range_proof_bytes: None, ephemeral: None,
+        }],
+        ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
+    };
+    let header2 = BlockHeader {
+        height: 1, ..good_block.header
+    };
+    let bad_lock_block = Block {
+        header: header2, proof_hash: [0u8; 32],
+        body: BlockBody { transactions: vec![bad_lock_tx], commitments: vec![] },
+    };
+    let r2 = state_c.apply_block(&bad_lock_block, 1);
+    assert!(r2.is_err(), "Wrong spendable_after must be rejected");
+    let e2 = r2.unwrap_err();
+    assert!(e2.contains("spendable_after") || e2.contains("founder"),
+        "Error must mention lock, got: {}", e2);
+
+    // T8.8c: coinbase with non-empty inputs (attempt to spend during coinbase creation)
+    let (mut state_d, _) = test_init(&pk);
+    let bad_input_tx = Transaction {
+        version: 1,
+        inputs: vec![TxInput {
+            previous_tx_hash: [0xFF; 32], output_index: 0,
+            key_image: [0xEE; 32], revealed_pubkey: vec![],
+        }],
+        outputs: vec![TxOutput {
+            amount: 1_000_000, pubkey_hash: [0u8; 20],
+            spendable_after: crate::reward::founder_lock_block(1),
+            stealth_dest: None, commitment_bytes: None,
+            range_proof_bytes: None, ephemeral: None,
+        }],
+        ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
+    };
+    let header3 = BlockHeader {
+        height: 1, ..good_block.header
+    };
+    let bad_input_block = Block {
+        header: header3, proof_hash: [0u8; 32],
+        body: BlockBody { transactions: vec![bad_input_tx], commitments: vec![] },
+    };
+    let r3 = state_d.apply_block(&bad_input_block, 1);
+    assert!(r3.is_err(), "Coinbase with inputs must be rejected");
+    assert!(r3.unwrap_err().contains("empty inputs"), "Error must mention empty inputs");
+}
