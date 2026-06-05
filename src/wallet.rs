@@ -609,15 +609,25 @@ pub fn entropy_to_mnemonic(entropy: &[u8; 32]) -> Vec<String> {
         let bit_offset = i * 11;
         let byte_idx = bit_offset / 8;
         let bit_shift = bit_offset % 8;
-        let index = if bit_shift <= 5 {
-            let mut idx = (bits[byte_idx] as u16) << 8;
-            if byte_idx + 1 < 33 { idx |= bits[byte_idx + 1] as u16; }
-            (idx >> (8 - bit_shift)) & 0x7FF
-        } else {
-            let mut idx = (bits[byte_idx] as u32) << 16;
-            if byte_idx + 1 < 33 { idx |= (bits[byte_idx + 1] as u32) << 8; }
-            if byte_idx + 2 < 33 { idx |= bits[byte_idx + 2] as u32; }
-            ((idx >> (16 - (bit_shift - 8))) & 0x7FF) as u16
+        // Extract 11-bit word index starting at bit_offset
+        // 256+8=264 bits, 24 words of 11 bits each
+        let index = {
+            let window_shift = bit_shift % 8;
+            if window_shift <= 5 {
+                // 11 bits span at most 2 bytes: (8 - ws) + ws + min(ws, 3) = 8 + ws >= 11
+                let mut val = (bits[byte_idx] as u16) << 8;
+                if byte_idx + 1 < 33 { val |= bits[byte_idx + 1] as u16; }
+                (val >> (8 - window_shift)) & 0x7FF
+            } else {
+                // 11 bits span 3 bytes: from byte byte_idx, bit window_shift, into byte_idx+2
+                let mut val = (bits[byte_idx] as u32) << 16;
+                if byte_idx + 1 < 33 { val |= (bits[byte_idx + 1] as u32) << 8; }
+                if byte_idx + 2 < 33 { val |= bits[byte_idx + 2] as u32; }
+                // start position in 24-bit window: 23 - window_shift
+                // 11 bits: positions (23-ws) down to (13-ws)
+                // shift right by (13-ws) to align to LSB
+                ((val >> (13 - window_shift)) & 0x7FF) as u16
+            }
         };
         words.push(BIP39_WORDS[index as usize].to_string());
     }
