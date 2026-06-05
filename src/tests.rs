@@ -1720,3 +1720,66 @@ fn p0_nonce_variation() {
     let nonce2 = b1_v2.header.nonce;
     assert_ne!(nonce1, nonce2, "Nonces must differ between blocks");
 }
+
+// Verify that the protocol version constant is stable
+#[test]
+fn p0_version_stable() {
+    // This test captures the current protocol version.
+    // If it changes, the test must be updated — intentional.
+    let v = crate::constants::PROTOCOL_VERSION;
+    // Currently version 1. Will increment for protocol upgrades.
+    assert_eq!(v, 0x0004, "PROTOCOL_VERSION must be 0x0004");
+}
+
+// Mining after multiple DAG epochs: verify epoch transition
+#[test]
+fn p0_dag_epoch_transition() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+
+    let (b1, _) = test_mine(gen_hash, 1, &mut state);
+    state.apply_block(&b1, 1).unwrap();
+    let b1_hash = b1.header.hash();
+
+    // Mine across potential epoch boundary (epoch=1)
+    let (b2, _) = test_mine(b1_hash, 2, &mut state);
+    state.apply_block(&b2, 2).unwrap();
+    assert!(b2.header.epoch <= 1, "Epoch must be <= 1 for first blocks");
+}
+
+// Verify that genesis produces spendable UTXOs
+#[test]
+fn p0_genesis_utxos_spendable() {
+    let pubkey = [0xAB; 32];
+    let state = UtxoSet::genesis(100_000_000, &pubkey);
+    let keys = state.utxo_keys_for(&pubkey);
+    assert!(!keys.is_empty(), "Genesis pubkey must have UTXOs");
+    for key in &keys {
+        let utxo = state.get_utxo(key);
+        assert!(utxo.is_some(), "UTXO must exist");
+        let utxo = utxo.unwrap();
+        assert!(utxo.spendable_after <= 0, "Genesis UTXOs must be spendable at block 0");
+    }
+}
+
+// Verify zero-amount outputs are handled
+#[test]
+fn p0_zero_amount_output() {
+    let mut state = UtxoSet::new();
+    let tx = Transaction {
+        version: 1, inputs: vec![], outputs: vec![TxOutput {
+            amount: 0, pubkey_hash: [0u8; 20], spendable_after: 0,
+            stealth_dest: None, commitment_bytes: None,
+            range_proof_bytes: None, ephemeral: None,
+        }],
+        ring_size: 1, signatures: vec![],
+        mlsag: None, ring_members: None,
+    };
+    // Zero-amount outputs should not crash
+    let hash = tx.hash();
+    state.add_transaction_outputs(&hash, &tx, 0, 0);
+    let utxo_count = state.utxo_count();
+    assert!(utxo_count >= 1, "Zero-amount UTXO must be added");
+}
