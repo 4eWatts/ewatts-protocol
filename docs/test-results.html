@@ -80,7 +80,7 @@ tr:hover td { background:#0e0e18; }
 <p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
 
 <div class="summary">
-  <div class="summary-item"><span class="summary-num text-green">158</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-green">159</span><span class="summary-label">Passed</span></div>
   <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
   <div class="summary-item"><span class="summary-num text-muted">6</span><span class="summary-label">Ignored</span></div>
   <div class="summary-item"><span class="summary-num text-muted">10</span><span class="summary-label">Filtered</span></div>
@@ -88,6 +88,9 @@ tr:hover td { background:#0e0e18; }
 </div>
 
 <p>This round: 15 new tests written + 4 bugs fixed in existing code.</p>
+<p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+<strong>6 ignored:</strong> tests for the deprecated v27 emission formula, kept in the codebase for reference during the v3 migration. They do not validate the current protocol.
+</p>
 <p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
 
 <h2>Bugs Fixed</h2>
