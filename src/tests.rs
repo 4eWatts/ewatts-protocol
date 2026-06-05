@@ -1601,3 +1601,18 @@ fn p0_supply_equals_utxo_sum() {
         "Total supply {} must equal sum of UTXO amounts {}",
         state.total_supply(), utxo_sum);
 }
+// Key image uniqueness across transactions
+#[test]
+fn p0_key_image_unique() {
+    use std::collections::HashSet;
+    let mut rng = rand::thread_rng();
+    let mut seen = HashSet::new();
+    // Generate key images using the same method as wallet
+    for _ in 0..100 {
+        let sk = SigningKey::generate(&mut rng);
+        let pk = sk.verifying_key().to_bytes();
+        let hash = crate::block::TxOutput::hash_pubkey(&pk);
+        assert!(seen.insert(hash), "Duplicate pubkey hash generated");
+    }
+}
+
