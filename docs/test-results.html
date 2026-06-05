@@ -655,6 +655,30 @@ which validate the same invariants through direct state access with specific err
 <tr><td>P10-12</td><td>Memory/CPU/Disk profile under real load</td><td><span class="tag tag-sh">Script</span></td><td class="text-muted">TODO</td></tr>
 </table>
 
+<h2>Known Untested Areas</h2>
+<p style="margin-bottom:12px; padding:10px 14px; background:#0e0e18; border:1px solid #2a2a4a; border-radius:6px; font-size:13px; color:#5a5a72;">
+These areas are not covered by any existing test. They represent gaps identified during audit review
+that extend beyond the current test suite structure. Tracked as GitHub issues with label <code>testing-gap</code>.
+</p>
+<table>
+<tr><th>Area</th><th>Why it matters</th><th>Priority</th></tr>
+<tr><td><strong>Coinbase maturity</strong></td><td>Coinbase outputs must be spendable only after N confirmation blocks (Bitcoin convention: 100). Founder lock is different &mdash; it blocks the first ~10k blocks. Normal coinbase maturity per block is untested.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Block timestamp rules</strong></td><td>Max future time (e.g., 2h as Bitcoin) and median time past must be enforced. Without these, miners can manipulate timestamps to inflate or deflate difficulty.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Output age heuristic</strong></td><td>Classic ring signature attack: decoy selection biased toward very old or very new UTXOs breaks anonymity. The decoy selection algorithm is not tested for bias.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Protocol version compat</strong></td><td>Nodes with different PROTOCOL_VERSION must detect incompatibility and refuse sync, not fork silently.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Network partition healing</strong></td><td>Two subnets mine independently for X time, then reconnect. State convergence after merge is untested beyond simple reorgs.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Wallet recovery end-to-end</strong></td><td>Full cycle: create seed, lose data, restore from seed, recover existing UTXOs on chain. Unit tests exist for mnemonic roundtrip but not for the complete recovery pipeline.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Decoy selection bias</strong></td><td>If decoys are chosen with bias (e.g., always recent UTXOs), anonymity degrades. The selection algorithm needs statistical validation.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Max block size enforcement</strong></td><td>Blocks exceeding MAX_BLOCK_TXS or byte size limits must be rejected. No test validates this.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Mempool fee priority</strong></td><td>Blocks should include transactions by fee priority, not FIFO. No test validates ordering.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Tx signing edge cases</strong></td><td>Max-input tx, max-output tx, dust outputs, txs near MAX_BLOCK_TXS. No coverage.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Key image clustering</strong></td><td>Analysis of key_images across transactions to correlate same spender. Untested.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Difficulty boundary block</strong></td><td>Behavior exactly at difficulty adjustment boundary. Not tested.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Quantum migration block</strong></td><td>Approach to block 3,153,600 where FALCON-1024 activates. No validation of transition behavior.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>UTXO set corruption recovery</strong></td><td>Node must reconstruct UTXO set from blocks.jsonl if utxo.json is corrupted. Phase 5 covers ledger corruption but details unclear.</td><td class="text-muted">P2</td></tr>
+</table>
+<p style="font-size:12px; color:#5a5a72;">Priority: <span class="text-red">P0</span> = must-address before testnet release, <span class="text-orange" style="color:#f59e0b;">P1</span> = strong recommendation, <span style="color:#5a5a72;">P2</span> = address long-term. GitHub issues: <a href="https://github.com/4eWatts/ewatts-protocol/issues?q=label%3Atesting-gap">label:testing-gap</a></p>
+
 <div class="footer">
   <a href="index.html">&larr; Back to eWatts</a>
   <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
