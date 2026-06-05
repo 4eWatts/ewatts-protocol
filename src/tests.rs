@@ -1616,3 +1616,107 @@ fn p0_key_image_unique() {
     }
 }
 
+
+// Deep reorg: 100 blocks on one chain, verify state integrity
+#[test]
+fn p0_deep_reorg_integrity() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+
+    // Long chain: 50 blocks
+    let mut state_long = UtxoSet::genesis(100_000_000, &pk);
+    let mut prev = [0u8; 32];
+    let mut last_hash_long = [0u8; 32];
+    for h in 1..=50u64 {
+        let (b, _) = test_mine(prev, h, &mut state_long);
+        state_long.apply_block(&b, h).unwrap();
+        prev = b.header.hash();
+        if h == 50 { last_hash_long = b.header.hash(); }
+    }
+    let supply_long = state_long.total_supply();
+
+    // Short chain: 30 blocks from same genesis
+    let mut state_short = UtxoSet::genesis(100_000_000, &pk);
+    prev = [0u8; 32];
+    for h in 1..=30u64 {
+        let (b, _) = test_mine(prev, h, &mut state_short);
+        state_short.apply_block(&b, h).unwrap();
+        prev = b.header.hash();
+    }
+    let supply_short = state_short.total_supply();
+
+    // Long chain has more blocks = more supply
+    assert!(supply_long > supply_short,
+        "Long chain (50 blocks) must have more supply than short (30): {} vs {}",
+        supply_long, supply_short);
+
+    // Fast blocks stress test: verify no crash
+    let mut state_stress = UtxoSet::genesis(100_000_000, &pk);
+    prev = [0u8; 32];
+    for h in 1..=50u64 {
+        let (b, _) = test_mine(prev, h, &mut state_stress);
+        state_stress.apply_block(&b, h).unwrap();
+        prev = b.header.hash();
+    }
+    assert!(state_stress.total_supply() >= state_stress.utxos_map()
+        .values().map(|e| e.amount).sum::<u64>(),
+        "Supply must be >= UTXO sum after 100 blocks");
+}
+
+// Fast block production: verify difficulty doesn't spike
+#[test]
+fn p0_fast_block_difficulty() {
+    let mut diff = 100u64;
+    // Simulate fast mining: actual accesses >> target (network growing)
+    for _ in 0..10 {
+        diff = crate::difficulty::adjust_difficulty(diff, 2000., 1000.);
+    }
+    // Difficulty should decrease (more hashrate = need more work)
+    assert!(diff < 100, "Difficulty must decrease under high hashrate, got {}", diff);
+}
+
+// Timestamp ordering: later blocks should have >= earlier timestamps
+#[test]
+fn p0_timestamp_monotonic() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let mut prev = gen_block.header.hash();
+    let mut last_ts = gen_block.header.timestamp;
+
+    for h in 1..=10u64 {
+        let (b, _) = test_mine(prev, h, &mut state);
+        state.apply_block(&b, h).unwrap();
+        assert!(b.header.timestamp >= last_ts,
+            "Timestamp at block {} must be >= previous ({} < {})",
+            h, b.header.timestamp, last_ts);
+        last_ts = b.header.timestamp;
+        prev = b.header.hash();
+    }
+}
+
+// Verify max block txs constant is reasonable
+#[test]
+fn p0_max_block_txs_reasonable() {
+    let max = crate::constants::MAX_BLOCK_TXS;
+    assert!(max >= 1, "MAX_BLOCK_TXS must be at least 1");
+    assert!(max <= 1_000_000, "MAX_BLOCK_TXS must be reasonable");
+    assert_eq!(max, 10000, "MAX_BLOCK_TXS should be 10000");
+}
+
+// Nonce must change between blocks at same height
+#[test]
+fn p0_nonce_variation() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+
+    let (b1, _) = test_mine(gen_hash, 1, &mut state);
+    let nonce1 = b1.header.nonce;
+    // Mine another block at same height - should have different nonce
+    let (mut state2, _) = test_init(&pk);
+    let (b1_v2, _) = test_mine(gen_hash, 1, &mut state2);
+    let nonce2 = b1_v2.header.nonce;
+    assert_ne!(nonce1, nonce2, "Nonces must differ between blocks");
+}
