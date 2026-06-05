@@ -45,7 +45,3 @@ tempfile = "3"
 [profile.release]
 lto = true
 codegen-units = 1
-
-[lib]
-name = "ewatts_protocol"
-path = "src/lib.rs"

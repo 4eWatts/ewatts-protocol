@@ -1783,3 +1783,53 @@ fn p0_zero_amount_output() {
     let utxo_count = state.utxo_count();
     assert!(utxo_count >= 1, "Zero-amount UTXO must be added");
 }
+
+// Nonce change must affect block hash
+#[test]
+fn p0_nonce_affects_hash() {
+    let gen_hash = [0u8; 32];
+    let mut header = crate::block::BlockHeader {
+        version: 1, previous_hash: gen_hash, merkle_root: [0u8; 32],
+        timestamp: 1000, epoch: 0, height: 1, difficulty_target: 1,
+        total_effective_commit: 0, emission_rate: 0, miner_effective_commit: 0,
+        vr_block: 0, coinbase_burn: 0, nonce: 0, elapsed_ms: 0,
+        proof_merkle_root: None,
+    };
+    let hash1 = header.hash();
+    header.nonce = 1;
+    let hash2 = header.hash();
+    assert_ne!(hash1, hash2, "Nonce change must produce different hash");
+}
+
+// Block serialization size sanity
+#[test]
+fn p0_block_size_reasonable() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+    let (b1, _) = test_mine(gen_hash, 1, &mut state);
+    let json = serde_json::to_vec(&b1).unwrap();
+    assert!(json.len() > 100, "Block under 100 bytes");
+    assert!(json.len() < 100_000, "Block over 100KB");
+}
+
+// Genesis supply exact match
+#[test]
+fn p0_genesis_supply_exact() {
+    let pk = [0xAB; 32];
+    let s1 = UtxoSet::genesis(50_000_000, &pk);
+    assert_eq!(s1.total_supply(), 50_000_000);
+    let s2 = UtxoSet::genesis(200_000_000, &pk);
+    assert_eq!(s2.total_supply(), 200_000_000);
+}
+
+// Different genesis keys
+#[test]
+fn p0_genesis_keys_independent() {
+    let s1 = UtxoSet::genesis(100_000_000, &[0xAA; 32]);
+    let s2 = UtxoSet::genesis(100_000_000, &[0xBB; 32]);
+    assert_eq!(s1.total_supply(), s2.total_supply());
+    assert!(s1.get_balance(&[0xAA; 32]) > 0);
+    assert!(s2.get_balance(&[0xBB; 32]) > 0);
+}
