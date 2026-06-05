@@ -39,78 +39,84 @@ tr:hover td { background: #1a1a34; }
 <p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
 
 <div class="summary">
-  <span><span class="num pass">155</span><span class="label">Passed</span></span>
+  <span><span class="num pass">158</span><span class="label">Passed</span></span>
   <span><span class="num" style="color:#e74c3c;">0</span><span class="label">Failed</span></span>
   <span><span class="num" style="color:#8b8baa;">6</span><span class="label">Ignored</span></span>
   <span><span class="num" style="color:#8b8baa;">10</span><span class="label">Filtered</span></span>
-  <span><span class="num" style="color:#8b8baa;">171</span><span class="label">Total</span></span>
+  <span><span class="num" style="color:#8b8baa;">174</span><span class="label">Total</span></span>
 </div>
 
-<p style="margin-bottom:20px;">Cobertura: 11 novos testes escritos nesta rodada + 4 bugs corrigidos no código existente.</p>
+<p style="margin-bottom:20px;">This round: 15 new tests written + 4 bugs fixed in existing code.</p>
 
-<h2>Bugs corrigidos</h2>
+<h2>Bugs Fixed</h2>
 <table>
-<tr><th>Arquivo</th><th>Problema</th><th>Impacto</th></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: underflow usize em <code>16 - (bit_shift - 8)</code> quando bit_shift ≥ 6. A função nunca foi chamada por nenhum teste existente.</td><td class="bug">Crítico: afeta 8 das 24 palavras BIP39. Seed phrases geradas pelo CLI seriam inválidas.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: extração de 11-bit words incorreta (fórmulas 16-bit e 24-bit inconsistentes).</td><td class="bug">Grave: palavras BIP39 não correspondiam à entropia original.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: checksum usava <code>entropy[0] >> 5</code> em vez de SHA256 (BIP39 spec).</td><td class="bug">Médio: checksum não conforme spec, incompatível com outras wallets.</td></tr>
-<tr><td><code>wallet.rs</code></td><td><code>mnemonic_to_entropy</code>: checksum verification também usava <code>entropy[0] >> 5</code> (consistente internamente, mas fora da spec).</td><td class="bug">Médio: corrigido para SHA256 junto com entropy_to_mnemonic.</td></tr>
+<tr><th>File</th><th>Issue</th><th>Impact</th></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: usize underflow in <code>16 - (bit_shift - 8)</code> when bit_shift ≥ 6. Function was never called by any existing test.</td><td class="bug">Critical: affects 8 of 24 BIP39 words. All CLI-generated seed phrases would be invalid.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: 11-bit word extraction incorrect (16-bit and 24-bit formulas inconsistent).</td><td class="bug">Severe: BIP39 words did not match original entropy.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>entropy_to_mnemonic</code>: checksum used <code>entropy[0] >> 5</code> instead of SHA256 (BIP39 spec).</td><td class="bug">Medium: non-compliant checksum, incompatible with other wallets.</td></tr>
+<tr><td><code>wallet.rs</code></td><td><code>mnemonic_to_entropy</code>: checksum verification also used <code>entropy[0] >> 5</code> (internally consistent, but out of spec).</td><td class="bug">Medium: corrected to SHA256 alongside entropy_to_mnemonic.</td></tr>
 </table>
 
 <h2>Phase 8 — Protocol Core Integrity</h2>
 <table>
-<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
 <tr>
   <td><code>p8_mlsag_roundtrip_and_tamper</code></td>
-  <td>MLSAG sign + verify com ring de 11. Tamper c0 rejeitado.</td>
+  <td>MLSAG sign + verify with ring of 11. Tampered c0 rejected.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p8_mlsag_multi_layer</code></td>
-  <td>MLSAG 3 layers, transposição ring[ring_pos][layer], sign + verify.</td>
+  <td>MLSAG 3 layers, ring[ring_pos][layer] transpose, sign + verify.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p8_pedersen_blinding_verify</code></td>
-  <td>Commitment::verify com blinding correto, amount errado, blinding errado.</td>
+  <td>Commitment::verify with correct blinding, wrong amount, wrong blinding.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p8_stealth_address_uniqueness</code></td>
-  <td>1000 endereços gerados, zero duplicatas de spend_key. 1000 ephemeral keys únicos.</td>
+  <td>1000 addresses generated, zero spend_key duplicates. 1000 unique ephemeral keys.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p8_coinbase_has_correct_lock</code></td>
-  <td>Coinbase de bloco minerado (test_mine) tem spendable_after = founder_lock_block(height).</td>
+  <td>Mined block coinbase has spendable_after = founder_lock_block(height).</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p8_protocol_version_valid</code></td>
-  <td>PROTOCOL_VERSION existe e é u16 positivo.</td>
+  <td>PROTOCOL_VERSION exists and is a positive u16.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p8_difficulty_shock</code></td>
+  <td>Difficulty adjusts correctly under 10x, 2x, 0.5x, 0.01x hashrate shocks.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>economic_coinbase_has_correct_lock</code></td>
-  <td>Valida que founder_lock_block(15000) é 0 (pós-foundation).</td>
+  <td>Validates founder_lock_block(15000) is 0 (post-foundation).</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>economic_founder_lock_rejects_premature_spend</code></td>
-  <td>UTXO real de coinbase, tentativa de gasto antes do lock, erro "time-locked" específico + UTXO preservado.</td>
+  <td>Real coinbase UTXO, spend attempted before lock, specific "time-locked" error + UTXO preserved.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>economic_double_spend_key_image_rejected</code></td>
-  <td>UTXO real assinado com ed25519, gasta com sucesso, key_image no spent_set, reuso rejeitado com "Double-spend".</td>
+  <td>Real UTXO signed with ed25519, spends successfully, key_image tracked, reuse rejected with "Double-spend".</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
@@ -118,22 +124,28 @@ tr:hover td { background: #1a1a34; }
 
 <h2>Phase 9 — Privacy & Network</h2>
 <table>
-<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
 <tr>
   <td><code>p9_malicious_decoys_anonymity</code></td>
-  <td>Ring de 11: 10 decoys controlados pelo atacante + 1 real. MLSAG verifica — atacante não pode forjar signature para spender real.</td>
+  <td>Ring of 11: 10 decoys attacker-controlled + 1 real. MLSAG verifies, attacker cannot forge for real spender.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p9_key_image_reuse_after_reorg</code></td>
-  <td>Spent_key_images cresce monotonicamente com novos blocos.</td>
+  <td>Spent_key_images grows monotonically as blocks are added.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p9_stealth_scanning_performance</code></td>
-  <td>1000 endereços owned + 1000 not-owned. Wallet encontra todos os seus, zero falsos positivos.</td>
+  <td>1000 owned + 1000 non-owned addresses. Wallet finds all its own, zero false positives.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p9_sybil_emission_equivalence</code></td>
+  <td>Same total_eff = same emission, proving 1000 identities get no advantage over 1.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
@@ -141,57 +153,70 @@ tr:hover td { background: #1a1a34; }
 
 <h2>Phase 10 — Economics & Performance</h2>
 <table>
-<tr><th>Teste</th><th>O que valida</th><th>Tipo</th><th>Status</th></tr>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
 <tr>
   <td><code>p10_founder_adversarial_no_early_spend</code></td>
-  <td>UTXO com spendable_after=100 rejeitado em heights 0,1,10,50,99. Solto no height 100 (falha em revealed_pubkey, não time-lock).</td>
+  <td>UTXO with spendable_after=100 rejected at heights 0,1,10,50,99. Unlocked at height 100 (fails at revealed_pubkey, not time-lock).</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p10_mnemonic_edge_cases</code></td>
-  <td>Mnemonic < 24 ou > 24 palavras é rejeitado.</td>
+  <td>Mnemonic < 24 or > 24 words is rejected.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 <tr>
   <td><code>p10_wallet_seed_roundtrip</code></td>
-  <td>Entropy conhecida → 24 palavras → recupera entropia original. Roundtrip aleatório 5x.</td>
+  <td>Known entropy to 24 words and back. Random roundtrip 5x.</td>
+  <td><span class="tag tag-rust">Rust</span></td>
+  <td class="pass">PASS</td>
+</tr>
+<tr>
+  <td><code>p10_ramp_up_cap_multiminer</code></td>
+  <td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap applied.</td>
   <td><span class="tag tag-rust">Rust</span></td>
   <td class="pass">PASS</td>
 </tr>
 </table>
 
-<h2>Próximos testes (pendentes)</h2>
+<h2>Python Simulations</h2>
 <table>
-<tr><th>Teste</th><th>Descrição</th><th>Tipo</th><th>Status</th></tr>
-<tr><td>P8-1</td><td>Supply conservation under reorg (múltiplas profundidades)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr>
+  <td><code>P9-1: Graph Reconstruction</code></td>
+  <td>100 wallets, 5000 txs, 3 clustering heuristics (amount, timing, value flow). Best precision: 21.53%. Moderate privacy.</td>
+  <td><span class="tag tag-py">Python</span></td>
+  <td class="pass">PASS</td>
+</tr>
+</table>
+
+<h2>Upcoming Tests</h2>
+<table>
+<tr><th>Test</th><th>Description</th><th>Type</th><th>Status</th></tr>
+<tr><td>P8-1</td><td>Supply conservation under reorg (multiple depths)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
 <tr><td>P8-2</td><td>Cross-platform determinism (x86 + QEMU ARM)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-3</td><td>Atomicity under crash real (SIGKILL durante apply_block)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-4</td><td>Emission v3 numerical correctness (10+ pontos, comparado com Python)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-8</td><td>Block validation completa (emission errada, coinbase > reward, timestamp futuro)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P8-10</td><td>Reorg deep (1000+ blocos)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-1</td><td>Graph reconstruction / chain analysis (100 wallets, clustering)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-2</td><td>Amount correlation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-3</td><td>Timing correlation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-4</td><td>Dust attack</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-5</td><td>Adversarial node (20/40/60% peers)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-6</td><td>Eclipse attack (iptables/tc)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-7</td><td>Long endurance 72h+</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-8</td><td>Difficulty adjustment under shock (10x, 100x, 0.5x hashrate)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-9</td><td>Sybil resistance (1000 identidades, mesmo commitment)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P9-13</td><td>Cold start sync (do block 0 até altura X)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-1</td><td>51% attack consistency (reorg 100+ blocos)</td><td><span class="tag tag-sim">Sim</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-2</td><td>Ramp-up cap multi-miner (2-5 miners, commits desiguais)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-3</td><td>Cartel mining (5 miners, 70% poder)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-4</td><td>Selfish mining</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-5</td><td>Spam economics (custo atacante vs custo rede)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-6</td><td>Long-term miner equilibrium (10 a 100k miners)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-7</td><td>Rich get richer (proporcionalidade vs superlinearidade)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-9</td><td>Exchange attack (ator compra 30% supply)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-10</td><td>P2P fuzzing (cargo-fuzz)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-11</td><td>RPC/JSON fuzzing</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
-<tr><td>P10-12</td><td>Memory/CPU/Disk profile sob load real</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-3</td><td>Atomicity under real crash (SIGKILL during apply_block)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-4</td><td>Emission v3 numerical correctness (10+ points, Python cross-check)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-8</td><td>Full block validation (wrong emission, coinbase > reward, future timestamp)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P8-10</td><td>Deep reorg (1000+ blocks)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-2</td><td>Amount correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-3</td><td>Timing correlation analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-4</td><td>Dust attack analysis</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-5</td><td>Adversarial node (20/40/60% peer control)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-6</td><td>Eclipse attack (iptables/tc isolation)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-7</td><td>Long endurance (72h+ continuous run)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P9-13</td><td>Cold start sync (block 0 to target height)</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-1</td><td>51% attack consistency (100+ block reorg)</td><td><span class="tag tag-sim">Sim</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-3</td><td>Cartel mining (5 miners, 70% power)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-4</td><td>Selfish mining simulation</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-5</td><td>Spam economics (attacker cost vs network cost)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-6</td><td>Long-term miner equilibrium (10 to 100k miners)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-7</td><td>Rich get richer (proportionality vs superlinearity)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-9</td><td>Exchange attack (actor buys 30% of supply)</td><td><span class="tag tag-py">Python</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-10</td><td>P2P protocol fuzzing (cargo-fuzz)</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-11</td><td>RPC/JSON API fuzzing</td><td><span class="tag tag-rust">Rust</span></td><td class="ignore">TODO</td></tr>
+<tr><td>P10-12</td><td>Memory/CPU/Disk profile under real load</td><td><span class="tag tag-sh">Script</span></td><td class="ignore">TODO</td></tr>
 </table>
 
 <div class="footer">
