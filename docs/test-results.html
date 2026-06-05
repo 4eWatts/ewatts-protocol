@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eWatts — Test Suite Results</title>
-<meta name="description" content="eWatts protocol test suite results: 186 tests passing, 0 failures, 6 ignored.">
+<meta name="description" content="eWatts protocol test suite results: 190 tests passing, 0 failures, 6 ignored.">
 <meta property="og:title" content="eWatts — Test Suite Results">
-<meta property="og:description" content="186 tests passing, 0 failures. Protocol core, privacy, and economics validation.">
+<meta property="og:description" content="190 tests passing, 0 failures. Protocol core, privacy, and economics validation.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="eWatts — Test Suite Results">
-<meta name="twitter:description" content="186 tests passing, 0 failures.">
+<meta name="twitter:description" content="190 tests passing, 0 failures.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="logo.png">
@@ -77,7 +77,7 @@ tr:hover td { background:#0e0e18; }
 </nav>
 
 <h1>Test Suite Results</h1>
-<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
+<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2066</p>
 <p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
 <strong>Testnet feature flag:</strong> <code>--features testnet</code> uses compressed timing parameters 
 (FOUNDER_LOCK_BLOCKS = 500 instead of 50000) to allow validation within reasonable test duration. 
@@ -86,11 +86,11 @@ see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, 
 </p>
 
 <div class="summary">
-  <div class="summary-item"><span class="summary-num text-green">186</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-green">190</span><span class="summary-label">Passed</span></div>
   <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
   <div class="summary-item"><span class="summary-num text-muted">6</span><span class="summary-label">Ignored</span></div>
   <div class="summary-item"><span class="summary-num text-muted">10</span><span class="summary-label">Filtered</span></div>
-  <div class="summary-item"><span class="summary-num">202</span><span class="summary-label">Total</span></div>
+  <div class="summary-item"><span class="summary-num">206</span><span class="summary-label">Total</span></div>
 </div>
 
 <p>This round: 15 new tests written + 4 bugs fixed in existing code.</p>
@@ -181,7 +181,7 @@ which validate the same invariants through direct state access with specific err
 <tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
 
-<h2>Full Test Listing (202 tests)</h2>
+<h2>Full Test Listing (206 tests)</h2>
 <p>All individual <code>#[test]</code> functions across the codebase. Grouped by source module.</p>
 <table>
 <tr><th>Phase</th><th>Test</th><th>Status</th></tr>
