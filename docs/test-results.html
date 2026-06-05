@@ -78,6 +78,12 @@ tr:hover td { background:#0e0e18; }
 
 <h1>Test Suite Results</h1>
 <p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 5 June 2026</p>
+<p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+<strong>Testnet feature flag:</strong> <code>--features testnet</code> uses compressed timing parameters 
+(FOUNDER_LOCK_BLOCKS = 500 instead of 50000) to allow validation within reasonable test duration. 
+Production-level parameters (mainnet values) are validated by Rust unit tests that do not depend on the testnet feature flag &mdash; 
+see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, and ramp-up cap math.
+</p>
 
 <div class="summary">
   <div class="summary-item"><span class="summary-num text-green">159</span><span class="summary-label">Passed</span></div>
@@ -163,7 +169,7 @@ which validate the same invariants through direct state access with specific err
 <tr><td><code>p9_key_image_reuse_after_reorg</code></td><td>Spent_key_images grows monotonically as blocks are added.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 <tr><td><code>p9_stealth_scanning_performance</code></td><td>1000 owned + 1000 non-owned addresses. All found, zero false positives.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 <tr><td><code>p9_sybil_emission_equivalence</code></td><td>Same total_eff = same emission. 1000 identities gain no advantage over 1.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow). Synthetic analysis.</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow on synthetic chain). High randomness &mdash; privacy holds against tested heuristics (78% of attributions are incorrect).</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
 </table>
 
 <h2>Phase 10 — Economics & Performance</h2>
@@ -428,7 +434,7 @@ which validate the same invariants through direct state access with specific err
 <tr><td><code>p9_key_image_reuse_after_reorg</code></td><td>Spent_key_images grows monotonically as blocks are added.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 <tr><td><code>p9_stealth_scanning_performance</code></td><td>1000 owned + 1000 non-owned addresses. All found, zero false positives.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 <tr><td><code>p9_sybil_emission_equivalence</code></td><td>Same total_eff = same emission. 1000 identities gain no advantage over 1.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
-<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow). Synthetic analysis.</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow on synthetic chain). High randomness &mdash; privacy holds against tested heuristics (78% of attributions are incorrect).</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
 </table>
 
 <h2>Phase 10 — Economics & Performance</h2>
