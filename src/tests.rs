@@ -496,3 +496,187 @@ fn monetary_double_spend_rejected() {
     assert!(!spent.contains(&[12u8; 32]),
         "First spend should not have inserted key_image (failed at revealed check)");
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ECONOMIC INVARIANTS — real pipeline tests (audit-gap closure)
+// ═══════════════════════════════════════════════════════════════════════
+
+// E1: Coinbase founder lock — mine a real block and verify spendable_after
+#[test]
+fn economic_coinbase_has_correct_lock() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+
+    let (b1, _) = test_mine(gen_hash, 1, &mut state);
+    let coinbase = &b1.body.transactions[0];
+    assert!(!coinbase.outputs.is_empty(), "Coinbase must have outputs");
+
+    let expected_lock = crate::reward::founder_lock_block(1);
+    for (i, output) in coinbase.outputs.iter().enumerate() {
+        assert_eq!(output.spendable_after, expected_lock,
+            "Coinbase output {} at block 1: got {}, expected {}",
+            i, output.spendable_after, expected_lock);
+    }
+
+    // Block 15000+ should have lock=0 (post-foundation)
+    assert_eq!(crate::reward::founder_lock_block(15000), 0);
+    assert_eq!(crate::reward::founder_lock_block(50000), 0);
+}
+
+// E2: Founder lock — try spending a real coinbase UTXO before lock height
+#[test]
+fn economic_founder_lock_rejects_premature_spend() {
+    let sk = SigningKey::generate(&mut rand::thread_rng());
+    let pk = sk.verifying_key().to_bytes();
+    let (mut state, gen_block) = test_init(&pk);
+    let gen_hash = gen_block.header.hash();
+
+    let (b1, _) = test_mine(gen_hash, 1, &mut state);
+    state.apply_block(&b1, 1).expect("Block 1 must apply");
+
+    let coinbase_tx = &b1.body.transactions[0];
+    let coinbase_tx_hash = coinbase_tx.hash();
+    let expected_lock = crate::reward::founder_lock_block(1);
+    let coinbase_amount = coinbase_tx.outputs[0].amount;
+    let coinbase_pkh = coinbase_tx.outputs[0].pubkey_hash;
+
+    assert_eq!(coinbase_tx.outputs[0].spendable_after, expected_lock);
+
+    // Spend attempt at block 2 (before lock) — must fail time-locked
+    let spend_tx = Transaction {
+        version: 1,
+        inputs: vec![TxInput {
+            previous_tx_hash: coinbase_tx_hash,
+            output_index: 0,
+            key_image: [0xAA; 32],
+            revealed_pubkey: vec![],
+        }],
+        outputs: vec![TxOutput {
+            amount: coinbase_amount - 1,
+            pubkey_hash: coinbase_pkh,
+            spendable_after: 0,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
+        }],
+        ring_size: 1,
+        signatures: vec![],
+        mlsag: None,
+        ring_members: None,
+    };
+
+    let result = state.spend_transaction_inputs(&spend_tx, 2);
+    assert!(result.is_err(), "Must reject spend before lock height");
+    let err = result.unwrap_err();
+    assert!(err.contains("time-lock") || err.contains("time-locked"),
+        "Error must mention time-lock, got: {}", err);
+
+    // UTXO must still exist (spend failed before mutating state)
+    let check_key = crate::state::UtxoKey { tx_hash: coinbase_tx_hash, output_index: 0 };
+    assert!(state.get_utxo(&check_key).is_some(),
+        "UTXO must still exist after rejected spend");
+}
+
+// E3: Double-spend — real key_image tracking with signed transaction
+#[test]
+fn economic_double_spend_key_image_rejected() {
+    let mut state = UtxoSet::new();
+
+    // Insert a spendable UTXO
+    let (sk_bytes, pk_bytes) = {
+        let sk = ed25519_dalek::SigningKey::generate(&mut rand::thread_rng());
+        let pk = sk.verifying_key();
+        let expected_hash = TxOutput::hash_pubkey(&pk.to_bytes());
+        // Use the generated pk hash as our pubkey_hash
+        (sk, expected_hash)
+    };
+
+    let tx_hash = [0xBB; 32];
+    let source_tx = Transaction {
+        version: 1,
+        inputs: vec![],
+        outputs: vec![TxOutput {
+            amount: 100_000_000,
+            pubkey_hash: pk_bytes,  // matches generated key
+            spendable_after: 0,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
+        }],
+        ring_size: 1,
+        signatures: vec![],
+        mlsag: None,
+        ring_members: None,
+    };
+    state.add_transaction_outputs(&tx_hash, &source_tx, 0, 0);
+
+    let pk_vec = sk_bytes.verifying_key().to_bytes().to_vec();
+    let spend_pkh = [0xEE; 20];  // dummy recipient
+
+    // Build a tx that will pass P2PKH verification
+    let spend_tx = Transaction {
+        version: 1,
+        inputs: vec![TxInput {
+            previous_tx_hash: tx_hash,
+            output_index: 0,
+            key_image: [0xDD; 32],
+            revealed_pubkey: pk_vec.clone(),
+        }],
+        outputs: vec![TxOutput {
+            amount: 50_000_000,
+            pubkey_hash: spend_pkh,
+            spendable_after: 0,
+            stealth_dest: None,
+            commitment_bytes: None,
+            range_proof_bytes: None,
+            ephemeral: None,
+        }],
+        ring_size: 1,
+        signatures: vec![],  // placeholder
+        mlsag: None,
+        ring_members: None,
+    };
+
+    // Sign it — must use tx_msg() not tx.hash() for ed25519dalek
+    use ed25519_dalek::Signer;
+    let msg = crate::state::tx_msg(&spend_tx);
+    let sig = sk_bytes.sign(&msg);
+    let signed_tx = Transaction {
+        signatures: vec![sig.to_bytes().to_vec()],
+        ..spend_tx
+    };
+
+    // First spend must succeed
+    let r1 = state.spend_transaction_inputs(&signed_tx, 1);
+    assert!(r1.is_ok(), "First spend must succeed: {:?}", r1);
+
+    // key_image must be tracked
+    assert!(state.spent_key_images().contains(&[0xDD; 32]),
+        "key_image must be in spent set after successful spend");
+
+    // Second spend with same key_image (different tx) must fail with "Double"
+    let repeat_tx = Transaction {
+        version: 1,
+        inputs: vec![TxInput {
+            previous_tx_hash: [0xFF; 32],  // different UTXO
+            output_index: 0,
+            key_image: [0xDD; 32],  // SAME key_image
+            revealed_pubkey: pk_vec,
+        }],
+        outputs: vec![],
+        ring_size: 1,
+        signatures: vec![],
+        mlsag: None,
+        ring_members: None,
+    };
+
+    let r2 = state.spend_transaction_inputs(&repeat_tx, 1);
+    assert!(r2.is_err(), "Second spend with same key_image must be rejected");
+    let err2 = r2.unwrap_err();
+    assert!(err2.contains("Double"),
+        "Error must contain 'Double', got: {}", err2);
+}
