@@ -220,12 +220,12 @@ mod tests_v3 {
         let total_eff = 100_000u64 * 1_000_000_000u64;  // 1e14
         let em = compute_emission_rate_v3(constants::S_THRESHOLD_UNITS, total_eff);
         let base_units = emission_prec_to_units(em);
-        let expected_eW = 206.25f64;
-        let got_eW = base_units as f64 / constants::UNITS_PER_EWATT as f64;
-        let ratio = got_eW / expected_eW;
+        let expected_ew = 206.25f64;
+        let got_ew = base_units as f64 / constants::UNITS_PER_EWATT as f64;
+        let ratio = got_ew / expected_ew;
         assert!((ratio - 1.0).abs() < 0.001,
             "Mature emission (total_eff=1e14): expected ~206.25 eW/block, got {} eW/block (ratio: {})",
-            got_eW, ratio);
+            got_ew, ratio);
     }
 
     #[test]
