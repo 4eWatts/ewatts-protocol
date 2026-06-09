@@ -192,6 +192,44 @@ footer a:hover { color:#c8c8cc; }
 
 <hr>
 
+<!-- ============= VIDEOS ============= -->
+<section class="section">
+  <div class="section-label">Videos</div>
+  <h2>eWatts in 5 minutes</h2>
+  <a id="videos" style="scroll-margin-top:60px;"></a>
+  <p class="intro" style="font-size:13px;color:#6b6b8a;margin-bottom:16px;">
+    Two short explainers: where eWatts fits in the history of money, and how DRAM latency gives it a stable physical anchor.
+  </p>
+
+  <div class="cards-2">
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+        <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Evolution of Money</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          Bitcoin redefined digital value. The dollar connects global commerce. Gold preserves purchasing power through physical cost. There is a space between them, and eWatts bridges it.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+        <source src="videos/eWatts-Physics-of-Value.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Physics of Value</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          DRAM latency has been flat for 20 years. Mining depends on it. No ASIC can shortcut it. The cost of each eWatt stays stable, and privacy is the default.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
 <!-- ============= WHY THIS MATTERS ============= -->
 <section class="section" style="padding-top:20px;">
   <div class="section-label">Why this matters</div>
@@ -391,44 +429,6 @@ $ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 
     • <strong>Antivirus blocking:</strong> add <code>target\release\</code> folder as exception<br>
     • <strong>Disk full:</strong> run <code>cargo clean</code> to free ~1.5 GB<br>
     • <strong>Git not found:</strong> install from git-scm.com (Windows) or <code>apt install git</code> (Linux)
-  </div>
-</section>
-
-<hr>
-
-<!-- ============= VIDEOS ============= -->
-<section class="section">
-  <div class="section-label">Videos</div>
-  <h2>eWatts in 5 minutes</h2>
-  <a id="videos" style="scroll-margin-top:60px;"></a>
-  <p class="intro" style="font-size:13px;color:#6b6b8a;margin-bottom:16px;">
-    Two short explainers: where eWatts fits in the history of money, and how DRAM latency gives it a stable physical anchor.
-  </p>
-
-  <div class="cards-2">
-    <div class="card" style="padding:0;overflow:hidden;background:#000;">
-      <video controls preload="metadata" style="width:100%;display:block;" poster="">
-        <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
-      </video>
-      <div style="padding:14px 16px;">
-        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Evolution of Money</h3>
-        <p style="font-size:12px;color:#6b6b8a;margin:0;">
-          Bitcoin redefined digital value. The dollar connects global commerce. Gold preserves purchasing power through physical cost. There is a space between them, and eWatts bridges it.
-        </p>
-      </div>
-    </div>
-
-    <div class="card" style="padding:0;overflow:hidden;background:#000;">
-      <video controls preload="metadata" style="width:100%;display:block;" poster="">
-        <source src="videos/eWatts-Physics-of-Value.mp4" type="video/mp4">
-      </video>
-      <div style="padding:14px 16px;">
-        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Physics of Value</h3>
-        <p style="font-size:12px;color:#6b6b8a;margin:0;">
-          DRAM latency has been flat for 20 years. Mining depends on it. No ASIC can shortcut it. The cost of each eWatt stays stable, and privacy is the default.
-        </p>
-      </div>
-    </div>
   </div>
 </section>
 
