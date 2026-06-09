@@ -162,7 +162,7 @@ footer a:hover { color:#c8c8cc; }
   <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
     <span style="color:#6ac86a;">Phase 2: Testnet</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>189 tests</span>
+    <span>198 tests</span>
     <span style="color:#2a2a3a;">|</span>
     <span>0 failures</span>
     <span style="color:#2a2a3a;">|</span>
@@ -188,6 +188,48 @@ footer a:hover { color:#c8c8cc; }
     <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">Source code</a>
   </div>
 </div>
+
+<hr>
+
+<!-- ============= THREE LAYERS ============= -->
+<section class="section">
+  <div class="section-label">Architecture</div>
+  <h2>Three-layer system</h2>
+  <p class="intro" style="font-size:13px;color:#5a5a72;margin-bottom:8px;">
+    eWatts separates protocol execution, economic interpretation, and adversarial validation into three distinct layers. They do not mix.
+  </p>
+
+  <div class="layer-card layer-1">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h3><span class="tag">Layer 1</span> Protocol Core</h3>
+      <span style="font-size:11px;color:#3a6a8a;">Deterministic State Machine</span>
+    </div>
+    <p>Single canonical ledger. Block validation, UTXO transitions, emission math. Any node can independently verify every state transition: S<sub>t+1</sub> = f(S<sub>t</sub>, B<sub>t</sub>). No external input, no discretionary adjustment.</p>
+    <div style="margin-top:8px;font-size:12px;color:#4a6a8a;">Output: deterministic validation engine, cryptographic correctness, one canonical chain.</div>
+  </div>
+
+  <div class="layer-card layer-2">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h3><span class="tag">Layer 2</span> Economic Hypothesis</h3>
+      <span style="font-size:11px;color:#6a3a8a;">Interpretation Layer</span>
+    </div>
+    <p>Defines the economic meaning of the system without affecting protocol rules. Core hypothesis: monetary systems anchored in low-delta physical substrates (DRAM latency at 1-2%/year vs ASIC at 25-30%) exhibit structurally different stability properties. This layer is falsifiable, not binding.</p>
+    <div style="margin-top:8px;font-size:12px;color:#6a4a8a;">Does NOT define consensus rules, validation logic, or affect execution.</div>
+  </div>
+
+  <div class="layer-card layer-3">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h3><span class="tag">Layer 3</span> Adversarial Consensus</h3>
+      <span style="font-size:11px;color:#6a6a3a;">Robustness Engine</span>
+    </div>
+    <p>Models system behavior under strategic, adversarial conditions. Fork reality: multiple valid chains exist simultaneously. Nodes select chains maximizing <code>S(C) = W(C) - C_attack(C)</code>. Threat models include delayed, partitioned, selfish, withholding, and conflicting-state attacks.</p>
+    <div style="margin-top:8px;font-size:12px;color:#6a6a3a;">Output: emergent consensus behavior, adversarial resilience metrics, system stability envelope.</div>
+  </div>
+
+  <div style="margin-top:12px;padding:12px 16px;background:#0c0c18;border:1px solid #3b82f6;border-radius:5px;font-size:13px;color:#8baac8;">
+    <strong style="color:#c8c8cc;">Core design principle:</strong> Layer 1 is truth. Layer 2 is interpretation. Layer 3 is simulation. They never cross. <a href="architecture.html" style="color:#3b82f6;">Full architecture &rsaquo;</a>
+  </div>
+</section>
 
 <hr>
 
@@ -409,7 +451,7 @@ $ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 
   <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
   <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
   <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 2 (Testnet), 189 tests passing, 0 failures, deployed testnet. <a href="test-results.html" style="color:#6ac86a;text-decoration:none;">Test suite</a>. MIT License. Code is auditable and runnable today.</p>
+  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 2 (Testnet), 198 tests passing, 0 failures, deployed testnet. <a href="test-results.html" style="color:#6ac86a;text-decoration:none;">Test suite</a>. MIT License. Code is auditable and runnable today.</p>
 </section>
 
 <section class="section" id="specs">

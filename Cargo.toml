@@ -3,6 +3,15 @@ name = "ewatts-protocol"
 version = "0.1.0"
 edition = "2021"
 description = "Ewatts — Memory-Bound Proof-of-Work protocol node"
+
+[[bin]]
+name = "ewatts-protocol"
+path = "src/main.rs"
+
+[[bin]]
+name = "steady-bench"
+path = "src/bin/steady_bench.rs"
+required-features = []
 license = "MIT"
 
 [dependencies]
