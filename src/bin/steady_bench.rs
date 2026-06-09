@@ -7,14 +7,15 @@
 //!   cargo run --bin steady-bench -- [opts]
 //!
 //! Flags:
-//!   --duration <s>     Duração do benchmark em segundos (default 60)
-//!   --dag-size <mb>    Tamanho do DAG em MB (default 4 = testnet)
-//!   --difficulty <n>   Dificuldade de mining (default 100)
-//!   --threads <n>      Número de threads paralelas (default 1)
-//!   --report-interval <s>  Intervalo de relatório parcial (default 10)
+//!   --duration <s>        Duração do benchmark em segundos (default 60)
+//!   --dag-size <mb>       Tamanho do DAG em MB (default 4 = testnet)
+//!   --dag-cache           Salva/carrega DAG de disco ("ewatts_dag_cache_{size}mb.bin")
+//!   --difficulty <n>      Dificuldade de mining (default 100)
+//!   --threads <n>         Número de threads paralelas (default 1)
+//!   --report-interval <s> Intervalo de relatório parcial (default 10)
 //!
-//! Exemplo (mainnet-like):
-//!   cargo run --bin steady-bench -- --duration 120 --dag-size 256 --difficulty 1000
+//! Exemplo:
+//!   cargo run --bin steady-bench -- --duration 120 --dag-size 1024 --dag-cache
 
 use std::io::Write;
 use std::time::{Duration, Instant};
@@ -34,8 +35,10 @@ fn main() {
     let difficulty: u64 = parse_arg(&args, "--difficulty").unwrap_or(100);
     let num_threads: usize = parse_arg(&args, "--threads").unwrap_or(1) as usize;
     let report_interval: u64 = parse_arg(&args, "--report-interval").unwrap_or(10);
+    let use_dag_cache = args.iter().any(|s| s == "--dag-cache");
 
     let dag_size_bytes = dag_size_mb * 1024 * 1024;
+    let cache_path = format!("ewatts_dag_cache_{}mb.bin", dag_size_mb);
 
     println!("╔══════════════════════════════════════════════════════╗");
     flush();
@@ -46,17 +49,54 @@ fn main() {
     println!("║  Duration:      {}s", duration_secs);
     println!("║  Threads:       {}", num_threads);
     println!("║  Report every:  {}s", report_interval);
+    if use_dag_cache {
+        println!("║  DAG cache:     {} ({} on disk)",
+            cache_path,
+            if std::path::Path::new(&cache_path).exists() { "found" } else { "will save" });
+    }
     println!("╠══════════════════════════════════════════════════════╣");
-    println!("║  Generating DAG...                                  ║");
+    println!("║  Loading/generating DAG...                          ║");
     println!("╚══════════════════════════════════════════════════════╝");
     flush();
 
-    // Generate DAG
+    // Load or generate DAG
     let dag_gen_start = Instant::now();
-    let dag = ewatts_protocol::dag::Dag::generate_with_size(0, dag_size_bytes);
-    let dag_gen_elapsed = dag_gen_start.elapsed();
-    println!("  DAG generated in {:.3}s ({} elements)", dag_gen_elapsed.as_secs_f64(), dag.len());
-    flush();
+    let dag = if use_dag_cache && std::path::Path::new(&cache_path).exists() {
+        println!("  Loading DAG from {}...", cache_path);
+        flush();
+        let raw = std::fs::read(&cache_path).expect("Failed to read DAG cache");
+        let n = raw.len() / 64;
+        let mut elements = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut buf = [0u8; 64];
+            buf.copy_from_slice(&raw[i*64..(i+1)*64]);
+            elements.push(buf);
+        }
+        let elapsed = dag_gen_start.elapsed();
+        println!("  Loaded {} elements in {:.3}s", n, elapsed.as_secs_f64());
+        flush();
+        ewatts_protocol::dag::Dag { elements, epoch: 0, size_bytes: dag_size_bytes }
+    } else {
+        println!("  Generating DAG ({} MB)...", dag_size_mb);
+        flush();
+        let dag = ewatts_protocol::dag::Dag::generate_with_size(0, dag_size_bytes);
+        let elapsed = dag_gen_start.elapsed();
+        println!("  DAG generated in {:.3}s ({} elements)", elapsed.as_secs_f64(), dag.len());
+        flush();
+
+        if use_dag_cache {
+            println!("  Saving DAG to {}...", cache_path);
+            flush();
+            let mut raw = Vec::with_capacity(dag.elements.len() * 64);
+            for elem in &dag.elements {
+                raw.extend_from_slice(elem);
+            }
+            std::fs::write(&cache_path, &raw).expect("Failed to write DAG cache");
+            println!("  Saved ({})", format_bytes(raw.len() as u64));
+            flush();
+        }
+        dag
+    };
 
     // Atomic counters
     let running = Arc::new(AtomicBool::new(true));
