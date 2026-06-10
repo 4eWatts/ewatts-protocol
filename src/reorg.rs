@@ -3,6 +3,7 @@
 use crate::block::Block;
 use crate::chain::ChainStore;
 use crate::state::{BlockDiff, UtxoKey, UtxoSet};
+use log::{info, trace};
 
 #[derive(Debug)]
 pub enum ForkDecision {
@@ -61,11 +62,8 @@ pub fn execute_reorg(
     store: &mut ChainStore,
     state: &mut UtxoSet,
 ) -> Result<Vec<[u8; 32]>, String> {
-    println!(
-        "REORG: unwinding {} blocks, applying {} blocks",
-        to_unwind.len(),
-        to_apply.len()
-    );
+    info!("REORG: unwinding {} blocks, applying {} blocks",
+        to_unwind.len(), to_apply.len());
 
     let max_reorg = 100;
     if to_unwind.len() > max_reorg || to_apply.len() > max_reorg {
@@ -86,7 +84,7 @@ pub fn execute_reorg(
         Err(e) => {
             *state = state_snapshot;
             *store = store_snapshot;
-            println!("REORG FAILED: rolling back snapshot -- {}", e);
+            info!("REORG FAILED: rolling back snapshot -- {}", e);
             Err(e)
         }
     }
@@ -107,7 +105,7 @@ fn execute_reorg_inner(
         // Use BlockDiff unwind when available (P2P path), fallback to legacy unwind
         if let Some(diff) = store.block_diffs.get(hash) {
             state.unwind_with_diff(diff)?;
-            println!("  Unwound block #{} {:x}.. (diff)", height, hash[0]);
+            trace!("REORG: unwound block #{} {:x}.. (diff)", height, hash[0]);
         } else {
             // Fallback: construct BlockDiff from block data (disk-loaded or pre-diff era)
             let mut fallback_diff = BlockDiff::new();
@@ -131,7 +129,7 @@ fn execute_reorg_inner(
                 }
             }
             state.unwind_with_diff(&fallback_diff)?;
-            println!("  Unwound block #{} {:x}.. (fallback)", height, hash[0]);
+            trace!("REORG: unwound block #{} {:x}.. (fallback)", height, hash[0]);
         }
     }
 
@@ -143,7 +141,7 @@ fn execute_reorg_inner(
         // Capture diff for future unwinds
         let diff = state.apply_block_and_track(block, height)?;
         store.block_diffs.insert(*hash, diff);
-        println!("  Applied block #{} {:x}..", height, hash[0]);
+        trace!("REORG: applied block #{} {:x}..", height, hash[0]);
     }
 
     // Phase 3: Update chain tip
@@ -153,11 +151,8 @@ fn execute_reorg_inner(
         return Err("No blocks to apply in reorg".into());
     }
 
-    println!(
-        "REORG complete: new tip #{} {:x}..",
-        store.chain_tip_height(),
-        store.chain_tip_hash()[0]
-    );
+    info!("REORG complete: new tip #{} {:x}..",
+        store.chain_tip_height(), store.chain_tip_hash()[0]);
 
     // Determine which txs from unwound blocks should be resurrected
     let mut resurrect = Vec::new();
