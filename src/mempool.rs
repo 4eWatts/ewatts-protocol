@@ -303,7 +303,7 @@ mod tests {
         let state = UtxoSet::genesis(1_000_000, &[0; 32]);
         let tx = make_dummy_tx(100, 0xcc);
         let _ = submit(tx, &state);
-        let drained = drain();
+        let _drained = drain();
         assert_eq!(pending_count(), 0);
         // If submit succeeded, drained should not be empty
         // If submit failed, drained is empty, which is also fine

@@ -532,10 +532,8 @@ pub fn has_miner_key() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::block::{Block, BlockHeader, BlockBody, Transaction, TxOutput};
+    use crate::block::{Block, BlockHeader, BlockBody};
     use crate::constants;
-    use tempfile::tempdir;
-    use std::sync::Mutex;
 
     /// Store tests need serial execution (shared data_dir() = "ewatts_data/" relative to CWD).
     /// Use `cargo test test_store_ -- --test-threads=1` to run.
@@ -570,9 +568,8 @@ mod tests {
     /// with other test modules running in parallel.
     macro_rules! setup_dir { () => {
         invalidate_cache();
-        let dir = tempfile::tempdir().unwrap();
-        set_data_dir(dir.path().to_str().unwrap().to_string());
-        let _ = dir;
+        let _dir = tempfile::tempdir().unwrap();
+        set_data_dir(_dir.path().to_str().unwrap().to_string());
     } }
 
     mod serial {

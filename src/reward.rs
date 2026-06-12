@@ -276,6 +276,7 @@ mod tests_v3 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(deprecated)]
     #[test] fn test_founder_lock() {
         // testnet: block+0 with 500-block lock; mainnet: 50000-block lock
         #[cfg(feature = "testnet")]
