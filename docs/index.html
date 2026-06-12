@@ -25,17 +25,6 @@ nav { display:flex; justify-content:space-between; align-items:center; padding:1
 .logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
 .nav-links { display:flex; gap:20px; }
-/* ============= DROPDOWN ============= */
-.nav-dropdown { position:relative; display:inline-block; }
-.nav-dropdown > a { cursor:pointer; }
-.nav-dropdown-menu { display:none; position:absolute; top:100%; left:0; min-width:150px; background:#12121e; border:1px solid #2a2a3a; border-radius:5px; padding:6px 0; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,0.5); }
-.nav-dropdown-menu a { display:block; padding:7px 16px; font-size:13px; color:#8b8baa; text-decoration:none; white-space:nowrap; transition:background .12s, color .12s; }
-.nav-dropdown-menu a:hover { background:#1a1a2e; color:#d4d4dc; }
-.nav-dropdown:hover .nav-dropdown-menu,
-.nav-dropdown:focus-within .nav-dropdown-menu { display:block; }
-@media (max-width:720px) {
-  .nav-dropdown-menu { position:static; box-shadow:none; border:none; padding-left:12px; background:transparent; }
-}
 
 .nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
 .nav-links a:hover { color:#c8c8cc; }
@@ -200,15 +189,7 @@ footer a:hover { color:#c8c8cc; }
   <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
   <div class="nav-links">
     <a href="index.html">Home</a>
-    <div class="nav-dropdown">
-      <a>Protocol &#9662;</a>
-      <div class="nav-dropdown-menu">
-        <a href="explorer.html">Explorer</a>
-        <a href="wallet.html">Wallet</a>
-        <a href="MINING.md">Mining Guide</a>
-        <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
-      </div>
-    </div>
+    <a href="protocol.html">Protocol</a>
     <a href="architecture.html">Architecture</a>
     <a href="ewatts_economics.html">Economic Model</a>
   </div>
