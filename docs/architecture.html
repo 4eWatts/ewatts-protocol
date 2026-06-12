@@ -87,13 +87,11 @@ table.specs td:last-child { color:#c8c8cc; }
 <div class="container">
 
 <nav>
-  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">architecture</span></div>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
   <div class="nav-links">
     <a href="index.html">Home</a>
-    <a href="explorer.html">Explorer</a>
-    <a href="wallet.html">Wallet</a>
-    <a href="architecture.html">Architecture</a>
-    <a href="ewatts_economics.html">Economic Model</a>
+    <a href="index.html#protocol">Protocol</a>
+    <a href="index.html#mine">Mine</a>
     <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
   </div>
 </nav>
@@ -229,76 +227,46 @@ table.specs td:last-child { color:#c8c8cc; }
     </table>
   </div>
 
-</section>
-
-<hr>
-
-<!-- ============= APPENDIX: FULL PARAMETER TABLE ============= -->
-<section class="section" id="appendix">
-  <div class="section-label">Appendix</div>
-  <h2>Protocol constants &mdash; full u64 parameter set</h2>
-  <p class="intro" style="font-size:13px;color:#5a5a72;margin-bottom:8px;">
-    Complete set of u64 constants from <code>src/constants.rs</code> defining the eWatts protocol v3 emission formula, DAG, and consensus rules. All values are in u64 fixed-point precision where noted.
-  </p>
-
-  <div class="rule-box" style="margin-top:16px;">
-    <h4>Block Timing</h4>
-    <table class="specs" style="font-size:13px;">
-      <tr><td style="width:200px;"><code>TARGET_BLOCK_TIME_SECS</code></td><td>600</td><td style="color:#6b6b88;">Target time between blocks (10 min)</td></tr>
-      <tr><td><code>BLOCKS_PER_DAY</code></td><td>144</td><td style="color:#6b6b88;">24 h &times; 6 blocks/h</td></tr>
-      <tr><td><code>BLOCKS_PER_YEAR</code></td><td>52,560</td><td style="color:#6b6b88;">365 d &times; 144 blocks/d</td></tr>
-      <tr><td><code>VR_WINDOW_BLOCKS</code></td><td>1,000</td><td style="color:#6b6b88;">Blocks used for VR computation</td></tr>
-    </table>
-  </div>
-
-  <div class="rule-box" style="margin-top:12px;">
-    <h4>Emission &amp; Economics</h4>
-    <table class="specs" style="font-size:13px;">
-      <tr><td style="width:200px;"><code>M_MAX</code></td><td>100,000</td><td style="color:#6b6b88;">Bootstrap multiplier at block 1</td></tr>
-      <tr><td><code>S_THRESHOLD_UNITS</code></td><td>10<sup>16</sup></td><td style="color:#6b6b88;">Maturity threshold in base units (10 billion eWatts)</td></tr>
-      <tr><td><code>N_CALIBRATION</code></td><td>100,000</td><td style="color:#6b6b88;">Reference network size where cost = P_target at maturity</td></tr>
-      <tr><td><code>P_TARGET_MICRO</code></td><td>1,000,000 ($1.00)</td><td style="color:#6b6b88;">Target production cost per eWatt at maturity in micro-USD</td></tr>
-      <tr><td><code>J_PER_GB</code></td><td>6.0 J</td><td style="color:#6b6b88;">Energy per GB of effective memory bandwidth</td></tr>
-      <tr><td><code>J_PER_KWH</code></td><td>3,600,000</td><td style="color:#6b6b88;">Joules per kWh</td></tr>
-      <tr><td><code>UNITS_PER_EWATT</code></td><td>1,000,000</td><td style="color:#6b6b88;">1 eWatt = 1,000,000 base units</td></tr>
-      <tr><td><code>ECENTS_PER_EWATT</code></td><td>100</td><td style="color:#6b6b88;">1 eWatt = 100 ecents (transaction precision)</td></tr>
-      <tr><td><code>EMISSION_PRECISION</code></td><td>1,000,000,000 (1e9)</td><td style="color:#6b6b88;">Fixed-point precision for emission rates</td></tr>
-      <tr><td><code>VR_PRECISION</code></td><td>1,000,000 (1e6)</td><td style="color:#6b6b88;">Fixed-point precision for VR (kWh/eWatt)</td></tr>
-      <tr><td><code>COMMIT_PRECISION</code></td><td>1,000,000,000 (1e9)</td><td style="color:#6b6b88;">Fixed-point precision for effective commit</td></tr>
-    </table>
-  </div>
-
-  <div class="rule-box" style="margin-top:12px;">
-    <h4>DAG (Proof-of-Work)</h4>
-    <table class="specs" style="font-size:13px;">
-      <tr><td style="width:200px;"><code>DAG_INITIAL_SIZE_BYTES</code></td><td>8 GB</td><td style="color:#6b6b88;">Starting DAG dataset size</td></tr>
-      <tr><td><code>DAG_ELEMENT_SIZE</code></td><td>64</td><td style="color:#6b6b88;">Bytes per DAG element</td></tr>
-      <tr><td><code>DAG_GROWTH_RATE_BYTES_PER_YEAR</code></td><td>512 MB</td><td style="color:#6b6b88;">Annual DAG growth rate</td></tr>
-      <tr><td><code>DAG_EPOCH_BLOCKS</code></td><td>2,016</td><td style="color:#6b6b88;">Blocks between DAG recalculation epochs</td></tr>
-      <tr><td><code>BASE_ACCESSES</code></td><td>1,000,000,000</td><td style="color:#6b6b88;">Baseline memory accesses for PoW verification</td></tr>
-    </table>
-  </div>
-
-  <div class="rule-box" style="margin-top:12px;">
-    <h4>Privacy &amp; P2P</h4>
-    <table class="specs" style="font-size:13px;">
-      <tr><td style="width:200px;"><code>RING_SIGNATURE_SIZE</code></td><td>11</td><td style="color:#6b6b88;">Number of keys in each ring signature (plausible deniability)</td></tr>
-      <tr><td><code>MAX_BLOCK_TXS</code></td><td>10,000</td><td style="color:#6b6b88;">Maximum transactions per block</td></tr>
-      <tr><td><code>MAX_PEERS</code></td><td>125</td><td style="color:#6b6b88;">Maximum P2P peer connections</td></tr>
-      <tr><td><code>PROTOCOL_VERSION</code></td><td>0x0004 (v3 emission)</td><td style="color:#6b6b88;">Current consensus protocol version</td></tr>
-    </table>
-  </div>
-
-  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #3b82f6;border-radius:5px;font-size:13px;color:#8baac8;">
-    <strong style="color:#c8c8cc;">&#9432; Live dashboard:</strong>
-    <span style="color:#6b6b88;">Monitor network health, emission, VR, and mining activity in real time at</span>
-    <a href="http://178.104.193.51:8080/" target="_blank" style="color:#3b82f6;">178.104.193.51:8080 &#8599;</a>
-  </div>
-
   <div style="margin-top:32px;">
     <a href="index.html" class="btn btn-outline">&#8592; Back to eWatts.org</a>
-    <a href="ewatts_economics.html" class="btn btn-outline" style="border-color:#3b82f6;color:#3b82f6;margin-left:8px;">Economic model</a>
   </div>
+</section>
+
+<!-- ============= SPECS ============= -->
+<section class="section">
+  <div class="section-label">Specifications</div>
+  <h2>Parameters</h2>
+  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1e6e3a;border-radius:5px;">
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:#3b82f6;font-size:16px;">&#9432;</span>
+      <div>
+        <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
+        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
+          eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
+          Mining is the only way to acquire coins. Founder outputs are time-locked on-chain
+          (<code>spendable_after = max(50000, block + 40000)</code>). Mining public key published before block 1.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <table class="specs">
+    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
+    <tr><td>Target block time</td><td>600 seconds</td></tr>
+    <tr><td>Signature verification</td><td>&lt;3 ms per MLSAG signature (ring of 11)</td></tr>
+    <tr><td>Ring size</td><td>11</td></tr>
+    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
+    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
+    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
+    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
+    <tr><td>BASE_EMISSION</td><td>100 eWatt/block</td></tr>
+    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
+    <tr><td>Ramp-up (blocks 1-10k)</td><td>80% cap per miner, excess burned</td></tr>
+    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
+    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
+    <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
+    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
+  </table>
 </section>
 
 <hr>

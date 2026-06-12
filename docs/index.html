@@ -270,44 +270,6 @@ footer a:hover { color:#c8c8cc; }
   </div>
 </section>
 
-<hr>
-
-<!-- ============= SPECS ============= -->
-<section class="section">
-  <div class="section-label">Specifications</div>
-  <h2>Parameters</h2>
-  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1e6e3a;border-radius:5px;">
-    <div style="display:flex;gap:10px;align-items:flex-start;">
-      <span style="color:#3b82f6;font-size:16px;">&#9432;</span>
-      <div>
-        <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
-        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
-          eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
-          Mining is the only way to acquire coins. Founder outputs are time-locked on-chain
-          (<code>spendable_after = max(50000, block + 40000)</code>). Mining public key published before block 1.
-        </p>
-      </div>
-    </div>
-  </div>
-
-  <table class="specs">
-    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
-    <tr><td>Target block time</td><td>600 seconds</td></tr>
-    <tr><td>Signature verification</td><td>&lt;3 ms per MLSAG signature (ring of 11)</td></tr>
-    <tr><td>Ring size</td><td>11</td></tr>
-    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
-    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
-    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
-    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
-    <tr><td>BASE_EMISSION</td><td>100 eWatt/block</td></tr>
-    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
-    <tr><td>Ramp-up (blocks 1-10k)</td><td>80% cap per miner, excess burned</td></tr>
-    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
-    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
-    <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
-    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
-  </table>
-</section>
 
 <hr>
 
