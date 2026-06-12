@@ -330,65 +330,6 @@ footer a:hover { color:#c8c8cc; }
   </div>
 </section>
 
-<hr>
-
-<!-- ============= GET STARTED ============= -->
-<section class="section" id="mine">
-  <div class="section-label">Get started</div>
-  <h2>Mine in 5 minutes (Windows, Mac, Linux)</h2>
-  <p class="intro">Any computer with 4 GB of RAM can mine. No GPU, no ASIC, no token purchase. Just RAM.</p>
-  
-  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #3b3b1a;border-radius:5px;font-size:13px;color:#c8c8c8;">
-    <strong>⚠️ Disk space:</strong> Compilation uses ~1.5 GB temporarily. Blockchain data is &lt;50 MB.
-  </div>
-
-  <div style="margin-top:20px;">
-    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐚 Windows (PowerShell)</h3>
-    <p style="font-size:12px;color:#5a5a72;">Open PowerShell. Paste commands ONE AT A TIME:</p>
-    <pre class="code-block" style="font-size:12px;white-space:pre-wrap;word-break:break-all;"><span class="cm"># Step 1 — Install Rust (~1 min)</span>
-PS&gt; curl.exe --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-<span class="cm"># CLOSE and REOPEN PowerShell</span>
-<span class="cm"># Step 2 — Download and compile (~6 min)</span>
-PS&gt; git clone https://github.com/4Ewatts/ewatts-protocol.git
-PS&gt; cd ewatts-protocol
-PS&gt; cargo build --release
-
-<span class="cm"># Step 3 — Connect to testnet and mine</span>
-PS&gt; .\target\release\ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1
-
-<span class="cm"># Open http://localhost:8080 in your browser</span></pre>
-  </div>
-
-  <div style="margin-top:16px;">
-    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">🐧 Linux / Mac</h3>
-    <pre class="code-block" style="font-size:12px;white-space:pre-wrap;word-break:break-all;"><span class="cm"># Install Rust</span>
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-$ source ~/.cargo/env
-
-<span class="cm"># Download and compile</span>
-$ git clone https://github.com/4Ewatts/ewatts-protocol.git
-$ cd ewatts-protocol
-$ cargo build --release
-
-<span class="cm"># Connect to public testnet</span>
-$ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1</pre>
-  </div>
-
-  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-    <a href="MINING.md" class="btn btn-primary">Mining guide</a>
-    <a href="install.sh" class="btn btn-outline" style="border-color:#22c55e;color:#22c55e;">Quick install (Linux/Mac)</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Report issues</a>
-  </div>
-
-  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;color:#5a5a72;">
-    <strong style="color:#8b8baa;">Troubleshooting:</strong><br>
-    • <strong>Port in use:</strong> change <code>--dash-port 8080</code> to <code>--dash-port 8081</code><br>
-    • <strong>Antivirus blocking:</strong> add <code>target\release\</code> folder as exception<br>
-    • <strong>Disk full:</strong> run <code>cargo clean</code> to free ~1.5 GB<br>
-    • <strong>Git not found:</strong> install from git-scm.com (Windows) or <code>apt install git</code> (Linux)
-  </div>
-</section>
 
 
 
