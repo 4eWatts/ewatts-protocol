@@ -282,36 +282,6 @@ footer a:hover { color:#c8c8cc; }
   </div>
 </section>
 
-<hr>
-
-<!-- ============= WHY THIS MATTERS ============= -->
-<section class="section" style="padding-top:20px;">
-  <div class="section-label">Why this matters</div>
-  <h2>Neutral infrastructure for a connected world</h2>
-
-  <div style="display:flex;flex-direction:column;gap:20px;margin-top:20px;">
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">A settlement layer with a physical anchor</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Energy cost has been the most stable price reference over the last decades. Not arbitrary,
-        not fixed, but physically bounded. That is the anchor eWatts is built on. Supply expands
-        at energy cost, proportional to real activity, not political calendars. For cross-border
-        trade, remittances, and privacy-preserving transactions, this combination of properties
-        didn't exist before.
-      </p>
-    </div>
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Private by default</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Every transaction protects sender, recipient, and amount by default. Changing that
-        requires 95% of miners and 95% of nodes. Privacy is the default mode, not an opt-in.
-      </p>
-    </div>
-
-  </div>
-</section>
 
 <hr>
 
@@ -486,43 +456,7 @@ $ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 
   </div>
 </section>
 
-<hr>
 
-<!-- ============= CODE ============= -->
-<section class="section">
-  <div class="section-label">Source</div>
-  <h2>Code structure</h2>
-  <pre class="code-block"><span class="cm">src/</span>
-  <span class="fn">privacy.rs</span>      Stealth addresses, MLSAG, Pedersen commitments, range proofs
-  <span class="fn">block.rs</span>        Block, transaction, merkle root, MlsagData serialization
-  <span class="fn">state.rs</span>        UTXO set, supply tracking, MLSAG verification
-  <span class="fn">mempool.rs</span>      Transaction pool, validation, broadcast
-  <span class="fn">wallet.rs</span>       Key generation, UTXO scanning, private transaction construction
-  <span class="fn">reward.rs</span>       Emission formula, VR computation, ramp-up cap
-  <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
-  <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
-  <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: Phase 2 (Testnet), 198 tests passing, 0 failures, deployed testnet. <a href="test-results.html" style="color:#6ac86a;text-decoration:none;">Test suite</a>. MIT License. Code is auditable and runnable today.</p>
-</section>
-
-<section class="section" id="specs">
-  <div class="section-label">Appendix</div>
-  <h2>Protocol parameters (u64)</h2>
-  <p style="font-size:13px;color:#6b6b8a;margin-bottom:12px;">Complete set of economic constants that define the emission function (whitepaper v28). All values in u64 fixed-point precision.</p>
-  <table class="specs">
-    <tr><td>M_MAX</td><td><code>100,000</code></td><td style="color:#6b6b8a;">Bootstrap multiplier at block 1</td></tr>
-    <tr><td>S_THRESHOLD</td><td><code>10,000,000,000</code></td><td style="color:#6b6b8a;">Formal maturity (eWatts, not units)</td></tr>
-    <tr><td>N_CALIBRATION</td><td><code>100,000</code></td><td style="color:#6b6b8a;">Miners at which cost = P_target</td></tr>
-    <tr><td>P_TARGET</td><td><code>$1.00</code></td><td style="color:#6b6b8a;">Target cost per eWatt at maturity</td></tr>
-    <tr><td>J_PER_GB</td><td><code>6.0 J</code></td><td style="color:#6b6b8a;">Energy per GB of effective bandwidth</td></tr>
-    <tr><td>BLOCKS_PER_YEAR</td><td><code>52,560</code></td><td style="color:#6b6b8a;">144 blocks/day × 365 days</td></tr>
-    <tr><td>W_NODE</td><td><code>75 W</code></td><td style="color:#6b6b8a;">Power consumption per mining node</td></tr>
-    <tr><td>COST_PER_BLOCK</td><td><code>$0.002063</code></td><td style="color:#6b6b8a;">Energy cost per block per node</td></tr>
-    <tr><td>EMISSION_PRECISION</td><td><code>1,000,000,000</code></td><td style="color:#6b6b8a;">Fixed-point precision (1e9)</td></tr>
-    <tr><td>PROTOCOL_VERSION</td><td><code>0x0004</code></td><td style="color:#6b6b8a;">Consensus rules (v3 emission formula)</td></tr>
-  </table>
-  <p style="margin-top:12px;font-size:12px;color:#5a5a72;">See <a href="architecture.html" style="color:#3b82f6;">3-layer architecture</a> for the formal system design, and <a href="ewatts_economics.html" style="color:#3b82f6;">interactive dashboard</a> for adoption scenario simulation.</p>
-</section>
 
 <hr>
 
