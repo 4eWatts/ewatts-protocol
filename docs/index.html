@@ -118,6 +118,41 @@ footer a:hover { color:#c8c8cc; }
 .system-summary { background:#0c0c18; border:1px solid #3b82f6; border-radius:6px; padding:16px 20px; margin-top:16px; font-size:14px; color:#8baac8; }
 .system-summary strong { color:#c8c8cc; }
 
+/* ============= HERO CAROUSEL ============= */
+.carousel-wrap { position:relative; margin:24px 0; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; }
+.carousel { display:flex; transition:transform .6s cubic-bezier(.4,0,.2,1); }
+.carousel-slide { min-width:100%; box-sizing:border-box; }
+.carousel-slide img { width:100%; height:auto; display:block; border-radius:6px; }
+.carousel-dots { display:flex; justify-content:center; gap:8px; padding:10px 0 12px; background:#080810; border-top:1px solid #1a1a2a; }
+.carousel-dots label { width:8px; height:8px; border-radius:50%; background:#2a2a3a; cursor:pointer; transition:background .2s; }
+.carousel-dots label:hover { background:#5a5a72; }
+#slide1:checked ~ .carousel-wrap .carousel { transform:translateX(0); }
+#slide2:checked ~ .carousel-wrap .carousel { transform:translateX(-100%); }
+#slide3:checked ~ .carousel-wrap .carousel { transform:translateX(-200%); }
+#slide4:checked ~ .carousel-wrap .carousel { transform:translateX(-300%); }
+#slide1:checked ~ .carousel-dots label:nth-child(1),
+#slide2:checked ~ .carousel-dots label:nth-child(2),
+#slide3:checked ~ .carousel-dots label:nth-child(3),
+#slide4:checked ~ .carousel-dots label:nth-child(4) { background:#3b82f6; }
+.carousel-radio { display:none; }
+
+/* Auto-play animation */
+@keyframes carouselAuto {
+  0%, 20% { transform:translateX(0); }
+  25%, 45% { transform:translateX(-100%); }
+  50%, 70% { transform:translateX(-200%); }
+  75%, 95% { transform:translateX(-300%); }
+  100% { transform:translateX(0); }
+}
+.carousel-auto { animation:carouselAuto 20s infinite; }
+.carousel-wrap:hover .carousel-auto { animation-play-state:paused; }
+
+@media (max-width:720px) {
+  .carousel-wrap { margin:16px 0; }
+  .carousel-dots { padding:8px 0; }
+  .carousel-dots label { width:6px; height:6px; }
+}
+
 .diagram { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
 .diagram-item { flex:1; min-width:200px; padding:16px; border-radius:6px; text-align:center; font-size:12px; }
 .diagram-item .arrow { display:block; margin:8px auto; color:#2a2a3a; font-size:16px; }
@@ -178,6 +213,27 @@ footer a:hover { color:#c8c8cc; }
     <a href="test-results.html" style="color:#6ac86a;text-decoration:none;">test results &rsaquo;</a>
   </div>
   <h1>Energy-backed neutral settlement layer<br><span style="color:#5a5a72;font-weight:400;">PoW with stable memory. Private. Fair.</span></h1>
+
+  <input type="radio" name="carousel" id="slide1" class="carousel-radio" checked>
+  <input type="radio" name="carousel" id="slide2" class="carousel-radio">
+  <input type="radio" name="carousel" id="slide3" class="carousel-radio">
+  <input type="radio" name="carousel" id="slide4" class="carousel-radio">
+
+  <div class="carousel-wrap">
+    <div class="carousel carousel-auto">
+      <div class="carousel-slide"><img src="slide_ponte.png" alt="Bridge" loading="lazy"></div>
+      <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"></div>
+      <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"></div>
+      <div class="carousel-slide"><img src="slide_grok.png" alt="AI analysis" loading="lazy"></div>
+    </div>
+    <div class="carousel-dots">
+      <label for="slide1"></label>
+      <label for="slide2"></label>
+      <label for="slide3"></label>
+      <label for="slide4"></label>
+    </div>
+  </div>
+
   <p style="margin-top:16px; font-size:14px; color:#6b6b8a;">
     There are roughly four ways to store and move value today. Fiat is expensive and slow to transact while supply expands silently devaluing principal. Gold has perceived real value but is slow and expensive to transact. Bitcoin is portable but deflationary and transactions are public.
   </p>
