@@ -119,24 +119,17 @@ footer a:hover { color:#c8c8cc; }
 .system-summary strong { color:#c8c8cc; }
 
 /* ============= HERO CAROUSEL ============= */
-.carousel-wrap { position:relative; margin:24px auto; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; max-width:800px; }
-.carousel { display:flex; transition:transform .6s cubic-bezier(.4,0,.2,1); }
+.carousel-wrap { position:relative; margin:24px auto; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; max-width:640px; }
+.carousel { display:flex; }
 .carousel-slide { min-width:100%; box-sizing:border-box; position:relative; }
 .carousel-slide img { width:100%; height:auto; display:block; border-radius:6px; }
-.carousel-dots { display:flex; justify-content:center; gap:8px; padding:10px 0 12px; background:#080810; border-top:1px solid #1a1a2a; }
-.carousel-dots label { width:8px; height:8px; border-radius:50%; background:#2a2a3a; cursor:pointer; transition:background .2s; }
-.carousel-dots label:hover { background:#5a5a72; }
 #slide1:checked ~ .carousel-wrap .carousel { transform:translateX(0); }
 #slide2:checked ~ .carousel-wrap .carousel { transform:translateX(-100%); }
 #slide3:checked ~ .carousel-wrap .carousel { transform:translateX(-200%); }
 #slide4:checked ~ .carousel-wrap .carousel { transform:translateX(-300%); }
-#slide1:checked ~ .carousel-dots label:nth-child(1),
-#slide2:checked ~ .carousel-dots label:nth-child(2),
-#slide3:checked ~ .carousel-dots label:nth-child(3),
-#slide4:checked ~ .carousel-dots label:nth-child(4) { background:#3b82f6; }
 .carousel-radio { display:none; }
 
-/* Auto-play animation */
+/* Auto-play */
 @keyframes carouselAuto {
   0%, 20% { transform:translateX(0); }
   25%, 45% { transform:translateX(-100%); }
@@ -148,9 +141,7 @@ footer a:hover { color:#c8c8cc; }
 .carousel-wrap:hover .carousel-auto { animation-play-state:paused; }
 
 @media (max-width:720px) {
-  .carousel-wrap { margin:16px 0; }
-  .carousel-dots { padding:8px 0; }
-  .carousel-dots label { width:6px; height:6px; }
+  .carousel-wrap { margin:16px auto; }
 }
 
 /* ============= SLIDE CAPTIONS ============= */
@@ -229,12 +220,6 @@ footer a:hover { color:#c8c8cc; }
       <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"><div class="slide-label">Slow mining — fast &amp; private transactions</div></div>
       <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"><div class="slide-label">Private by default</div></div>
       <div class="carousel-slide"><img src="slide_grok.png" alt="AI analysis" loading="lazy"><div class="slide-label" style="bottom:auto;top:12px;">Grok: what AI thought</div></div>
-    </div>
-    <div class="carousel-dots">
-      <label for="slide1"></label>
-      <label for="slide2"></label>
-      <label for="slide3"></label>
-      <label for="slide4"></label>
     </div>
   </div>
 
