@@ -561,12 +561,18 @@ mod tests {
         Block { header, body: BlockBody { transactions: vec![], commitments: vec![] }, proof_hash: [nonce as u8; 32] }
     }
 
-    /// Run all store tests with: cargo test test_store_ -- --test-threads=1
+    /// Serialisation mutex: prevents parallel store tests from racing on
+    /// the global OVERRIDE_DATA_DIR + BLOCK_CACHE.  Each test acquires this
+    /// before touching the store and holds it until the test completes.
+    static STORE_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Run all store tests with: `cargo test test_store_ -- --test-threads=1`
     /// Invalidate global BLOCK_CACHE + point data_dir() to a temp dir.
     /// The cache is a process-global static, so each test must clear it.
-    /// Uses set_data_dir() instead of changing CWD to avoid race conditions
-    /// with other test modules running in parallel.
+    /// Uses set_data_dir() instead of changing CWD to avoid race conditions.
+    /// Acquires STORE_TEST_LOCK to serialise across the entire serial module.
     macro_rules! setup_dir { () => {
+        let _guard = crate::store::tests::STORE_TEST_LOCK.lock().unwrap();
         invalidate_cache();
         let _dir = tempfile::tempdir().unwrap();
         set_data_dir(_dir.path().to_str().unwrap().to_string());

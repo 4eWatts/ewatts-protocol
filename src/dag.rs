@@ -124,6 +124,7 @@ mod tests {
     /// Benchmark: DAG generation time for testnet size (256 MB).
     /// Spec §4.2: 8 GB em <60s em DDR5-4800.
     /// Testnet usa DAG reduzido; este teste mede tempo/GB.
+    #[ignore = "slow benchmark; run manually with cargo test -- --ignored"]
     #[test]
     fn test_dag_benchmark_64mb() {
         let size: u64 = 64 * 1024 * 1024; // 64 MB (testnet)
@@ -155,6 +156,7 @@ mod tests {
     }
 
     /// Benchmark: DAG generation at higher sizes (progressive)
+    #[ignore = "slow benchmark; run manually with cargo test -- --ignored"]
     #[test]
     fn test_dag_benchmark_progressive() {
         let sizes = [
