@@ -1,0 +1,144 @@
+# ─── eWatts Mainnet Genesis Configuration ─────────────────────────────
+# This file defines the mainnet genesis block parameters.
+#
+# Build:   cargo build --release --features mainnet
+# Init:    ./target/release/ewatts-protocol init
+# Start:   ./target/release/ewatts-protocol start --p2p --p2p-port 30333
+#
+# Mainnet launch will occur once the genesis block is signed by the
+# Ewatts Foundation and distributed to bootstrap nodes.
+
+[genesis]
+# Protocol version (v3 emission formula)
+version = 4
+
+# Mainnet launch timestamp (UTC): to be set before launch
+# Unix epoch seconds — currently placeholder for coordination
+timestamp = 1_760_000_000
+
+# Initial supply: 1,000,000 eWatt (1e12 base units)
+# This funds bootstrap liquidity, exchange seeding, and foundation operations.
+# Distribution is documented in the whitepaper emissions schedule.
+initial_supply_ewatt = 1_000_000
+
+# Genesis foundation public key (Ed25519 verifying key, 32 bytes)
+# This key controls the initial supply. The Ewatts Foundation holds the
+# corresponding private key and will distribute according to the published
+# schedule.
+#
+# Placeholder: set to the actual foundation key before mainnet launch.
+genesis_pubkey_hex = "0400000000000000000000000000000000000000000000000000000000000004"
+
+[consensus]
+# Target block interval (seconds)
+target_block_time_secs = 600
+
+# Difficulty adjustment window (blocks)
+difficulty_window = 100
+
+# Minimum difficulty (floor)
+difficulty_bound_min = 0.5
+
+# Maximum difficulty (cap)
+difficulty_bound_max = 2.0
+
+# DAG epoch length (blocks)
+dag_epoch_blocks = 2016
+
+# Initial DAG size (bytes) — 8 GB for mainnet
+dag_initial_size_bytes = 8_589_934_592
+
+# DAG growth per year (bytes) — 512 MB/year
+dag_growth_bytes_per_year = 536_870_912
+
+[emission]
+# Maximum bootstrap multiplier at block 1
+m_max = 100_000
+
+# Maturity threshold (base units): 10 billion eWatt
+# Below this, the bootstrap multiplier M > 1 acts as a subsidy.
+s_threshold_units = 10_000_000_000_000_000
+
+# Reference network size at maturity (miners)
+n_calibration = 100_000
+
+# Target production cost per eWatt at maturity (micro-USD)
+p_target_micro_usd = 1_000_000
+
+# Emission floor multiplier
+emission_floor = 0.05
+
+# Emission ceiling multiplier
+emission_ceiling = 20.0
+
+# Commitment window (blocks)
+commit_window_blocks = 4300
+
+# Ramp-up blocks (bootstrap period)
+ramp_up_blocks = 10000
+
+# Ramp-up cap (fraction of target emission during ramp-up)
+ramp_up_cap = 0.80
+
+# Founder lock blocks (50,000 blocks ~ ~347 days)
+founder_lock_blocks = 50000
+
+# Additional founder lock (40,000 blocks)
+founder_lock_additional = 40000
+
+# Minimum effective commit (GB/s)
+min_commit_gbs = 1.0
+
+# Efficiency penalty threshold
+efficiency_penalty_threshold = 0.70
+
+# Efficiency cap threshold
+efficiency_cap_threshold = 1.30
+
+[privacy]
+# Ring signature size (mixins)
+ring_size = 11
+
+# Stealth address: enabled by default
+stealth_addresses = true
+
+# Post-quantum activation block (3153600 = ~6 years)
+quantum_activation_block = 3_153_600
+
+# Post-quantum signature scheme
+pq_sig_scheme = "FALCON-1024"
+
+[p2p]
+# Max outbound peers
+max_peers = 125
+
+# Protocol version
+protocol_version = 4
+
+# Gossip heartbeat interval (seconds)
+gossip_heartbeat_secs = 5
+
+# Idle connection timeout (seconds)
+idle_timeout_secs = 60
+
+# Bootstrap nodes (to be populated before launch)
+# Format: /ip4/<ip>/tcp/<port>/p2p/<peer_id>
+# bootstrap_nodes = [
+#     "/ip4/.../tcp/30333/p2p/...",
+# ]
+bootstrap_nodes = []
+
+[difficulty]
+# Base accesses for proof-of-work
+base_accesses = 1_000_000_000
+
+# Verification sample rate
+verification_sample_rate = 0.001
+
+[calibration]
+# Energy per GB of memory access (joules)
+# Calibrated for reference mining node (~75W total)
+j_per_gb = 6.0
+
+# Joules per kWh
+j_per_kwh = 3_600_000.0

@@ -7,7 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
-use log::{info, warn, error, trace};
+use log::{info, warn, error, debug, trace};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::collections::{HashMap, VecDeque};
@@ -519,7 +519,7 @@ impl P2pNode {
                                         // Try to reconstruct from mempool
                                         match reconstruct_block(&cb) {
                                             Some(block) => {
-                                                info!("P2P: Reconstructed block #{} from compact ({} txs)",
+                                                debug!("P2P: Reconstructed block #{} from compact ({} txs)",
                                                     h, block.body.transactions.len());
                                                 match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                     Ok(()) => {
@@ -533,7 +533,7 @@ impl P2pNode {
                                                 }
                                             }
                                             None => {
-                                                info!("P2P: Compact block #{} needs {} missing txns, requesting full block",
+                                                debug!("P2P: Compact block #{} needs {} missing txns, requesting full block",
                                                     h, cb.short_ids.len());
                                                 self.pending_compact.insert(h, (cb.clone(), propagation_source));
                                                 // Request the full block from the source peer via sync
@@ -589,7 +589,7 @@ impl P2pNode {
                                         request_response::Message::Response { response, .. } => {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
-                                                    info!("P2P: Synced {} blocks from peer", blocks.len());
+                                                    debug!("P2P: Synced {} blocks from peer", blocks.len());
                                                     for block in &blocks {
                                                         let h = block.header.height;
                                                         match Self::validate_and_apply_block(block, state, &mut chain_store) {
@@ -606,7 +606,7 @@ impl P2pNode {
                                                 P2pMessage::FullBlockResponse { block } => {
                                                     // This was requested because compact block reconstruction failed
                                                     let h = block.header.height;
-                                                    info!("P2P: Received full block #{} for compact fallback", h);
+                                                    debug!("P2P: Received full block #{} for compact fallback", h);
                                                     match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                         Ok(()) => {
                                                             Self::accept_block(&block, &mut self.swarm);

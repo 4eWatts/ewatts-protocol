@@ -486,8 +486,17 @@ async fn serve_dashboard(port: &str) {
                     let supply = state.as_ref().map(|s| s.total_supply()).unwrap_or(0);
                     let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
                     let mempool = crate::mempool::pending_count();
-                    let peers = std::fs::read_to_string("p2p_peers.txt")
-                        .ok().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0);
+                    let peers_file = std::fs::read_to_string("p2p_peers.txt").unwrap_or_default();
+                    let peers_lines: Vec<&str> = peers_file.lines().filter(|l| !l.is_empty()).collect();
+                    let local_peer_id = peers_lines.first().unwrap_or(&"—").to_string();
+                    let peers = if peers_lines.len() > 1 { peers_lines.len() - 1 } else { 0 }; // first line is local node ID
+                    let peer_list: Vec<serde_json::Value> = peers_lines[1..].iter().map(|p| serde_json::json!({
+                        "peer_id": p,
+                        "height": null,
+                        "latency": null,
+                        "direction": "outbound",
+                        "connected_since": "—"
+                    })).collect();
                     // Load only the most recent 100 blocks for the list
                     let recent_start = if height > 100 { height - 100 } else { 0 };
                     let recent_blocks = crate::store::load_blocks_since(recent_start as u64).unwrap_or_default();
@@ -504,6 +513,9 @@ async fn serve_dashboard(port: &str) {
                         "height": height, "supply": supply, "utxos": utxos,
                         "vr": vr, "emission": emission, "difficulty": diff,
                         "mempool": mempool, "peers": peers, "blocks": blk,
+                        "peer_id": local_peer_id,
+                        "peer_list": peer_list,
+                        "last_reorg": 0,
                         "node": "ewatts-testnet",
                     });
                     json_response(200, &serde_json::to_string(&status).unwrap())
