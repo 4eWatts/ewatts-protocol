@@ -285,6 +285,7 @@ mod tests {
         assert!(founder_lock_block(500) >= 50000);
         assert_eq!(founder_lock_block(15000), 0);
     }
+    #[allow(deprecated)]
     #[test] fn test_reward_proportional_int() {
         let eff: u64 = 100_000_000_000;
         let em = compute_emission_rate_v27_deprecated(eff * 2, eff * 2);
@@ -293,6 +294,7 @@ mod tests {
         assert_eq!(rewards[0].1, rewards[1].1);
         assert!(rewards[0].1 > 0);
     }
+    #[allow(deprecated)]
     #[test] fn test_reward_honest_more_int() {
         let honest_eff: u64 = 100_000_000_000;
         let under_eff: u64 = 10_000_000_000;
@@ -304,6 +306,7 @@ mod tests {
         let ratio = rewards[0].1 as f64 / (rewards[0].1 + rewards[1].1) as f64;
         assert!((ratio - 0.909).abs() < 0.01);
     }
+    #[allow(deprecated)]
     #[test] fn test_solo_miner_reward_positive() {
         let eff: u64 = 100_000_000_000;
         let em = compute_emission_rate_v27_deprecated(eff, eff);

@@ -685,7 +685,7 @@ fn p8_mlsag_roundtrip_and_tamper() {
 
     let mut rng = rand::thread_rng();
     let ring_size = 11usize;
-    let n_layers = 1usize;
+    let _n_layers = 1usize;
     let real_index = 3usize;
     let secret = Scalar::from(42u64);
     let public_point = secret * ring_g();
@@ -820,7 +820,7 @@ fn p9_malicious_decoys_anonymity() {
     use curve25519_dalek::ristretto::RistrettoPoint;
 
     let mut rng = rand::thread_rng();
-    let ring_size = 11usize;
+    let _ring_size = 11usize;
 
     let attacker_secrets: Vec<Scalar> = (0..10).map(|i| Scalar::from(i as u64 + 1000)).collect();
     let attacker_pubs: Vec<RistrettoPoint> = attacker_secrets.iter().map(|s| *s * ring_g()).collect();
@@ -1185,12 +1185,12 @@ fn p8_validation_rejects_invalid_blocks() {
     let sk = SigningKey::generate(&mut rand::thread_rng());
     let pk = sk.verifying_key().to_bytes();
     let (mut state, gen_block) = test_init(&pk);
-    let gen_hash = gen_block.header.hash();
+    let _gen_hash = gen_block.header.hash();
 
     // Build a valid block to use as template
     let (good_block, _) = test_mine(gen_hash, 1, &mut state);
     assert!(state.apply_block(&good_block, 1).is_ok(), "Valid block must apply");
-    let b1_hash = good_block.header.hash();
+    let _b1_hash = good_block.header.hash();
 
     // T8.8a: coinbase exceeds emission cap
     let (mut state_b, _) = test_init(&pk);
@@ -1314,8 +1314,8 @@ fn p0_timestamp_no_future_enforcement() {
     // untested area.
     let sk = SigningKey::generate(&mut rand::thread_rng());
     let pk = sk.verifying_key().to_bytes();
-    let (mut state, gen_block) = test_init(&pk);
-    let gen_hash = gen_block.header.hash();
+    let (_state, gen_block) = test_init(&pk);
+    let _gen_hash = gen_block.header.hash();
 
     // Verify current behavior: timestamps are accepted as-is (no validation)
     // Not asserting pass/fail — documenting behavior
@@ -1626,12 +1626,10 @@ fn p0_deep_reorg_integrity() {
     // Long chain: 50 blocks
     let mut state_long = UtxoSet::genesis(100_000_000, &pk);
     let mut prev = [0u8; 32];
-    let mut last_hash_long = [0u8; 32];
     for h in 1..=50u64 {
         let (b, _) = test_mine(prev, h, &mut state_long);
         state_long.apply_block(&b, h).unwrap();
         prev = b.header.hash();
-        if h == 50 { last_hash_long = b.header.hash(); }
     }
     let supply_long = state_long.total_supply();
 

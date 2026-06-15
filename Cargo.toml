@@ -12,7 +12,6 @@ path = "src/main.rs"
 name = "steady-bench"
 path = "src/bin/steady_bench.rs"
 required-features = []
-license = "MIT"
 
 [dependencies]
 sha3 = "0.10"

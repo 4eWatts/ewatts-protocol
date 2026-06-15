@@ -85,12 +85,11 @@ fn adv_two_miner_chain() {
     let key_b = SigningKey::generate(&mut rng);
 
     let mut state = UtxoSet::genesis(100_000_000, &pk_a);
-    let mut prev_hash = [0u8; 32];
 
     // Block 1: Miner A
     let (b1, _) = mine_block_with_key([0u8; 32], 1, &mut state, 1, 256 * 1024, &key_a)
         .expect("Block 1 by A");
-    prev_hash = b1.header.hash();
+    let mut prev_hash = b1.header.hash();
 
     // Block 2: Miner B
     let (b2, _) = mine_block_with_key(prev_hash, 2, &mut state, 1, 256 * 1024, &key_b)
