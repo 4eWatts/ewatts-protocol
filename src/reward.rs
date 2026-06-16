@@ -392,7 +392,6 @@ mod econ_tests {
     #[ignore = "v27 mining test — needs rewrite for v3"]
     #[allow(deprecated)]
     fn econ_founder_lock_enforced() {
-        use crate::block::*;
         use crate::state::UtxoSet;
         use ed25519_dalek::SigningKey;
         let sk = SigningKey::generate(&mut rand::thread_rng());

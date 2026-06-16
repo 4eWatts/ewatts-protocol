@@ -759,8 +759,7 @@ fn p8_pedersen_blinding_verify() {
 // P8-7: Stealth address uniqueness (1000+ generated)
 #[test]
 fn p8_stealth_address_uniqueness() {
-    use crate::privacy::{StealthAddress, ring_g};
-    use curve25519_dalek::ristretto::RistrettoPoint;
+    use crate::privacy::StealthAddress;
 
     let mut rng = rand::thread_rng();
 
@@ -871,7 +870,6 @@ fn p9_key_image_reuse_after_reorg() {
 fn p9_stealth_scanning_performance() {
     use crate::privacy::{StealthAddress, OneTimeKey, recover_one_time_key, ring_g};
     use curve25519_dalek::scalar::Scalar;
-    use curve25519_dalek::ristretto::RistrettoPoint;
 
     let mut rng = rand::thread_rng();
 
@@ -1180,12 +1178,11 @@ fn p10_ramp_up_cap_multiminer() {
 #[test]
 fn p8_validation_rejects_invalid_blocks() {
     use crate::block::{BlockHeader, BlockBody, Block, Transaction, TxOutput, TxInput};
-    use crate::proof::Solution;
 
     let sk = SigningKey::generate(&mut rand::thread_rng());
     let pk = sk.verifying_key().to_bytes();
     let (mut state, gen_block) = test_init(&pk);
-    let _gen_hash = gen_block.header.hash();
+    let gen_hash = gen_block.header.hash();
 
     // Build a valid block to use as template
     let (good_block, _) = test_mine(gen_hash, 1, &mut state);

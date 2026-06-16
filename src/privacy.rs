@@ -663,10 +663,7 @@ mod tests {
 #[cfg(test)]
 mod phase4_tests {
     use super::*;
-    use crate::block::*;
     use curve25519_dalek::scalar::Scalar;
-    use curve25519_dalek::ristretto::RistrettoPoint;
-    use ed25519_dalek::SigningKey;
 
     // T4.1: Pedersen commitment is binding (can't open to different value with same commitment)
     #[test]
