@@ -47,13 +47,14 @@ hr { border:none; height:1px; background:#1a1a2a; margin:0; }
 
 .cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:24px; }
 .cards-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:24px; }
+.cards-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:24px; }
 
 @media (max-width:720px) {
   .container { max-width:100%; padding:0 16px; }
   .hero h1 { font-size:32px; max-width:100%; }
   .hero p { max-width:100%; }
   nav { margin-bottom:16px; }
-  .cards, .cards-2 { grid-template-columns:1fr; gap:8px; }
+  .cards, .cards-2, .cards-3 { grid-template-columns:1fr; gap:8px; }
   .section { padding:32px 0; }
   .hero { padding:4px 0 32px; }
   .nav-links { overflow-x:auto; gap:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
@@ -247,10 +248,10 @@ footer a:hover { color:#c8c8cc; }
   <h2>eWatts in 5 minutes</h2>
   <a id="videos" style="scroll-margin-top:60px;"></a>
   <p class="intro" style="font-size:13px;color:#6b6b8a;margin-bottom:16px;">
-    Two short explainers: where eWatts fits in the history of money, and how DRAM latency gives it a stable physical anchor.
+    Three explainers: where eWatts fits in the history of money, how DRAM latency gives it a stable physical anchor, and a beginner-friendly comparison of hash vs. RAM processing.
   </p>
 
-  <div class="cards-2">
+  <div class="cards-3">
     <div class="card" style="padding:0;overflow:hidden;background:#000;">
       <video controls preload="metadata" style="width:100%;display:block;" poster="">
         <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
@@ -271,6 +272,18 @@ footer a:hover { color:#c8c8cc; }
         <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Physics of Value</h3>
         <p style="font-size:12px;color:#6b6b8a;margin:0;">
           DRAM latency has been flat for 20 years. Mining depends on it. No ASIC can shortcut it. The cost of each eWatt stays stable, and privacy is the default.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+        <source src="videos/eWatts-Hash-vs-RAM.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">Hash vs. RAM Processing</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          A simple analogy: one is solving math faster every year, the other is walking through a giant library that never gets smaller. Why DRAM-bound mining creates a stable cost floor.
         </p>
       </div>
     </div>
