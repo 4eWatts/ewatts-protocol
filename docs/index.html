@@ -125,7 +125,7 @@ footer a:hover { color:#b0b0b8; }
 
 /* ============= HERO CAROUSEL ============= */
 .carousel-wrap { position:relative; margin:24px 0; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; max-height:380px; }
-.carousel { display:flex; }
+.carousel { display:flex; transition:transform .4s ease; }
 .carousel-slide { min-width:100%; box-sizing:border-box; position:relative; }
 .carousel-slide img { width:100%; height:380px; display:block; border-radius:6px; object-fit:cover; }
 #slide1:checked ~ .carousel-wrap .carousel { transform:translateX(0); }
@@ -134,16 +134,7 @@ footer a:hover { color:#b0b0b8; }
 #slide4:checked ~ .carousel-wrap .carousel { transform:translateX(-300%); }
 .carousel-radio { display:none; }
 
-/* Auto-play */
-@keyframes carouselAuto {
-  0%, 20% { transform:translateX(0); }
-  25%, 45% { transform:translateX(-100%); }
-  50%, 70% { transform:translateX(-200%); }
-  75%, 95% { transform:translateX(-300%); }
-  100% { transform:translateX(0); }
-}
-.carousel-auto { animation:carouselAuto 20s infinite; }
-.carousel-wrap:hover .carousel-auto { animation-play-state:paused; }
+/* Auto-play via JS */
 
 @media (max-width:720px) {
   .carousel-wrap { margin:12px 0; max-height:220px; }
@@ -230,7 +221,7 @@ footer a:hover { color:#b0b0b8; }
   <input type="radio" name="carousel" id="slide4" class="carousel-radio">
 
   <div class="carousel-wrap">
-    <div class="carousel carousel-auto">
+    <div class="carousel">
       <div class="carousel-slide"><img src="slide_ponte.png" alt="Neutral bridge" loading="lazy"><div class="slide-label">Neutral bridge</div></div>
       <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"></div>
       <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"><div class="slide-label">Private by default</div></div>
@@ -482,7 +473,6 @@ footer a:hover { color:#b0b0b8; }
 
 <script>
 (function(){
-  // Touch + mouse swipe for carousel
   var wrap = document.querySelector('.carousel-wrap');
   if (!wrap) return;
   var c = wrap.querySelector('.carousel');
@@ -490,6 +480,7 @@ footer a:hover { color:#b0b0b8; }
   var total = slides.length;
   var radios = document.querySelectorAll('.carousel-radio');
   var current = 0;
+  var interval, resumeTimeout;
   var startX = 0, currentX = 0, isDragging = false;
   
   // Find current slide from checked radio
@@ -504,16 +495,28 @@ footer a:hover { color:#b0b0b8; }
     if (radios[n]) radios[n].checked = true;
   }
   
+  function startAuto() {
+    stopAuto();
+    interval = setInterval(function() {
+      goTo(current + 1);
+    }, 5000);
+  }
+  
+  function stopAuto() {
+    clearInterval(interval);
+  }
+  
+  function pauseAuto() {
+    stopAuto();
+    clearTimeout(resumeTimeout);
+    resumeTimeout = setTimeout(startAuto, 5000);
+  }
+  
   function startDrag(x) {
     startX = x;
     isDragging = true;
     c.style.transition = 'none';
-    wrap.classList.add('no-autoplay');
-  }
-  
-  function moveDrag(x) {
-    if (!isDragging) return;
-    currentX = x;
+    pauseAuto();
   }
   
   function endDrag() {
@@ -523,17 +526,11 @@ footer a:hover { color:#b0b0b8; }
     if (diff > 50) goTo(current - 1);
     else if (diff < -50) goTo(current + 1);
     c.style.transition = '';
-    // Resume auto-play after 5s
-    clearTimeout(resumeTimeout);
-    resumeTimeout = setTimeout(function() {
-      wrap.classList.remove('no-autoplay');
-    }, 5000);
   }
-  
-  var resumeTimeout;
   
   // Touch events
   wrap.addEventListener('touchstart', function(e) {
+    currentX = 0;
     startDrag(e.touches[0].clientX);
   }, {passive:true});
   
@@ -543,10 +540,11 @@ footer a:hover { color:#b0b0b8; }
     if (Math.abs(currentX - startX) > 10) e.preventDefault();
   }, {passive:false});
   
-  wrap.addEventListener('touchend', endDrag, {passive:true});
+  wrap.addEventListener('touchend', function() { endDrag(); }, {passive:true});
   
-  // Mouse events (desktop drag)
+  // Mouse events
   wrap.addEventListener('mousedown', function(e) {
+    currentX = 0;
     startDrag(e.clientX);
     e.preventDefault();
   });
@@ -560,12 +558,23 @@ footer a:hover { color:#b0b0b8; }
     if (isDragging) endDrag();
   });
   
-  // CSS for pause
+  // Keyboard arrows
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') { goTo(current - 1); pauseAuto(); }
+    if (e.key === 'ArrowRight') { goTo(current + 1); pauseAuto(); }
+  });
+  
+  // Pause on hover
+  wrap.addEventListener('mouseenter', stopAuto);
+  wrap.addEventListener('mouseleave', startAuto);
+  
+  // Cursor style via JS-added CSS
   var style = document.createElement('style');
-  style.textContent = '.no-autoplay .carousel-auto { animation-play-state:paused !important; }' +
-    '.carousel-wrap { cursor:grab; }' +
-    '.carousel-wrap:active { cursor:grabbing; }';
+  style.textContent = '.carousel-wrap { cursor:grab; } .carousel-wrap:active { cursor:grabbing; }';
   document.head.appendChild(style);
+  
+  // Start auto-play
+  startAuto();
 })();
 </script>
 
