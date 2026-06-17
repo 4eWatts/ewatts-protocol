@@ -231,7 +231,7 @@ footer a:hover { color:#b0b0b8; }
 
   <div class="carousel-wrap">
     <div class="carousel carousel-auto">
-      <div class="carousel-slide"><img src="slide_ponte.png" alt="Bridge" loading="lazy"><div class="slide-label">Neutral bridge</div></div>
+      <div class="carousel-slide"><img src="slide_ponte.png" alt="Neutral bridge" loading="lazy"><div class="slide-label">Neutral bridge</div></div>
       <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"></div>
       <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"><div class="slide-label">Private by default</div></div>
       <div class="carousel-slide"><img src="slide_grok.png" alt="AI analysis" loading="lazy"><div class="slide-label" style="bottom:12px;top:auto;">Grok&#39;s view on the best neutral settlement layer</div></div>
@@ -293,7 +293,7 @@ footer a:hover { color:#b0b0b8; }
 
   <div class="cards-3">
     <div class="card" style="padding:0;overflow:hidden;background:#000;">
-      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-evolution.jpg">
         <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
@@ -305,7 +305,7 @@ footer a:hover { color:#b0b0b8; }
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;background:#000;">
-      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-physics.jpg">
         <source src="videos/eWatts-Physics-of-Value.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
@@ -317,7 +317,7 @@ footer a:hover { color:#b0b0b8; }
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;background:#000;">
-      <video controls preload="metadata" style="width:100%;display:block;" poster="">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-hashram.jpg">
         <source src="videos/eWatts-Hash-vs-RAM.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
@@ -447,19 +447,133 @@ footer a:hover { color:#b0b0b8; }
 
 <hr>
 
+<hr>
+
+<!-- ============= CTA ============= -->
+<section class="section" style="text-align:center;">
+  <div class="section-label">Get Started</div>
+  <h2 style="font-size:24px; font-weight:600; color:#e0e0e6; margin-bottom:12px;">Ready to see what eWatts can do?</h2>
+  <p style="font-size:14px; color:#7a7a8a; max-width:520px; margin:0 auto 20px;">
+    Read the protocol specification, run a testnet node, or explore the economic model.
+  </p>
+  <div class="links" style="justify-content:center;">
+    <a href="protocol.html" class="btn btn-primary">Read the Protocol &rsaquo;</a>
+    <a href="MINING.md" class="btn btn-outline">Mining Guide &rsaquo;</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">GitHub &rsaquo;</a>
+  </div>
+</section>
+
+<hr>
+
 <footer>
   <div>
     <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
-    <a href="https://ewatts.org">ewatts.org</a>
+    <a href="whitepaper-v28.md">Whitepaper</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     <a href="MINING.md">Mining Guide</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="protocol.html">Protocol</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
     MIT License
   </div>
-  <div>A settlement layer anchored to physics. Private by default. Open to anyone.</div>
+  <div>
+    <a href="https://ewatts.org" style="color:#5a5a72;">ewatts.org</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <span style="color:#5a5a72;">Physics. Privacy. Open to anyone.</span>
+  </div>
 </footer>
 
 </div>
+
+<script>
+(function(){
+  // Touch + mouse swipe for carousel
+  var wrap = document.querySelector('.carousel-wrap');
+  if (!wrap) return;
+  var c = wrap.querySelector('.carousel');
+  var slides = c.querySelectorAll('.carousel-slide');
+  var total = slides.length;
+  var radios = document.querySelectorAll('.carousel-radio');
+  var current = 0;
+  var startX = 0, currentX = 0, isDragging = false;
+  
+  // Find current slide from checked radio
+  for (var i = 0; i < radios.length; i++) {
+    if (radios[i].checked) { current = i; break; }
+  }
+  
+  function goTo(n) {
+    if (n < 0) n = total - 1;
+    if (n >= total) n = 0;
+    current = n;
+    if (radios[n]) radios[n].checked = true;
+  }
+  
+  function startDrag(x) {
+    startX = x;
+    isDragging = true;
+    c.style.transition = 'none';
+    wrap.classList.add('no-autoplay');
+  }
+  
+  function moveDrag(x) {
+    if (!isDragging) return;
+    currentX = x;
+  }
+  
+  function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    var diff = currentX - startX;
+    if (diff > 50) goTo(current - 1);
+    else if (diff < -50) goTo(current + 1);
+    c.style.transition = '';
+    // Resume auto-play after 5s
+    clearTimeout(resumeTimeout);
+    resumeTimeout = setTimeout(function() {
+      wrap.classList.remove('no-autoplay');
+    }, 5000);
+  }
+  
+  var resumeTimeout;
+  
+  // Touch events
+  wrap.addEventListener('touchstart', function(e) {
+    startDrag(e.touches[0].clientX);
+  }, {passive:true});
+  
+  wrap.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+    if (Math.abs(currentX - startX) > 10) e.preventDefault();
+  }, {passive:false});
+  
+  wrap.addEventListener('touchend', endDrag, {passive:true});
+  
+  // Mouse events (desktop drag)
+  wrap.addEventListener('mousedown', function(e) {
+    startDrag(e.clientX);
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    currentX = e.clientX;
+  });
+  
+  document.addEventListener('mouseup', function() {
+    if (isDragging) endDrag();
+  });
+  
+  // CSS for pause
+  var style = document.createElement('style');
+  style.textContent = '.no-autoplay .carousel-auto { animation-play-state:paused !important; }' +
+    '.carousel-wrap { cursor:grab; }' +
+    '.carousel-wrap:active { cursor:grabbing; }';
+  document.head.appendChild(style);
+})();
+</script>
+
 </body>
 </html>
