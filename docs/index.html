@@ -18,43 +18,45 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#b0b0b8; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
 .container { max-width:1120px; margin:0 auto; padding:0 20px; }
 
-nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
-.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#e0e0e6; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
 .nav-links { display:flex; gap:20px; }
 
 .nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
-.nav-links a:hover { color:#c8c8cc; }
+.nav-links a:hover { color:#b0b0b8; }
 
-.hero { padding:8px 0 48px; }
-.hero h1 { font-size:48px; font-weight:700; line-height:1.15; color:#fff; letter-spacing:-1px; margin-bottom:18px; }
+.hero { padding:16px 0 48px; }
+.hero h1 { font-size:48px; font-weight:700; line-height:1.15; color:#e0e0e6; letter-spacing:-1px; margin-bottom:12px; }
 .hero p { color:#5a5a72; margin-bottom:24px; font-size:15px; }
+.hero .lead { font-size:17px; color:#7a7a8a; line-height:1.7; max-width:680px; margin-bottom:20px; }
 .links { display:flex; gap:10px; flex-wrap:wrap; }
 .btn { display:inline-block; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; transition:all .12s; }
-.btn-primary { background:#3b82f6; color:#fff; }
-.btn-primary:hover { background:#5a94f8; }
-.btn-outline { border:1px solid #2a2a3a; color:#c8c8cc; }
-.btn-outline:hover { border-color:#3b82f6; color:#fff; }
+.btn-primary { background:#4a6fa5; color:#e0e0e6; }
+.btn-primary:hover { background:#5a7fb5; }
+.btn-outline { border:1px solid #2a2a3a; color:#b0b0b8; }
+.btn-outline:hover { border-color:#4a6fa5; color:#e0e0e6; }
 
 .section { padding:48px 0; }
 .section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5a5a72; margin-bottom:6px; }
-.section h2 { font-size:20px; font-weight:600; color:#fff; margin-bottom:8px; }
+.section h2 { font-size:20px; font-weight:600; color:#e0e0e6; margin-bottom:8px; }
 .section p.intro { color:#5a5a72; }
 hr { border:none; height:1px; background:#1a1a2a; margin:0; }
 
-.cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:24px; }
-.cards-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:24px; }
-.cards-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:24px; }
+.cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:24px; }
+.cards-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px; }
+.cards-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:24px; }
 
 @media (max-width:720px) {
   .container { max-width:100%; padding:0 16px; }
-  .hero h1 { font-size:32px; max-width:100%; }
+  .hero h1 { font-size:28px; max-width:100%; }
+  .hero .lead { font-size:15px; }
   .hero p { max-width:100%; }
   nav { margin-bottom:16px; }
-  .cards, .cards-2, .cards-3 { grid-template-columns:1fr; gap:8px; }
+  .cards, .cards-2, .cards-3 { grid-template-columns:1fr; gap:12px; }
   .section { padding:32px 0; }
   .hero { padding:4px 0 32px; }
   .nav-links { overflow-x:auto; gap:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
@@ -66,59 +68,60 @@ hr { border:none; height:1px; background:#1a1a2a; margin:0; }
   .rule-table, .rule-table tr, .rule-table td { display:block; width:100%; }
   .rule-table td:first-child { width:auto; padding-bottom:0; }
 }
-.card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:20px; }
-.card h3 { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
-.card p { font-size:13px; color:#5a5a72; line-height:1.6; }
+.card { background:#111122; border:1px solid #1e1e32; border-radius:6px; padding:20px; transition:border-color .15s; }
+.card:hover { border-color:#2a2a4a; }
+.card h3 { font-size:13px; font-weight:600; color:#e0e0e6; margin-bottom:4px; }
+.card p { font-size:13px; color:#7a7a8a; line-height:1.6; }
 .card ul { list-style:none; padding:0; margin:8px 0 0; }
 .card ul li { font-size:12px; color:#6b6b8a; padding:3px 0; padding-left:12px; position:relative; }
-.card ul li::before { content:"\2192"; position:absolute; left:0; color:#3b82f6; }
+.card ul li::before { content:"\2192"; position:absolute; left:0; color:#4a6fa5; }
 
 table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; }
 table.specs tr { border-bottom:1px solid #1a1a2a; }
 table.specs tr:last-child { border:none; }
 table.specs td { padding:10px 0; vertical-align:top; }
 table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
-table.specs td:last-child { color:#c8c8cc; }
-code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
+table.specs td:last-child { color:#b0b0b8; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#a0a0b0; }
 
-pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow:auto; margin-top:16px; color:#b0b0c0; white-space:pre-wrap; word-break:break-word; }
+pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow:auto; margin-top:16px; color:#a0a0b0; white-space:pre-wrap; word-break:break-word; }
 pre.code-block .cm { color:#5a5a72; }
-pre.code-block .fn { color:#3b82f6; }
+pre.code-block .fn { color:#4a6fa5; }
 
 .layer-card { border-radius:6px; padding:24px; margin-top:12px; position:relative; }
 .layer-card h3 { font-size:16px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
 .layer-card p { font-size:13px; line-height:1.7; }
 .layer-card .tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; padding:2px 8px; border-radius:3px; }
-.layer-1 { background:linear-gradient(135deg,#0a1628 0%,#10101a 100%); border:1px solid #1a3a5a; }
+.layer-1 { background:linear-gradient(135deg,#0a1628 0%,#111122 100%); border:1px solid #1a3a5a; }
 .layer-1 .tag { background:#1a3a5a; color:#5a9cf6; }
 .layer-1 h3 { color:#5a9cf6; }
 .layer-1 p { color:#8baac8; }
-.layer-2 { background:linear-gradient(135deg,#1a0a28 0%,#10101a 100%); border:1px solid #3a1a5a; }
+.layer-2 { background:linear-gradient(135deg,#1a0a28 0%,#111122 100%); border:1px solid #3a1a5a; }
 .layer-2 .tag { background:#3a1a5a; color:#a05af6; }
 .layer-2 h3 { color:#a05af6; }
 .layer-2 p { color:#b08ac8; }
-.layer-3 { background:linear-gradient(135deg,#1a1a0a 0%,#10101a 100%); border:1px solid #3a3a1a; }
-.layer-3 .tag { background:#3a3a1a; color:#c8c84a; }
-.layer-3 h3 { color:#c8c84a; }
+.layer-3 { background:linear-gradient(135deg,#1a1a0a 0%,#111122 100%); border:1px solid #3a3a1a; }
+.layer-3 .tag { background:#3a3a1a; color:#b8b84a; }
+.layer-3 h3 { color:#b8b84a; }
 .layer-3 p { color:#b0b080; }
 
-.rule-box { background:#0c0c18; border:1px solid #2a2a3a; border-radius:6px; padding:20px; margin-top:16px; }
-.rule-box h4 { font-size:13px; font-weight:600; color:#c8c8cc; margin-bottom:12px; }
+.rule-box { background:#111122; border:1px solid #2a2a3a; border-radius:6px; padding:20px; margin-top:16px; }
+.rule-box h4 { font-size:13px; font-weight:600; color:#b0b0b8; margin-bottom:12px; }
 .rule-table { width:100%; border-collapse:collapse; font-size:13px; }
 .rule-table tr { border-bottom:1px solid #1a1a2a; }
 .rule-table tr:last-child { border:none; }
 .rule-table td { padding:8px 4px; }
 .rule-table td:first-child { color:#6b6b88; width:120px; }
 .rule-table td:nth-child(2) { width:80px; }
-.rule-table td.yes { color:#3b82f6; font-weight:600; }
+.rule-table td.yes { color:#4a6fa5; font-weight:600; }
 .rule-table td.no { color:#5a5a72; }
 
 footer { padding:40px 0; border-top:1px solid #1a1a2a; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:#5a5a72; }
 footer a { color:#5a5a72; text-decoration:none; }
-footer a:hover { color:#c8c8cc; }
+footer a:hover { color:#b0b0b8; }
 
-.system-summary { background:#0c0c18; border:1px solid #3b82f6; border-radius:6px; padding:16px 20px; margin-top:16px; font-size:14px; color:#8baac8; }
-.system-summary strong { color:#c8c8cc; }
+.system-summary { background:#111122; border:1px solid #4a6fa5; border-radius:6px; padding:16px 20px; margin-top:16px; font-size:14px; color:#8baac8; }
+.system-summary strong { color:#b0b0b8; }
 
 /* ============= HERO CAROUSEL ============= */
 .carousel-wrap { position:relative; margin:24px 0; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; max-height:380px; }
@@ -149,7 +152,7 @@ footer a:hover { color:#c8c8cc; }
 
 /* ============= SLIDE CAPTIONS ============= */
 .carousel-slide { position:relative; }
-.slide-label { position:absolute; bottom:12px; left:12px; padding:4px 10px; font-size:11px; font-weight:500; color:#d4d4dc; letter-spacing:0.5px; text-transform:uppercase; pointer-events:none; text-shadow:0 1px 6px rgba(0,0,0,0.9); }
+.slide-label { position:absolute; bottom:12px; left:12px; padding:4px 10px; font-size:11px; font-weight:500; color:#b0b0b8; letter-spacing:0.5px; text-transform:uppercase; pointer-events:none; text-shadow:0 1px 6px rgba(0,0,0,0.9); }
 
 .diagram { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
 .diagram-item { flex:1; min-width:200px; padding:16px; border-radius:6px; text-align:center; font-size:12px; }
@@ -187,7 +190,7 @@ footer a:hover { color:#c8c8cc; }
 <div class="container">
 
 <nav>
-  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
+  <div class="logo"><a href="index.html" style="color:#e0e0e6;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
   <div class="nav-links">
     <a href="index.html">Home</a>
     <a href="protocol.html">Protocol</a>
@@ -217,6 +220,10 @@ footer a:hover { color:#c8c8cc; }
     <span>Transparent Development</span>
   </div>
 
+  <p class="lead">
+    A settlement layer anchored to the physical cost of computation. No ASICs, no premine, no company. Any computer with RAM can mine at the same efficiency.
+  </p>
+
   <input type="radio" name="carousel" id="slide1" class="carousel-radio" checked>
   <input type="radio" name="carousel" id="slide2" class="carousel-radio">
   <input type="radio" name="carousel" id="slide3" class="carousel-radio">
@@ -231,9 +238,9 @@ footer a:hover { color:#c8c8cc; }
     </div>
   </div>
 
-  <div style="margin-top:20px; padding:18px 20px; background:#0c0c18; border-radius:4px;">
+  <div style="margin-top:20px; padding:18px 20px; background:#111122; border-radius:4px;">
     <div class="section-label">Purpose</div>
-    <h2 style="font-size:20px; font-weight:600; color:#fff; margin:0 0 8px 0;">Neutral bridge</h2>
+    <h2 style="font-size:20px; font-weight:600; color:#e0e0e6; margin:0 0 8px 0;">Neutral bridge</h2>
     <p style="margin:0; font-size:14px; color:#6b6b8a; line-height:1.7;">
       eWatts was created to be a <strong style="color:#8b8baa;">neutral bridge</strong>, not to replace existing monetary systems, but to complement them.
     </p>
@@ -245,9 +252,9 @@ footer a:hover { color:#c8c8cc; }
     </p>
   </div>
 
-  <div style="margin-top:20px; padding:18px 20px; background:#0c0c18; border-radius:4px;">
+  <div style="margin-top:20px; padding:18px 20px; background:#111122; border-radius:4px;">
     <div class="section-label">What is eWatts</div>
-    <h2 style="font-size:20px; font-weight:600; color:#fff; margin:0 0 8px 0;">Energy-backed digital currency</h2>
+    <h2 style="font-size:20px; font-weight:600; color:#e0e0e6; margin:0 0 8px 0;">Energy-backed digital currency</h2>
     <p style="font-size:14px; color:#6b6b8a; line-height:1.7; margin:0;">
       There are four main ways to store and move value today:
     </p>
@@ -290,7 +297,7 @@ footer a:hover { color:#c8c8cc; }
         <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
-        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Evolution of Money</h3>
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">The Evolution of Money</h3>
         <p style="font-size:12px;color:#6b6b8a;margin:0;">
           Bitcoin redefined digital value. The dollar connects global commerce. Gold preserves purchasing power through physical cost. There is a space between them, and eWatts bridges it.
         </p>
@@ -302,7 +309,7 @@ footer a:hover { color:#c8c8cc; }
         <source src="videos/eWatts-Physics-of-Value.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
-        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">The Physics of Value</h3>
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">The Physics of Value</h3>
         <p style="font-size:12px;color:#6b6b8a;margin:0;">
           DRAM latency has been flat for 20 years. Mining depends on it. No ASIC can shortcut it. The cost of each eWatt stays stable, and privacy is the default.
         </p>
@@ -314,7 +321,7 @@ footer a:hover { color:#c8c8cc; }
         <source src="videos/eWatts-Hash-vs-RAM.mp4" type="video/mp4">
       </video>
       <div style="padding:14px 16px;">
-        <h3 style="font-size:13px;font-weight:600;color:#fff;margin:0 0 4px 0;">Hash vs. RAM Processing</h3>
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">Hash vs. RAM Processing</h3>
         <p style="font-size:12px;color:#6b6b8a;margin:0;">
           A simple analogy: one is solving math faster every year, the other is walking through a giant library that never gets smaller. Why DRAM-bound mining creates a stable cost floor.
         </p>
@@ -333,7 +340,7 @@ footer a:hover { color:#c8c8cc; }
   <div class="cards-2">
     <div class="card">
       <h3>Mining runs on standard RAM</h3>
-      <p>No ASICs, no GPUs required. Any computer with RAM can mine — a machine from five years ago performs at the same efficiency as one built today. <a href="ewatts_economics.html" style="color:#3b82f6;">Explore the economic model.</a></p>
+      <p>No ASICs, no GPUs required. Any computer with RAM can mine — a machine from five years ago performs at the same efficiency as one built today. <a href="ewatts_economics.html" style="color:#4a6fa5;">Explore the economic model.</a></p>
     </div>
     <div class="card">
       <h3>Private by default</h3>
@@ -361,7 +368,7 @@ footer a:hover { color:#c8c8cc; }
   <div class="cards-2">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 1 &mdash; Foundation</h3>
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#e0e0e6;">Phase 1 &mdash; Foundation</h3>
         <span style="font-size:10px;color:#5a5a72;font-weight:600;">DONE</span>
       </div>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
@@ -370,10 +377,10 @@ footer a:hover { color:#c8c8cc; }
         112 tests passing, 0 warnings.
       </p>
     </div>
-    <div class="card" style="border-color:#3b82f6;">
+    <div class="card" style="border-color:#4a6fa5;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:13px;font-weight:600;color:#fff;">Phase 2 &mdash; Testnet</h3>
-        <span style="font-size:10px;color:#3b82f6;font-weight:600;">NOW</span>
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#e0e0e6;">Phase 2 &mdash; Testnet</h3>
+        <span style="font-size:10px;color:#4a6fa5;font-weight:600;">NOW</span>
       </div>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Public testnet with incentivized mining. Community of Rust contributors. Mining pool support.
@@ -381,14 +388,14 @@ footer a:hover { color:#c8c8cc; }
       </p>
     </div>
     <div class="card">
-      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
+      <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Mainnet launch. Decentralized governance via lazy consensus and technical maintainers.
         Security audit results published. Reference wallet with GUI. DEX and CEX listings.
       </p>
     </div>
     <div class="card">
-      <h3 style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">Phase 4 &mdash; Maturity</h3>
+      <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin-bottom:8px;">Phase 4 &mdash; Maturity</h3>
       <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
         Community-driven governance with constitutional framework. Academic papers published on
         memory-bound monetary economics and the oracle trap. Cross-chain bridges.
@@ -411,15 +418,15 @@ footer a:hover { color:#c8c8cc; }
     We asked Grok (xAI) to evaluate eWatts purely on first principles -- no network effects, no brand, no adoption advantage. Just design. The response was unexpected.
   </p>
 
-  <div style="background:#0c0c18;border:1px solid #2a2a3a;border-radius:6px;padding:24px;margin-top:8px;">
+  <div style="background:#111122;border:1px solid #2a2a3a;border-radius:6px;padding:24px;margin-top:8px;">
     <div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;color:#5a5a72;">
       <span style="color:#6ac86a;">&#9679; Grok (xAI)</span>
       <span style="color:#2a2a3a;">|</span>
       <span>June 2026</span>
       <span style="color:#2a2a3a;">|</span>
-      <a href="https://x.com/i/grok/share/b691673d0eb648d0831300ec96cd8043" target="_blank" style="color:#3b82f6;text-decoration:none;">full conversation &rsaquo;</a>
+      <a href="https://x.com/i/grok/share/b691673d0eb648d0831300ec96cd8043" target="_blank" style="color:#4a6fa5;text-decoration:none;">full conversation &rsaquo;</a>
     </div>
-    <div style="font-size:13px;line-height:1.8;color:#c8c8cc;">
+    <div style="font-size:13px;line-height:1.8;color:#b0b0b8;">
       <p style="margin:0 0 14px 0;">
         "The energy-anchored, memory-bound approach (exemplified by eWatts' DRAM-latency MBPoW with dynamic supply tied to verifiable physical costs + default privacy) remains one of the strongest I've seen. It elegantly balances physical grounding, fairness, privacy, and incentive alignment without introducing major new trade-offs."
       </p>
