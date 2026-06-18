@@ -221,7 +221,7 @@ async fn serve_dashboard(port: &str) {
                     let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
                     let mempool = crate::mempool::pending_count();
                     let last = blocks.last();
-                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+                    let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
                     let emission = last.map(|b| b.header.emission_rate).unwrap_or(0);
                     let diff = last.map(|b| b.header.difficulty_target).unwrap_or(0);
                     let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
@@ -419,10 +419,10 @@ pub(crate) fn mine_block_with_difficulty(
         epoch,
         height,
         difficulty_target: difficulty,
-        total_effective_commit: 0.0,    // filled after mining
+        total_effective_commit: 0,    // filled after mining
         emission_rate: 0,             // base units, filled after mining
-        miner_effective_commit: 0.0,
-        vr_block: 0.0,
+        miner_effective_commit: 0,
+        vr_block: 0,
         coinbase_burn: 0,
         nonce: 0,
         elapsed_ms: 0,
@@ -478,7 +478,7 @@ pub(crate) fn mine_block_with_difficulty(
     // Compute effective commitment usando AOPS
     let eff = commitment::compute_efficiency_aops(commit.total_access_ops, commit.access_ops_per_sec, commit.time_seconds);
     let ce = commitment::effective_commitment(commit.access_ops_per_sec, eff);
-    header.miner_effective_commit = ce;
+    header.miner_effective_commit = ce as u64;
 
     // Emission rate: compute avg_hist from recent block history
     let avg_hist = {
@@ -492,7 +492,7 @@ pub(crate) fn mine_block_with_difficulty(
         if window_start < all_blocks.len() && window_start < height as usize {
             let window: Vec<f64> = all_blocks[window_start..]
                 .iter()
-                .map(|b| b.header.total_effective_commit)
+                .map(|b| b.header.total_effective_commit as f64)
                 .collect();
             if window.is_empty() {
                 constants::BASE_EMISSION
@@ -505,7 +505,7 @@ pub(crate) fn mine_block_with_difficulty(
     };
     let total_eff = ce;
     let em = crate::reward::compute_emission_rate(total_eff, avg_hist);
-    header.total_effective_commit = total_eff;
+    header.total_effective_commit = total_eff as u64;
     header.emission_rate = (em * constants::UNITS_PER_EWATT as f64).round() as u64;
 
     // Reward for this miner, with ramp-up cap (first 10K blocks: max 80%, excess burned)
@@ -519,7 +519,7 @@ pub(crate) fn mine_block_with_difficulty(
 
     // VR (use post-burn reward for accuracy)
     let vr_result = crate::vr::compute_vr(ce, post_burn_reward, 1, constants::TARGET_BLOCK_TIME_SECS);
-    header.vr_block = vr_result.vr_kwh_per_ewatt;
+    header.vr_block = (vr_result.vr_kwh_per_ewatt * 1_000_000.0).round() as u64;
 
     // Coinbase transaction: miner reward (post-burn) to miner
     // During ramp-up, up to 20% may be burned (coinbase_burn)
@@ -527,7 +527,7 @@ pub(crate) fn mine_block_with_difficulty(
     let coinbase = Transaction {
         version: 1,
         inputs: vec![],
-        outputs: vec![TxOutput { amount: reward_base_units, public_key: miner_pk.to_vec(), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
+        outputs: vec![TxOutput { amount: reward_base_units, pubkey_hash: crate::block::TxOutput::hash_pubkey(&miner_pk), spendable_after: crate::reward::founder_lock_block(height), stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }],
         ring_size: 1,
         signatures: vec![],
         mlsag: None, ring_members: None,
@@ -566,12 +566,14 @@ pub(crate) fn mine_block_with_difficulty(
     }
 
     // Assemble block
+    let proof_hash = header.proof_hash();
     let block = Block {
         header,
         body: BlockBody {
             transactions: block_txs,
             commitments: vec![commit],
         },
+        proof_hash,
     };
 
     // Apply to UTXO set with tracking
@@ -619,7 +621,7 @@ fn cmd_mine() {
             println!("  Hash:   {}", hex::encode(&block_hash[..8]));
             println!("  Reward: {:.6} Ewatt", reward_ewatt);
             println!("  VR:     {}",
-                crate::vr::format_vr(block.header.vr_block));
+                crate::vr::format_vr(block.header.vr_block as f64 / 1_000_000.0));
             println!("  UTXOs:  {}", state.utxo_count());
             println!("  Supply: {} base units", state.total_supply());
 
@@ -685,7 +687,7 @@ fn cmd_simulate(args: &[String]) {
                 }
 
                 prev_hash = hash;
-                print!("  ✓ VR: {}", crate::vr::format_vr(block.header.vr_block));
+                print!("  ✓ VR: {}", crate::vr::format_vr(block.header.vr_block as f64 / 1_000_000.0));
                 println!(" | UTXOs: {} | Supply: {}",
                     state.utxo_count(), state.total_supply());
             }
@@ -757,15 +759,16 @@ fn cmd_send(args: &[String]) {
             previous_tx_hash: key.tx_hash,
             output_index: key.output_index,
             key_image: ki,
+            revealed_pubkey: vec![],
         });
         if total_input >= amount { break; }
     }
 
-    let mut outputs = vec![crate::block::TxOutput { amount, public_key: to_pk, spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }];
+    let mut outputs = vec![crate::block::TxOutput { amount, pubkey_hash: crate::block::TxOutput::hash_pubkey(&to_pk), spendable_after: 0, stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None }];
     if total_input > amount {
         outputs.push(crate::block::TxOutput {
             amount: total_input - amount,
-            public_key: from_pk, spendable_after: 0,
+            pubkey_hash: crate::block::TxOutput::hash_pubkey(&from_pk), spendable_after: 0,
             stealth_dest: None, commitment_bytes: None, range_proof_bytes: None, ephemeral: None,
         });
     }
@@ -1121,7 +1124,7 @@ fn cmd_dashboard_sync() {
             let utxos = state.as_ref().map(|s| s.utxo_count()).unwrap_or(0);
             let mempool = crate::mempool::pending_count();
             let last = blocks.last();
-            let vr = last.map(|b| b.header.vr_block).unwrap_or(0.0);
+            let vr = last.map(|b| b.header.vr_block).unwrap_or(0);
             let emission = last.map(|b| b.header.emission_rate).unwrap_or(0) as u64;
             let blk: Vec<serde_json::Value> = blocks.iter().map(|b| serde_json::json!({
                 "height": b.header.height, "hash": hex::encode(b.header.hash()),
@@ -1162,7 +1165,7 @@ fn cmd_info() {
             println!("  Supply: {}", state.total_supply());
             // Show recent VR if blocks exist
             if let Some(last) = blocks.last() {
-                println!("  VR:     {}", crate::vr::format_vr(last.header.vr_block));
+                println!("  VR:     {}", crate::vr::format_vr(last.header.vr_block as f64 / 1_000_000.0));
             }
         }
         Err(e) => println!("Error: {}", e),
