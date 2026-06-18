@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eWatts — Test Suite Results</title>
-<meta name="description" content="eWatts protocol test suite results: 198 tests passing, 0 failures, 6 ignored.">
+<meta name="description" content="eWatts protocol test suite results. AOPS-based mining.">
 <meta property="og:title" content="eWatts — Test Suite Results">
-<meta property="og:description" content="198 tests passing, 0 failures. Protocol core, privacy, and economics validation.">
+<meta property="og:description" content="eWatts test suite. Protocol v0.5 (AOPS).">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="eWatts — Test Suite Results">
-<meta name="twitter:description" content="198 tests passing, 0 failures.">
+<meta name="twitter:description" content="eWatts test suite, protocol v0.5.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="logo.png">
@@ -83,16 +83,16 @@ see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, 
 </p>
 
 <div class="summary">
-  <div class="summary-item"><span class="summary-num text-green">198</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-green">206+</span><span class="summary-label">Passed</span></div>
   <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
-  <div class="summary-item"><span class="summary-num text-muted">6</span><span class="summary-label">Ignored</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">2</span><span class="summary-label">Ignored</span></div>
   <div class="summary-item"><span class="summary-num text-muted">8</span><span class="summary-label">Filtered</span></div>
   <div class="summary-item"><span class="summary-num">206</span><span class="summary-label">Total</span></div>
 </div>
 
-<p>This round: 9 new tests added, 18 P-spec tests. P2P debug logs cleaned, lib.rs fixed for fuzz.</p>
+<p>This round: AOPS migration (Access OPerations per Second). Commitment, VR, and emission now use random access count instead of bandwidth. DDR3-DDR5 variance reduced from 4x to 1.6x. Wallet.rs and main.rs compilation fixes.</p>
 <p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
-<strong>6 ignored:</strong> tests for the deprecated v27 emission formula, kept in the codebase for reference during the v3 migration. They do not validate the current protocol.
+<strong>2 ignored:</strong> integration reward proportionality tests (awaiting multi-node setup). The v27 emission formula is active. v3 emission functions exist in codebase but are not wired into the mining pipeline (design reference only).
 </p>
 <p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
 
@@ -135,7 +135,7 @@ see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, 
 <p>Scripts: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6.sh"><code>testnet_cert_phase6.sh</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t64.sh"><code>t6.4</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t65.sh"><code>t6.5</code></a></p>
 
 <h2>Phase 7 — Economic Model &amp; Protocol Invariants</h2>
-<p>Validates v3 emission formula, bootstrap multiplier, ramp-up cap 80%, founder lock, double-spend detection.</p>
+<p>Validates protocol invariants: ramp-up cap 80%, founder lock, double-spend detection, AOPS-based commitment and VR.</p>
 <p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase7.sh"><code>testnet_cert_phase7.sh</code></a></p>
 
 <p style="margin:12px 0; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
@@ -278,14 +278,14 @@ which validate the same invariants through direct state access with specific err
 <tr><td></td><td><code>test_bootstrap_multiplier_at_genesis</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_bootstrap_multiplier_at_threshold</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_cap_int</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_compute_block_rewards_v3_empty</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_compute_block_rewards_v3_proportional</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_compute_block_rewards_v3_solo</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_emission_empty</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_emission_proportional</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_emission_solo</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_eff_int</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_emission_v3_genesis</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_emission_v3_mature</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_emission_v3_scales_with_eff</code></td><td class="text-green">PASS</td></tr>
-<tr><td></td><td><code>test_emission_v3_zero_eff</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_genesis</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_mature</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_scales_with_eff</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_zero_eff</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_format_vr_int_basic</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_format_vr_zero</code></td><td class="text-green">PASS</td></tr>
 <tr><td></td><td><code>test_founder_lock</code></td><td class="text-green">PASS</td></tr>
@@ -410,7 +410,7 @@ that extend beyond the current test suite structure. Tracked as GitHub issues wi
 
   <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
     <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">cargo test + fuzz</div>
-    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">198 / 0 / 206</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">82 Rust / 0 failed / 206+ total suite</div>
     <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Unit + integration + property-based testing. Fuzzing target: tx validation, block deserialization.</div>
   </div>
 
