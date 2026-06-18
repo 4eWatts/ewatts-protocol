@@ -12,15 +12,13 @@ pub struct BlockHeader {
     pub height: u64,
     pub epoch: u64,
     pub difficulty_target: u64,
-    pub total_effective_commit: f64,
-    pub emission_rate: u64,    // base units per block (1 Ewatt = 1_000_000 units)
-    pub miner_effective_commit: f64,
-    pub vr_block: f64,
-    pub coinbase_burn: u64,  // base units burned via ramp-up cap
+    pub total_effective_commit: u64,
+    pub emission_rate: u64,
+    pub miner_effective_commit: u64,
+    pub vr_block: u64,
+    pub coinbase_burn: u64,
     pub nonce: u64,
     pub elapsed_ms: u32,
-    /// Optional Merkle root of the proof trace access samples (Opção B).
-    /// When set, verifiers can run sampled verification instead of full walk.
     pub proof_merkle_root: Option<[u8; 32]>,
 }
 
@@ -34,18 +32,20 @@ pub struct BlockBody {
 pub struct Block {
     pub header: BlockHeader,
     pub body: BlockBody,
+    /// Hash of the header fields used for the PoW proof (excludes nonce/proof fields).
+    /// Set during mining; used by verifiers to validate against the same header hash
+    /// that the miner solved, even after post-mine fields are filled.
+    pub proof_hash: [u8; 32],
 }
 
-/// A reference to a UTXO: (tx_hash, output_index).
-/// Used for ring member references.
+/// UTXO reference: (tx_hash, output_index)
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct UtxoRef {
     pub tx_hash: [u8; 32],
     pub output_index: u32,
 }
 
-/// MLSAG ring signature serialized for blockchain storage.
-/// All points stored as compressed bytes ([u8; 32]) for serde compatibility.
+/// Serialized MLSAG (compressed points for serde)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MlsagData {
     pub ring_size: usize,
@@ -56,7 +56,6 @@ pub struct MlsagData {
 }
 
 impl MlsagData {
-    /// Create from in-memory MLSAGSignature + ring reference.
     pub fn from_sig(sig: &crate::privacy::MLSAGSignature) -> Self {
         let compress = |pt: &curve25519_dalek::ristretto::RistrettoPoint| pt.compress().to_bytes();
         MlsagData {
@@ -80,7 +79,7 @@ impl MlsagData {
         }
     }
 
-    /// Deserialize to in-memory MLSAGSignature (without ring).
+    /// Deserialize to in-memory MLSAGSignature (ring excluded)
     pub fn to_sig(&self) -> Result<crate::privacy::MLSAGSignature, String> {
         use curve25519_dalek::ristretto::CompressedRistretto;
         use curve25519_dalek::scalar::Scalar;
@@ -116,9 +115,7 @@ pub struct Transaction {
     pub outputs: Vec<TxOutput>,
     pub ring_size: u16,
     pub signatures: Vec<Vec<u8>>,
-    /// MLSAG signature (private mode).
     pub mlsag: Option<MlsagData>,
-    /// For each input, the ring of UtxoRefs forming the anonymity set.
     pub ring_members: Option<Vec<Vec<UtxoRef>>>,
 }
 
@@ -126,33 +123,39 @@ pub struct Transaction {
 pub struct TxInput {
     pub previous_tx_hash: [u8; 32],
     pub output_index: u32,
-    pub key_image: [u8; 32], // 32 bytes = compressed RistrettoPoint for MLSAG
+    pub key_image: [u8; 32],
+    pub revealed_pubkey: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxOutput {
-    /// Legacy: amount in plaintext (public mode / coinbase).
     pub amount: u64,
-    /// Legacy: P2PKH public key (public mode).
-    pub public_key: Vec<u8>,
-    /// Founder time-lock: 0 = immediate.
+    pub pubkey_hash: [u8; 20],
     pub spendable_after: u64,
-    /// Private mode: one-time stealth destination (compressed RistrettoPoint).
     pub stealth_dest: Option<[u8; 32]>,
-    /// Private mode: Pedersen commitment (compressed RistrettoPoint).
     pub commitment_bytes: Option<[u8; 32]>,
-    /// Private mode: serialized RangeProof.
     pub range_proof_bytes: Option<Vec<u8>>,
-    /// Private mode: ephemeral public key R = r*G (for one-time key recovery).
     pub ephemeral: Option<[u8; 32]>,
 }
 
 impl TxOutput {
-    /// Create a public P2PKH output (coinbase / legacy).
-    pub fn new(amount: u64, public_key: Vec<u8>) -> Self {
+    /// Hash a public key into 20 bytes (SHA256, truncated).
+    pub fn hash_pubkey(pk: &[u8]) -> [u8; 20] {
+        use sha3::Digest;
+        let mut h = sha3::Keccak256::new();
+        h.update(pk);
+        let full = h.finalize();
+        let mut out = [0u8; 20];
+        out.copy_from_slice(&full[..20]);
+        out
+    }
+
+    /// Create a public P2PKH output (coinbase).
+    pub fn new(amount: u64, pubkey: Vec<u8>) -> Self {
+        let ph = Self::hash_pubkey(&pubkey);
         TxOutput {
             amount,
-            public_key,
+            pubkey_hash: ph,
             spendable_after: 0,
             stealth_dest: None,
             commitment_bytes: None,
@@ -161,7 +164,6 @@ impl TxOutput {
         }
     }
 
-    /// Create a private stealth output.
     pub fn new_private(
         amount: u64,
         dest: [u8; 32],
@@ -169,8 +171,8 @@ impl TxOutput {
         range_proof: Vec<u8>,
     ) -> Self {
         TxOutput {
-            amount, // kept for supply tracking
-            public_key: vec![],
+            amount,
+            pubkey_hash: [0u8; 20],
             spendable_after: 0,
             stealth_dest: Some(dest),
             commitment_bytes: Some(commitment),
@@ -179,8 +181,8 @@ impl TxOutput {
         }
     }
 
-    /// Create a founder time-locked output.
-    pub fn new_locked(amount: u64, public_key: Vec<u8>, block_number: u64) -> Self {
+    pub fn new_locked(amount: u64, pubkey: Vec<u8>, block_number: u64) -> Self {
+        let ph = Self::hash_pubkey(&pubkey);
         let lock = if block_number < constants::RAMP_UP_BLOCKS {
             std::cmp::max(
                 constants::FOUNDER_LOCK_BLOCKS,
@@ -191,7 +193,7 @@ impl TxOutput {
         };
         TxOutput {
             amount,
-            public_key,
+            pubkey_hash: ph,
             spendable_after: lock,
             stealth_dest: None,
             commitment_bytes: None,
@@ -232,6 +234,26 @@ impl BlockHeader {
         }
         h.finalize().into()
     }
+
+    /// Hash used for PoW proof: excludes nonce and proof-related fields.
+    /// Returns the SAME value before and after mining, ensuring verifiers
+    /// validate against the hash that the miner actually solved.
+    pub fn proof_hash(&self) -> [u8; 32] {
+        let mut h = Keccak256::new();
+        h.update(self.version.to_le_bytes());
+        h.update(self.previous_hash);
+        h.update(self.merkle_root);
+        h.update(self.timestamp.to_le_bytes());
+        h.update(self.height.to_le_bytes());
+        h.update(self.epoch.to_le_bytes());
+        h.update(self.difficulty_target.to_le_bytes());
+        h.update(self.total_effective_commit.to_le_bytes());
+        h.update(self.emission_rate.to_le_bytes());
+        h.update(self.miner_effective_commit.to_le_bytes());
+        h.update(self.vr_block.to_le_bytes());
+        h.update(self.coinbase_burn.to_le_bytes());
+        h.finalize().into()
+    }
 }
 
 impl Transaction {
@@ -245,8 +267,8 @@ impl Transaction {
         }
         for o in &self.outputs {
             h.update(o.amount.to_le_bytes());
-            if !o.public_key.is_empty() {
-                h.update(&o.public_key);
+            if o.pubkey_hash != [0u8; 20] {
+                h.update(&o.pubkey_hash);
             }
             if let Some(d) = &o.stealth_dest {
                 h.update(d);
@@ -273,10 +295,10 @@ mod tests {
             height: 0,
             epoch: 0,
             difficulty_target: 1,
-            total_effective_commit: 100.,
+            total_effective_commit: 100_000_000_000,
             emission_rate: 100_000_000,
-            miner_effective_commit: 50.,
-            vr_block: 0.001,
+            miner_effective_commit: 50_000_000_000,
+            vr_block: 1_000,
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
@@ -294,10 +316,10 @@ mod tests {
             height: 0,
             epoch: 0,
             difficulty_target: 1,
-            total_effective_commit: 100.,
+            total_effective_commit: 100_000_000_000,
             emission_rate: 100_000_000,
-            miner_effective_commit: 50.,
-            vr_block: 0.001,
+            miner_effective_commit: 50_000_000_000,
+            vr_block: 1_000,
             coinbase_burn: 0,
             nonce: 42,
             elapsed_ms: 5000,
@@ -315,10 +337,11 @@ mod tests {
                 previous_tx_hash: [0; 32],
                 output_index: 0,
                 key_image: [0; 32],
+            revealed_pubkey: vec![],
             }],
             outputs: vec![TxOutput {
                 amount: 1000,
-                public_key: vec![0u8; 32],
+                pubkey_hash: TxOutput::hash_pubkey(&[0u8; 32]),
                 spendable_after: 0,
                 stealth_dest: None,
                 commitment_bytes: None,
@@ -340,10 +363,11 @@ mod tests {
                 previous_tx_hash: [0; 32],
                 output_index: 0,
                 key_image: [1u8; 32],
+            revealed_pubkey: vec![],
             }],
             outputs: vec![TxOutput {
                 amount: 0,
-                public_key: vec![],
+                pubkey_hash: [0u8; 20],
                 spendable_after: 0,
                 stealth_dest: Some([2u8; 32]),
                 commitment_bytes: Some([3u8; 32]),
@@ -374,11 +398,10 @@ mod tests {
                 inputs: vec![TxInput {
                     previous_tx_hash: [0; 32],
                     output_index: 0,
-                    key_image: [1u8; 32]
-                }],
+                    key_image: [1u8; 32], revealed_pubkey: vec![] }],
                 outputs: vec![TxOutput {
                     amount: 0,
-                    public_key: vec![],
+                    pubkey_hash: [0u8; 20],
                     spendable_after: 0,
                     stealth_dest: Some([9u8; 32]),
                     commitment_bytes: Some([3u8; 32]),

@@ -11,7 +11,8 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UtxoEntry {
     pub amount: u64,
-    pub public_key: Vec<u8>,
+    /// P2PKH: hash of public key (20 bytes). Empty for private outputs.
+    pub pubkey_hash: [u8; 20],
     pub spendable_after: u64,
     pub block_height: u64,
     pub tx_index: u32,
@@ -25,7 +26,6 @@ pub struct UtxoEntry {
 }
 
 impl UtxoEntry {
-    /// Decompress the stealth destination point, if present.
     pub fn stealth_dest_point(&self) -> Option<RistrettoPoint> {
         self.stealth_dest
             .and_then(|sd| curve25519_dalek::ristretto::CompressedRistretto(sd).decompress())
@@ -77,8 +77,7 @@ pub struct UtxoSet {
     total_supply: u64,
 }
 
-/// Build the message to be signed/hashed for a transaction.
-/// Used for both ed25519 legacy signing and MLSAG message.
+/// Build message to be signed (ed25519 or MLSAG)
 pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     let mut msg = Vec::new();
     for i in &tx.inputs {
@@ -87,8 +86,8 @@ pub fn tx_msg(tx: &Transaction) -> Vec<u8> {
     }
     for o in &tx.outputs {
         msg.extend_from_slice(&o.amount.to_le_bytes());
-        if !o.public_key.is_empty() {
-            msg.extend_from_slice(&o.public_key);
+        if o.pubkey_hash != [0u8; 20] {
+            msg.extend_from_slice(&o.pubkey_hash);
         }
         if let Some(d) = &o.stealth_dest {
             msg.extend_from_slice(d);
@@ -114,7 +113,6 @@ fn make_signing_key() -> SigningKey {
     SigningKey::from_bytes(&b)
 }
 
-/// Verify a transaction signature using ed25519 (legacy public mode).
 pub fn verify_tx_signature(tx: &Transaction, pubkey_bytes: &[u8]) -> Result<(), String> {
     if tx.signatures.is_empty() {
         return Err("sem assinatura".into());
@@ -126,8 +124,6 @@ pub fn verify_tx_signature(tx: &Transaction, pubkey_bytes: &[u8]) -> Result<(), 
         .map_err(|_| "assinatura nao confere".to_string())
 }
 
-/// Verify an MLSAG ring signature against a ring of public keys.
-/// `ring_pubkeys`: for each layer, the set of pubkeys forming the ring.
 fn verify_mlsag(
     mlsag: &crate::block::MlsagData,
     ring_pubkeys: &[Vec<curve25519_dalek::ristretto::RistrettoPoint>],
@@ -174,16 +170,12 @@ pub fn build_ring_inline(
     Ok(ring)
 }
 
-/// Record of changes made by a single block, used for reorg unwinding.
+/// Per-block changes for reorg unwinding
 #[derive(Debug, Clone)]
 pub struct BlockDiff {
-    /// UTXOs that were consumed (key_image -> (key, entry) to restore on unwind)
     pub consumed: std::collections::HashMap<[u8; 32], (UtxoKey, UtxoEntry)>,
-    /// Keys of UTXOs that were created (to remove on unwind)
     pub created: Vec<UtxoKey>,
-    /// Key images that were spent (to un-mark on unwind)
     pub key_images: Vec<[u8; 32]>,
-    /// Supply delta (positive = emission added, negative = burned)
     pub supply_delta: i64,
 }
 
@@ -216,7 +208,7 @@ impl UtxoSet {
                 },
                 UtxoEntry {
                     amount: o.amount,
-                    public_key: o.public_key.to_vec(),
+                    pubkey_hash: o.pubkey_hash,
                     spendable_after: o.spendable_after,
                     block_height: bh,
                     tx_index: ti,
@@ -236,7 +228,7 @@ impl UtxoSet {
             .unwrap_or(self.total_supply);
     }
 
-    /// Spend transaction inputs, verifying both public (ed25519) and private (MLSAG) sigs.
+    /// Spend tx inputs, verifying sigs (ed25519 or MLSAG)
     pub fn spend_transaction_inputs(
         &mut self,
         tx: &Transaction,
@@ -246,9 +238,7 @@ impl UtxoSet {
         self.spend_transaction_inputs_with_diff(tx, current_block, &mut no_diff)
     }
 
-    /// Same as spend_transaction_inputs but also populates a BlockDiff for each
-    /// individual mutation, ensuring that if a later input spend fails, the partial
-    /// diff is consistent for rollback (atomicity).
+    /// Like spend_transaction_inputs but records BlockDiff for rollback atomicity
     pub fn spend_transaction_inputs_with_diff(
         &mut self,
         tx: &Transaction,
@@ -269,15 +259,12 @@ impl UtxoSet {
             let mut all_rings = Vec::new();
             for (_input_idx, members_for_input) in ring_members.iter().enumerate() {
                 let ring = build_ring_inline(&self.utxos, members_for_input)?;
-                // Take only the first layer from each ring member (n_layers=1 per input)
                 let layer_ring: Vec<curve25519_dalek::ristretto::RistrettoPoint> =
                     ring.iter().map(|r| r[0]).collect();
                 all_rings.push(layer_ring);
             }
 
-            // Transpose: MLSAG expects ring[ring_pos][layer]
-            // We have all_rings[input_idx][ring_pos]
-            // We need ring[ring_pos][layer_idx]
+            // Transpose all_rings[input_idx][ring_pos] => ring[ring_pos][layer_idx]
             if all_rings.is_empty() {
                 return Err("No rings to verify".into());
             }
@@ -309,9 +296,18 @@ impl UtxoSet {
                 return Err("UTXO time-locked".into());
             }
 
-            // Legacy sig verification (only if not using MLSAG for this tx)
+            // P2PKH sig verification (only if not using MLSAG for this tx)
             if tx.mlsag.is_none() {
-                verify_tx_signature(tx, &utxo.public_key)?;
+                // P2PKH: reveal public key in input, verify hash matches
+                let revealed = &input.revealed_pubkey;
+                if revealed.is_empty() {
+                    return Err("P2PKH spend requires revealed public key".into());
+                }
+                let computed_hash = crate::block::TxOutput::hash_pubkey(revealed);
+                if computed_hash != utxo.pubkey_hash {
+                    return Err("P2PKH hash mismatch: revealed key does not match output".into());
+                }
+                verify_tx_signature(tx, revealed)?;
             }
 
             // For private mode, also check amount conservation via commitments (TODO)
@@ -398,9 +394,10 @@ impl UtxoSet {
     }
 
     pub fn get_balance(&self, pk: &[u8]) -> u64 {
+        let ph = crate::block::TxOutput::hash_pubkey(pk);
         self.utxos
             .values()
-            .filter(|u| u.public_key == pk)
+            .filter(|u| u.pubkey_hash == ph)
             .map(|u| u.amount)
             .sum()
     }
@@ -410,9 +407,10 @@ impl UtxoSet {
     }
 
     pub fn utxo_keys_for(&self, pk: &[u8]) -> Vec<UtxoKey> {
+        let ph = crate::block::TxOutput::hash_pubkey(pk);
         self.utxos
             .iter()
-            .filter(|(_, e)| e.public_key.as_slice() == pk)
+            .filter(|(_, e)| e.pubkey_hash == ph)
             .map(|(k, _)| k.clone())
             .collect()
     }
@@ -449,8 +447,14 @@ impl UtxoSet {
     pub fn apply_block_and_track(&mut self, block: &Block, block_height: u64) -> Result<BlockDiff, String> {
         let mut diff = BlockDiff::new();
         let mut opt_diff: Option<&mut BlockDiff> = Some(&mut diff);
-        self.apply_block_inner(block, block_height, &mut opt_diff)?;
-        Ok(diff)
+        match self.apply_block_inner(block, block_height, &mut opt_diff) {
+            Ok(()) => Ok(diff),
+            Err(e) => {
+                // Rollback partial changes using the diff we built before the failure
+                let _ = self.unwind_with_diff(&diff);
+                Err(e)
+            }
+        }
     }
 
     fn apply_block_inner(&mut self, block: &Block, block_height: u64, diff: &mut Option<&mut BlockDiff>) -> Result<(), String> {
@@ -600,15 +604,7 @@ impl UtxoSet {
         let tx = Transaction {
             version: 1,
             inputs: vec![],
-            outputs: vec![TxOutput {
-                amount: a,
-                public_key: pk.try_into().unwrap(),
-                spendable_after: 0,
-                stealth_dest: None,
-                commitment_bytes: None,
-                range_proof_bytes: None,
-                ephemeral: None,
-            }],
+            outputs: vec![TxOutput::new(a, pk.to_vec())],
             ring_size: 1,
             signatures: vec![],
             mlsag: None,
@@ -628,15 +624,7 @@ mod tests {
 
     fn out(v: &[u64], pk: &[u8]) -> Vec<TxOutput> {
         v.iter()
-            .map(|&a| TxOutput {
-                amount: a,
-                public_key: pk.try_into().unwrap(),
-                spendable_after: 0,
-                stealth_dest: None,
-                commitment_bytes: None,
-                range_proof_bytes: None,
-                ephemeral: None,
-            })
+            .map(|&a| TxOutput::new(a, pk.to_vec()))
             .collect()
     }
 
@@ -677,8 +665,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xab; 32]
-                    }],
+                        key_image: [0xab; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),
@@ -710,8 +697,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xcd; 32]
-                    }],
+                        key_image: [0xcd; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &wrong
                 ),
@@ -742,8 +728,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xab; 32]
-                    }],
+                        key_image: [0xab; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),
@@ -756,8 +741,7 @@ mod tests {
                     vec![TxInput {
                         previous_tx_hash: h,
                         output_index: 0,
-                        key_image: [0xcd; 32]
-                    }],
+                        key_image: [0xcd; 32], revealed_pubkey: pk.to_vec() }],
                     out(&[3000], &pk),
                     &sk
                 ),

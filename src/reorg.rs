@@ -1,32 +1,23 @@
-//! Reorg engine: handles chain reorganization when a heavier fork is detected.
-//! Integrates ChainStore, UtxoSet, and mempool for safe fork switching.
+//! Fork detection and chain reorganization.
 
 use crate::block::Block;
 use crate::chain::ChainStore;
 use crate::state::{BlockDiff, UtxoKey, UtxoSet};
+use log::{info, trace};
 
-/// Result of checking a new block against the current chain.
 #[derive(Debug)]
 pub enum ForkDecision {
-    /// Block extends canonical chain → accept normally.
     ExtendCanonical,
-    /// Block is a heavier competing fork → reorg to this chain.
     ReorgToNew {
-        /// Blocks to unwind (from current tip down to fork point).
         to_unwind: Vec<[u8; 32]>,
-        /// Blocks to apply (from fork point up to new tip).
         to_apply: Vec<[u8; 32]>,
     },
-    /// Block is a lighter competing fork → store but don't reorg.
     Sidechain,
-    /// Block is an orphan (parent unknown) → store for later.
     Orphan,
-    /// Block is invalid or already known.
     Reject(String),
 }
 
-/// Check what to do with a newly received block.
-/// Does NOT modify the store or state.
+/// Decide what to do with a new block (read-only)
 pub fn analyze_fork(
     block: &Block,
     store: &ChainStore,
@@ -35,26 +26,16 @@ pub fn analyze_fork(
     let height = block.header.height;
     let prev_hash = block.header.previous_hash;
 
-    // Already have this block?
-    if store.get_block(&hash).is_some() {
-        return ForkDecision::Reject("Duplicate block".into());
-    }
-
-    // Known parent?
     if store.get_block(&prev_hash).is_none() {
         if height == 0 {
             return ForkDecision::Reject("Genesis already exists".into());
         }
         return ForkDecision::Orphan;
     }
-
-    // Extends canonical chain?
     if store.extends_canonical(&block.header) {
         return ForkDecision::ExtendCanonical;
     }
 
-    // Check if this block extends a known chain (sidechain or canonical fork)
-    // by computing the accumulated work of the chain it would create.
     let tip_hash = store.chain_tip_hash();
     let current_work = store.chain_tip_work();
     let block_work = crate::chain::compute_block_work(&block.header) as u128;
@@ -62,40 +43,28 @@ pub fn analyze_fork(
     let new_work = parent_work.saturating_add(block_work);
 
     if new_work > current_work {
-        // Heavier chain! Need to reorg.
-        // Use parent hash for LCA (new block isn't in the store yet)
         let lca = store.find_lca(&prev_hash, &tip_hash);
         if let Some(fork_point) = lca {
             let to_unwind = store.get_chain_to_fork(&tip_hash, &fork_point);
             let mut to_apply = store.get_chain_to_fork(&prev_hash, &fork_point);
-            to_apply.reverse(); // now fork_point → ... → parent
-            to_apply.push(hash); // add the new block
+            to_apply.reverse();
+            to_apply.push(hash);
             return ForkDecision::ReorgToNew { to_unwind, to_apply };
         }
     }
-
-    // Not heavier — just a sidechain or non-competing block
     ForkDecision::Sidechain
 }
 
-/// Execute a full reorg: unwind current chain, apply new chain.
-///
-/// Returns:
-/// - Ok(tx_hashes_to_resubmit): list of tx hashes from unwound blocks
-///   that are NOT in the new chain (should be returned to mempool).
+/// Execute reorg: unwind old chain, apply new chain, return txs to resubmit
 pub fn execute_reorg(
     to_unwind: &[[u8; 32]],
     to_apply: &[[u8; 32]],
     store: &mut ChainStore,
     state: &mut UtxoSet,
 ) -> Result<Vec<[u8; 32]>, String> {
-    println!(
-        "REORG: unwinding {} blocks, applying {} blocks",
-        to_unwind.len(),
-        to_apply.len()
-    );
+    info!("REORG: unwinding {} blocks, applying {} blocks",
+        to_unwind.len(), to_apply.len());
 
-    // Safety: cap reorg depth at 100 blocks
     let max_reorg = 100;
     if to_unwind.len() > max_reorg || to_apply.len() > max_reorg {
         return Err(format!(
@@ -115,7 +84,7 @@ pub fn execute_reorg(
         Err(e) => {
             *state = state_snapshot;
             *store = store_snapshot;
-            println!("REORG FAILED: rolling back snapshot -- {}", e);
+            info!("REORG FAILED: rolling back snapshot -- {}", e);
             Err(e)
         }
     }
@@ -136,7 +105,7 @@ fn execute_reorg_inner(
         // Use BlockDiff unwind when available (P2P path), fallback to legacy unwind
         if let Some(diff) = store.block_diffs.get(hash) {
             state.unwind_with_diff(diff)?;
-            println!("  Unwound block #{} {:x}.. (diff)", height, hash[0]);
+            trace!("REORG: unwound block #{} {:x}.. (diff)", height, hash[0]);
         } else {
             // Fallback: construct BlockDiff from block data (disk-loaded or pre-diff era)
             let mut fallback_diff = BlockDiff::new();
@@ -160,7 +129,7 @@ fn execute_reorg_inner(
                 }
             }
             state.unwind_with_diff(&fallback_diff)?;
-            println!("  Unwound block #{} {:x}.. (fallback)", height, hash[0]);
+            trace!("REORG: unwound block #{} {:x}.. (fallback)", height, hash[0]);
         }
     }
 
@@ -172,7 +141,7 @@ fn execute_reorg_inner(
         // Capture diff for future unwinds
         let diff = state.apply_block_and_track(block, height)?;
         store.block_diffs.insert(*hash, diff);
-        println!("  Applied block #{} {:x}..", height, hash[0]);
+        trace!("REORG: applied block #{} {:x}..", height, hash[0]);
     }
 
     // Phase 3: Update chain tip
@@ -182,11 +151,8 @@ fn execute_reorg_inner(
         return Err("No blocks to apply in reorg".into());
     }
 
-    println!(
-        "REORG complete: new tip #{} {:x}..",
-        store.chain_tip_height(),
-        store.chain_tip_hash()[0]
-    );
+    info!("REORG complete: new tip #{} {:x}..",
+        store.chain_tip_height(), store.chain_tip_hash()[0]);
 
     // Determine which txs from unwound blocks should be resurrected
     let mut resurrect = Vec::new();
@@ -227,17 +193,19 @@ mod tests {
         BlockHeader {
             version: 1, previous_hash: prev, merkle_root: [0u8; 32],
             timestamp: 1000 + height, height, epoch: 0,
-            difficulty_target: 100, total_effective_commit: 0.0,
-            emission_rate: 0, miner_effective_commit: 0.0,
-            vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+            difficulty_target: 100, total_effective_commit: 0,
+            emission_rate: 0, miner_effective_commit: 0,
+            vr_block: 0, coinbase_burn: 0, nonce, elapsed_ms: 0,
             proof_merkle_root: None,
         }
     }
 
     fn make_block(height: u64, prev: [u8; 32]) -> Block {
+        let hdr = make_header(height, prev);
         Block {
-            header: make_header(height, prev),
+            header: hdr,
             body: BlockBody { transactions: vec![], commitments: vec![] },
+            proof_hash: [0u8; 32],
         }
     }
 
@@ -324,9 +292,9 @@ mod tests {
             let header = BlockHeader {
                 version: 1, previous_hash: prev, merkle_root: [0u8; 32],
                 timestamp: 1000 + height, height, epoch: 0,
-                difficulty_target: 100, total_effective_commit: 0.0,
-                emission_rate: 0, miner_effective_commit: 0.0,
-                vr_block: 0.0, coinbase_burn: 0, nonce, elapsed_ms: 0,
+                difficulty_target: 100, total_effective_commit: 0,
+                emission_rate: 0, miner_effective_commit: 0,
+                vr_block: 0, coinbase_burn: 0, nonce, elapsed_ms: 0,
                 proof_merkle_root: None,
             };
             // Create a range proof with blinding=0 for test stability
@@ -335,7 +303,7 @@ mod tests {
             let tx = Transaction {
                 version: 1, inputs: vec![],
                 outputs: vec![TxOutput {
-                    amount, public_key: vec![], spendable_after: crate::reward::founder_lock_block(height),
+                    amount, pubkey_hash: [0u8; 20], spendable_after: crate::reward::founder_lock_block(height),
                     stealth_dest: None,
                     commitment_bytes: Some(comm.0.compress().to_bytes()),
                     range_proof_bytes: Some(serde_json::to_vec(&rp).unwrap()),
@@ -343,7 +311,7 @@ mod tests {
                 }],
                 ring_size: 1, signatures: vec![], mlsag: None, ring_members: None,
             };
-            Block { header, body: BlockBody { transactions: vec![tx], commitments: vec![] } }
+            Block { header: header.clone(), body: BlockBody { transactions: vec![tx], commitments: vec![] }, proof_hash: header.proof_hash() }
         };
 
         // ── Genesis state ──

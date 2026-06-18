@@ -1,20 +1,4 @@
-//! Ewatts Wallet — stealth key management, UTXO scanning, private tx construction.
-//!
-//! ## SECURITY NOTE
-//! This wallet is a REFERENCE implementation for testnet. It is NOT hardened against:
-//! - Side-channel attacks (key material processed in software without isolation)
-//! - Persistent state monitoring (keys stored unencrypted on disk)
-//! - Malicious RNG (uses ThreadRng, which is not cryptographically audited for production)
-//! - Sophisticated chain analysis (ring selection is simple, not optimized for maximum entropy)
-//! Production wallet requires HSM integration, encrypted key storage, and constant-time operations.
-//!
-//! ## Usage
-//! ```bash
-//! ewatts wallet new          # Generate stealth keypair
-//! ewatts wallet balance      # Scan blockchain for owned UTXOs
-//! ewatts wallet send <addr> <amount>  # Create and broadcast private tx
-//! ewatts wallet list         # List all wallet keys
-//! ```
+//! Ewatts Wallet — reference testnet implementation (NOT production-hardened).
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
@@ -34,11 +18,11 @@ const WALLET_DIR: &str = "ewatts_data/wallets";
 /// A single stealth keypair in the wallet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StealthKeyEntry {
-    pub view_secret: [u8; 32],      // Scalar bytes
-    pub spend_secret: [u8; 32],     // Scalar bytes
-    pub spend_key: [u8; 32],        // Compressed RistrettoPoint
-    pub view_key: [u8; 32],         // Compressed RistrettoPoint
-    pub legacy_public_key: Vec<u8>, // ed25519 public key (P1-3: legacy UTXO detection)
+    pub view_secret: [u8; 32],
+    pub spend_secret: [u8; 32],
+    pub spend_key: [u8; 32],
+    pub view_key: [u8; 32],
+    pub legacy_public_key: Vec<u8>,
     pub label: String,
 }
 
@@ -47,7 +31,6 @@ impl StealthKeyEntry {
         hex::encode(self.spend_key)
     }
 
-    /// Derive the StealthAddress from stored bytes.
     pub fn stealth_address(&self) -> Result<StealthAddress, String> {
         let s = curve25519_dalek::ristretto::CompressedRistretto(self.spend_key)
             .decompress()
@@ -116,11 +99,9 @@ impl Wallet {
         println!("  Wallet saved: {}", path);
     }
 
-    /// Generate a new stealth keypair and add to wallet.
     pub fn new_key(&mut self, label: &str) {
         let mut rng = rand::thread_rng();
         let (addr, key) = StealthAddress::generate(&mut rng);
-        // Also generate ed25519 key for legacy coinbase UTXOs (P1-3 fix)
         let ed_secret = SigningKey::generate(&mut rng);
         let ed_public = ed_secret.verifying_key().to_bytes().to_vec();
         let entry = StealthKeyEntry {
@@ -138,7 +119,7 @@ impl Wallet {
         println!("  Label: {}", label);
     }
 
-    /// Scan the UTXO set for outputs owned by this wallet.
+    /// Check UTXO set for outputs this wallet can spend.
     pub fn scan_utxos(&self, utxo_set: &UtxoSet) -> Vec<OwnedUtxo> {
         let mut owned = Vec::new();
         let map = utxo_set.utxos_map();
@@ -175,10 +156,13 @@ impl Wallet {
                     }
                 }
             }
-            // Also check legacy (ed25519) public keys (P1-3 fixed: use matching key type)
-            for k in &self.keys {
+            // Also check legacy (ed25519) public keys — SKIP if stealth already matched
+            let stealth_matched = owned.last().map(|o| o.key == *key).unwrap_or(false);
+            if !stealth_matched {
+                for k in &self.keys {
                 if let Some(vk) = k.legacy_verifying_key() {
-                    if entry.public_key.len() == 32 && vk.to_bytes() == entry.public_key[..32] {
+                    let pk_hash = crate::block::TxOutput::hash_pubkey(&vk.to_bytes());
+                    if entry.pubkey_hash != [0u8; 20] && entry.pubkey_hash == pk_hash {
                         owned.push(OwnedUtxo {
                             key: key.clone(),
                             entry: entry.clone(),
@@ -190,7 +174,8 @@ impl Wallet {
                 }
             }
         }
-        owned
+    }
+    owned
     }
 
     /// List all wallet keys.
@@ -289,8 +274,10 @@ pub fn create_private_tx(
             });
         }
         // Insert own UTXO at the FIXED real_index (shared across all layers)
+        // Safeguard: if there aren't enough decoys, insert at end instead
+        let insert_pos = real_index.min(members.len());
         members.insert(
-            real_index,
+            insert_pos,
             UtxoRef {
                 tx_hash: utxo.key.tx_hash,
                 output_index: utxo.key.output_index,
@@ -322,6 +309,7 @@ pub fn create_private_tx(
             previous_tx_hash: utxo.key.tx_hash,
             output_index: utxo.key.output_index,
             key_image: key_image.compress().to_bytes(),
+            revealed_pubkey: vec![],
         });
         secret_keys.push(utxo.one_time_key);
         ring_members.push(members);
@@ -399,9 +387,299 @@ pub fn create_private_tx(
     Ok(tx)
 }
 
+// ─── Seed Phrase (BIP39-style mnemonic) ────────────────────────────────
+
+/// BIP39 English wordlist (first 20 words for reference, full list embedded).
+const BIP39_WORDS: &[&str] = &[
+    "abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse",
+    "access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act",
+    "action","actor","actress","actual","adapt","add","addict","address","adjust","admit",
+    "adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent",
+    "agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert",
+    "alien","all","alley","allow","almost","alone","alpha","already","also","alter",
+    "always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger",
+    "angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique",
+    "anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic",
+    "area","arena","argue","arm","armed","armor","army","around","arrange","arrest",
+    "arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset",
+    "assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction",
+    "audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake",
+    "aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge",
+    "bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain",
+    "barrel","base","basic","basket","battle","beach","bean","beauty","because","become",
+    "beef","before","begin","behavior","behind","believe","below","belt","bench","benefit",
+    "best","betray","better","between","beyond","bicycle","bid","bike","bind","biology",
+    "bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless",
+    "blind","blood","blossom","blouse","blue","blur","blush","board","boat","body",
+    "boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss",
+    "bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread",
+    "breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze",
+    "broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb",
+    "bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy",
+    "butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call",
+    "calm","camera","camp","can","canal","cancel","candle","cannon","canoe","canvas",
+    "canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry",
+    "cart","case","cash","casino","castle","casual","cat","catalog","catch","category",
+    "cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century",
+    "cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase",
+    "chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child",
+    "chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle",
+    "citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk",
+    "clever","click","client","cliff","climb","clinic","clip","clock","clog","close",
+    "cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut",
+    "code","coffee","coil","coin","collect","color","column","combine","come","comfort",
+    "comic","common","company","concert","conduct","confirm","congress","connect","consider","control",
+    "convince","cook","cool","copper","copy","coral","core","corn","correct","cost",
+    "cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle",
+    "craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek",
+    "crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial",
+    "cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup",
+    "cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad",
+    "damage","damp","dance","danger","daring","darken","dash","date","daughter","dawn",
+    "day","deal","debate","debris","decade","december","decide","decline","decorate","decrease",
+    "deer","defense","define","defy","degree","delay","deliver","demand","demise","denial",
+    "dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert",
+    "design","desk","despair","destroy","detail","detect","develop","device","devote","diagram",
+    "dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma",
+    "dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder",
+    "display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll",
+    "dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft",
+    "dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip",
+    "drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch",
+    "duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east",
+    "easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight",
+    "either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else",
+    "embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact",
+    "end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy",
+    "enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode",
+    "equal","equip","era","erase","erode","erosion","error","erupt","escape","essay",
+    "essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example",
+    "exceed","exchange","exclude","execute","exercise","exhaust","exhibit","exile","exist","exit",
+    "exotic","expand","expect","expire","explain","expose","express","extend","extra","eye",
+    "eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame",
+    "family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father",
+    "fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female",
+    "fence","festival","fetch","fever","few","fiber","fiction","field","figure","file",
+    "film","filter","final","find","fine","finger","finish","fire","firm","first",
+    "fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor",
+    "flee","flight","flip","float","flock","floor","flower","fluid","flush","fly",
+    "foam","focus","fog","foil","fold","follow","food","foot","force","foreign",
+    "forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox",
+    "fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown",
+    "frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain",
+    "galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas",
+    "gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine",
+    "gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad",
+    "glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow",
+    "glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern",
+    "gown","grab","grace","grain","grant","grape","grass","gravity","great","green",
+    "grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide",
+    "guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand",
+    "happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head",
+    "health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero",
+    "hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold",
+    "hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse",
+    "hospital","host","hotel","hour","hover","hub","huge","human","humble","humor",
+    "hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon",
+    "idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense",
+    "immune","impact","impose","improve","impulse","inch","include","income","increase","index",
+    "indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject",
+    "injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire",
+    "install","intact","interest","into","invest","invite","involve","iron","island","isolate",
+    "issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly",
+    "jewel","job","join","joke","journey","joy","judge","juice","jump","jungle",
+    "junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid",
+    "kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee",
+    "knife","knock","know","lab","label","labor","ladder","lady","lake","lamp",
+    "language","laptop","large","later","latin","laugh","laundry","lava","law","lawn",
+    "lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg",
+    "legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter",
+    "level","liar","liberty","library","license","life","lift","light","like","limb",
+    "limit","link","lion","liquid","list","little","live","lizard","load","loan",
+    "lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge",
+    "love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine",
+    "mad","magic","magnet","maid","mail","main","major","make","mammal","man",
+    "manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine",
+    "market","marriage","mask","mass","master","match","material","math","matrix","matter",
+    "maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody",
+    "melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh",
+    "message","metal","method","middle","midnight","milk","million","mimic","mind","minimum",
+    "minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture",
+    "mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon",
+    "moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move",
+    "movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must",
+    "mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation",
+    "nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest",
+    "net","network","neutral","never","news","next","nice","night","noble","noise",
+    "nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel",
+    "now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure",
+    "observe","obtain","obvious","occur","ocean","october","odor","off","offer","office",
+    "often","oil","okay","old","olive","olympic","omit","once","one","onion",
+    "online","only","open","opera","opinion","oppose","option","orange","orbit","orchard",
+    "order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer",
+    "output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone",
+    "pact","paddle","page","pair","palace","palm","panda","panel","panic","panther",
+    "paper","parade","parent","park","parrot","party","pass","patch","path","patient",
+    "patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican",
+    "pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone",
+    "photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill",
+    "pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic",
+    "plate","play","player","pleasure","plenty","plot","pluck","plug","plunge","poem",
+    "poet","point","polar","pole","police","pond","pony","pool","popular","portion",
+    "position","possible","post","potato","pottery","poverty","powder","power","practice","praise",
+    "predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print",
+    "priority","prison","private","prize","problem","process","produce","profit","program","project",
+    "property","proposal","protect","prove","provide","public","pudding","pull","pulp","pulse",
+    "pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put",
+    "puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote",
+    "rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally",
+    "ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw",
+    "razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record",
+    "recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax",
+    "release","relief","rely","remain","remember","remind","remove","render","renew","rent",
+    "reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource",
+    "response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm",
+    "rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring",
+    "riot","ripple","risk","ritual","rival","river","road","roast","robot","robust",
+    "rocket","romance","roof","rookie","room","rose","rotate","rough","round","route",
+    "royal","rubber","rude","rug","rule","run","runway","rural","saddle","sadness",
+    "safe","sail","salad","salmon","salon","salt","salute","same","sample","sand",
+    "satisfy","satoshi","sauce","sausage","save","scale","scan","scare","scatter","scene",
+    "scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub",
+    "sea","search","season","seat","second","secret","section","security","seed","seek",
+    "segment","select","sell","seminar","senior","sense","sentence","series","service","session",
+    "settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff",
+    "shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short",
+    "shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege",
+    "sight","sign","silent","silk","silly","silver","similar","simple","since","sing",
+    "siren","sister","situate","six","size","skate","sketch","ski","skill","skin",
+    "skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim",
+    "slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack",
+    "snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft",
+    "solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort",
+    "soul","sound","soup","source","south","space","spare","spatial","spawn","speak",
+    "special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit",
+    "split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy",
+    "square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand",
+    "start","state","stay","steak","steel","steep","steer","stem","step","stereo",
+    "stick","still","sting","stock","stomach","stone","stool","story","stove","strategy",
+    "street","strike","strong","struggle","student","stuff","stumble","style","subject","submit",
+    "subway","success","such","sudden","suffer","sugar","suggest","suit","sun","sunny",
+    "sunset","super","supply","support","suppose","sure","surface","surge","surprise","surround",
+    "survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift",
+    "swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle",
+    "tag","tail","talent","talk","tank","tape","target","task","taste","tattoo",
+    "taxi","teach","team","tell","ten","tenant","tennis","tent","term","test",
+    "text","thank","that","theme","then","theory","there","they","thing","this",
+    "thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt",
+    "timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today",
+    "toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight",
+    "tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total",
+    "tourist","toward","tower","town","toy","track","trade","traffic","tragic","train",
+    "transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe",
+    "trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet",
+    "trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn",
+    "turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly",
+    "umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy",
+    "uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update",
+    "upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used",
+    "useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve",
+    "van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture",
+    "venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious",
+    "victory","video","view","village","vintage","violin","virtual","virus","visa","visit",
+    "visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage",
+    "wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior",
+    "wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel",
+    "weather","web","wedding","weekend","weird","welcome","west","wet","whale","what",
+    "wheat","wheel","when","where","whip","whisper","wide","width","wife","wild",
+    "will","win","window","wine","wing","wink","winner","winter","wire","wisdom",
+    "wise","wish","witness","wolf","woman","wonder","wood","wool","word","work",
+    "world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard",
+    "year","yellow","you","young","youth","zebra","zero","zone","zoo",
+];
+
+/// Convert 32 bytes of entropy to a 24-word BIP39 mnemonic phrase.
+pub fn entropy_to_mnemonic(entropy: &[u8; 32]) -> Vec<String> {
+    // Concatenate 256 bits of entropy + 8 checksum bits = 264 bits = 24 x 11-bit words
+    // BIP39: checksum is first byte of SHA256(entropy) for 256-bit entropy
+    use sha2::{Sha256, Digest};
+    let hash = Sha256::digest(entropy);
+    let checksum_byte = hash[0];
+
+    let mut bits = [0u8; 33];
+    bits[..32].copy_from_slice(entropy);
+    bits[32] = checksum_byte;
+
+    let mut words = Vec::with_capacity(24);
+    for i in 0..24 {
+        // Extract 11 bits starting at position i*11 in the 264-bit stream
+        // Stream is MSB-first within each byte, bytes concatenated
+        let bit_offset = i * 11;
+        let byte_start = bit_offset / 8;
+        let bit_start_in_byte = bit_offset % 8;
+
+        // Load up to 3 bytes into a 24-bit window
+        let mut val: u32 = (bits[byte_start] as u32) << 16;
+        if byte_start + 1 < 33 { val |= (bits[byte_start + 1] as u32) << 8; }
+        if byte_start + 2 < 33 { val |= bits[byte_start + 2] as u32; }
+
+        // The 11 bits start at position (23 - bit_start_in_byte) in the 24-bit window.
+        // To bring them to LSB: shift = (23 - ws) - 10 = 13 - ws
+        let shift = 13 - bit_start_in_byte;
+        let index = ((val >> shift) & 0x7FF) as u16;
+        words.push(BIP39_WORDS[index as usize].to_string());
+    }
+    words
+}
+
+/// Generate a 24-word mnemonic from a wallet key's spend secret.
+pub fn seed_phrase_from_key(key: &StealthKeyEntry) -> Vec<String> {
+    entropy_to_mnemonic(&key.spend_secret)
+}
+
+/// Recover a spend secret from a 24-word mnemonic.
+pub fn mnemonic_to_entropy(words: &[String]) -> Result<[u8; 32], String> {
+    if words.len() != 24 {
+        return Err("Mnemonic must be 24 words".into());
+    }
+    let word_map: std::collections::HashMap<&str, u16> = BIP39_WORDS.iter().enumerate()
+        .map(|(i, w)| (*w, i as u16)).collect();
+    let mut bit_string = Vec::with_capacity(33);
+    let mut bit_buffer: u64 = 0;
+    let mut bits_in_buffer = 0;
+    for word_str in words {
+        let idx = word_map.get(word_str.as_str())
+            .ok_or_else(|| format!("Unknown BIP39 word: {}", word_str))?;
+        bit_buffer = (bit_buffer << 11) | *idx as u64;
+        bits_in_buffer += 11;
+        while bits_in_buffer >= 8 {
+            bits_in_buffer -= 8;
+            bit_string.push((bit_buffer >> bits_in_buffer) as u8);
+        }
+    }
+    if bits_in_buffer > 0 {
+        bit_string.push((bit_buffer << (8 - bits_in_buffer)) as u8);
+    }
+    if bit_string.len() < 33 {
+        return Err("Mnemonic decoding failed".into());
+    }
+    // BIP39 checksum: first byte of SHA256(entropy) for 256-bit entropy
+    use sha2::{Sha256, Digest};
+    let mut entropy = [0u8; 32];
+    entropy.copy_from_slice(&bit_string[..32]);
+    let hash = Sha256::digest(&entropy);
+    let expected_checksum = hash[0];
+    let actual_checksum = bit_string[32];
+    if expected_checksum != actual_checksum {
+        return Err("Mnemonic checksum mismatch".into());
+    }
+    Ok(entropy)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use curve25519_dalek::traits::Identity;
 
     #[test]
     fn test_wallet_keygen() {
@@ -459,7 +737,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![TxOutput {
                 amount,
-                public_key: vec![],
+                pubkey_hash: [0u8; 20],
                 spendable_after: 0,
                 stealth_dest: Some(dest.dest.compress().to_bytes()),
                 commitment_bytes: Some(comm.0.compress().to_bytes()),

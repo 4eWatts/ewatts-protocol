@@ -3,292 +3,580 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>eWatts  Memory-Bound Proof of Work</title>
-<meta name="description" content="eWatts is a digital currency protocol secured by DRAM bandwidth. Memory-bound proof of work. Privacy by default. No governance.">
+<title>eWatts: Energy-backed neutral settlement layer</title>
+<meta name="description" content="A neutral settlement layer any computer with RAM can mine. Supply expands at energy cost, like gold. Private by default. No pre-mine, no token sale.">
+<meta property="og:title" content="eWatts: Energy-backed neutral settlement layer">
+<meta property="og:description" content="A settlement layer any computer with RAM can mine. Supply expands at energy cost, transactions are private by default. No pre-mine, no fundraise.">
+<meta property="og:url" content="https://ewatts.org">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="eWatts: Energy-backed neutral settlement layer">
+<meta name="twitter:description" content="Any computer with RAM can mine. Supply expands at energy cost. Private by default.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; font-size:14px; -webkit-font-smoothing:antialiased; }
-.container { max-width:1120px; margin:0 auto; padding:0 20px; padding-top:0; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#b0b0b8; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+.container { max-width:1120px; margin:0 auto; padding:0 20px; }
 
-nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
-.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+nav { display:flex; justify-content:space-between; align-items:center; padding:18px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#e0e0e6; letter-spacing:-0.2px; }
 .logo span { color:#5a5a72; }
 .nav-links { display:flex; gap:20px; }
-.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
-.nav-links a:hover { color:#c8c8cc; }
 
-.hero { padding:8px 0 48px; }
-.hero h1 { font-size:48px; font-weight:700; line-height:1.15; color:#fff; letter-spacing:-1px; margin-bottom:18px;  }
-.hero p { color:#5a5a72;  margin-bottom:24px; font-size:15px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#b0b0b8; }
+
+.hero { padding:16px 0 48px; }
+.hero h1 { font-size:48px; font-weight:700; line-height:1.15; color:#e0e0e6; letter-spacing:-1px; margin-bottom:12px; }
+.hero p { color:#5a5a72; margin-bottom:24px; font-size:15px; }
+.hero .lead { font-size:15px; color:#7a7a8a; line-height:1.7; margin-bottom:20px; }
 .links { display:flex; gap:10px; flex-wrap:wrap; }
 .btn { display:inline-block; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; transition:all .12s; }
-.btn-primary { background:#3b82f6; color:#fff; }
-.btn-primary:hover { background:#5a94f8; }
-.btn-outline { border:1px solid #2a2a3a; color:#c8c8cc; }
-.btn-outline:hover { border-color:#3b82f6; color:#fff; }
+.btn-primary { background:#4a6fa5; color:#e0e0e6; }
+.btn-primary:hover { background:#5a7fb5; }
+.btn-outline { border:1px solid #2a2a3a; color:#b0b0b8; }
+.btn-outline:hover { border-color:#4a6fa5; color:#e0e0e6; }
 
 .section { padding:48px 0; }
 .section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5a5a72; margin-bottom:6px; }
-.section h2 { font-size:20px; font-weight:600; color:#fff; margin-bottom:8px; }
+.section h2 { font-size:20px; font-weight:600; color:#e0e0e6; margin-bottom:8px; }
 .section p.intro { color:#5a5a72; }
 hr { border:none; height:1px; background:#1a1a2a; margin:0; }
 
-.cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:24px; }
+.cards { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:24px; }
+.cards-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px; }
+.cards-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:24px; }
+
 @media (max-width:720px) {
   .container { max-width:100%; padding:0 16px; }
-  .hero h1 { font-size:32px; max-width:100%; }
+  .hero h1 { font-size:28px; max-width:100%; }
+  .hero .lead { font-size:15px; }
   .hero p { max-width:100%; }
   nav { margin-bottom:16px; }
-  .cards { grid-template-columns:1fr; gap:8px; }
+  .cards, .cards-2, .cards-3 { grid-template-columns:1fr; gap:12px; }
   .section { padding:32px 0; }
   .hero { padding:4px 0 32px; }
-  .nav-links a { margin-left:12px; font-size:12px; }
+  .nav-links { overflow-x:auto; gap:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .nav-links::-webkit-scrollbar { display:none; }
+  .nav-links a { font-size:12px; white-space:nowrap; }
+  table.specs, table.specs tr, table.specs td { display:block; width:100%; }
+  table.specs td:first-child { width:auto; padding-bottom:0; }
+  table.specs td { padding:6px 0; }
+  .rule-table, .rule-table tr, .rule-table td { display:block; width:100%; }
+  .rule-table td:first-child { width:auto; padding-bottom:0; }
 }
-.card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:20px; }
-.card h3 { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
-.card p { font-size:13px; color:#5a5a72; line-height:1.6; }
+.card { background:#111122; border:1px solid #1e1e32; border-radius:6px; padding:20px; transition:border-color .15s; }
+.card:hover { border-color:#2a2a4a; }
+.card h3 { font-size:13px; font-weight:600; color:#e0e0e6; margin-bottom:4px; }
+.card p { font-size:13px; color:#7a7a8a; line-height:1.6; }
+.card ul { list-style:none; padding:0; margin:8px 0 0; }
+.card ul li { font-size:12px; color:#6b6b8a; padding:3px 0; padding-left:12px; position:relative; }
+.card ul li::before { content:"\2192"; position:absolute; left:0; color:#4a6fa5; }
 
 table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; }
 table.specs tr { border-bottom:1px solid #1a1a2a; }
 table.specs tr:last-child { border:none; }
 table.specs td { padding:10px 0; vertical-align:top; }
 table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
-table.specs td:last-child { color:#c8c8cc; }
-code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
+table.specs td:last-child { color:#b0b0b8; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#a0a0b0; }
 
-pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow-x:auto; margin-top:16px; color:#b0b0c0; }
+pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow:auto; margin-top:16px; color:#a0a0b0; white-space:pre-wrap; word-break:break-word; }
 pre.code-block .cm { color:#5a5a72; }
-pre.code-block .fn { color:#3b82f6; }
+pre.code-block .fn { color:#4a6fa5; }
+
+.layer-card { border-radius:6px; padding:24px; margin-top:12px; position:relative; }
+.layer-card h3 { font-size:16px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+.layer-card p { font-size:13px; line-height:1.7; }
+.layer-card .tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; padding:2px 8px; border-radius:3px; }
+.layer-1 { background:linear-gradient(135deg,#0a1628 0%,#111122 100%); border:1px solid #1a3a5a; }
+.layer-1 .tag { background:#1a3a5a; color:#5a9cf6; }
+.layer-1 h3 { color:#5a9cf6; }
+.layer-1 p { color:#8baac8; }
+.layer-2 { background:linear-gradient(135deg,#1a0a28 0%,#111122 100%); border:1px solid #3a1a5a; }
+.layer-2 .tag { background:#3a1a5a; color:#a05af6; }
+.layer-2 h3 { color:#a05af6; }
+.layer-2 p { color:#b08ac8; }
+.layer-3 { background:linear-gradient(135deg,#1a1a0a 0%,#111122 100%); border:1px solid #3a3a1a; }
+.layer-3 .tag { background:#3a3a1a; color:#b8b84a; }
+.layer-3 h3 { color:#b8b84a; }
+.layer-3 p { color:#b0b080; }
+
+.rule-box { background:#111122; border:1px solid #2a2a3a; border-radius:6px; padding:20px; margin-top:16px; }
+.rule-box h4 { font-size:13px; font-weight:600; color:#b0b0b8; margin-bottom:12px; }
+.rule-table { width:100%; border-collapse:collapse; font-size:13px; }
+.rule-table tr { border-bottom:1px solid #1a1a2a; }
+.rule-table tr:last-child { border:none; }
+.rule-table td { padding:8px 4px; }
+.rule-table td:first-child { color:#6b6b88; width:120px; }
+.rule-table td:nth-child(2) { width:80px; }
+.rule-table td.yes { color:#4a6fa5; font-weight:600; }
+.rule-table td.no { color:#5a5a72; }
 
 footer { padding:40px 0; border-top:1px solid #1a1a2a; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:#5a5a72; }
 footer a { color:#5a5a72; text-decoration:none; }
-footer a:hover { color:#c8c8cc; }
+footer a:hover { color:#b0b0b8; }
+
+.system-summary { background:#111122; border:1px solid #4a6fa5; border-radius:6px; padding:16px 20px; margin-top:16px; font-size:14px; color:#8baac8; }
+.system-summary strong { color:#b0b0b8; }
+
+/* ============= HERO CAROUSEL ============= */
+.carousel-wrap { position:relative; margin:24px 0; overflow:hidden; border-radius:6px; background:#080810; border:1px solid #1a1a2a; max-height:380px; }
+.carousel { display:flex; transition:transform .4s ease; }
+.carousel-slide { min-width:100%; box-sizing:border-box; position:relative; }
+.carousel-slide img { width:100%; height:380px; display:block; border-radius:6px; object-fit:cover; }
+#slide1:checked ~ .carousel-wrap .carousel { transform:translateX(0); }
+#slide2:checked ~ .carousel-wrap .carousel { transform:translateX(-100%); }
+#slide3:checked ~ .carousel-wrap .carousel { transform:translateX(-200%); }
+#slide4:checked ~ .carousel-wrap .carousel { transform:translateX(-300%); }
+.carousel-radio { display:none; }
+
+/* Auto-play via JS */
+
+@media (max-width:720px) {
+  .carousel-wrap { margin:12px 0; max-height:220px; }
+  .carousel-slide img { height:220px; object-fit:cover; }
+}
+
+/* ============= SLIDE CAPTIONS ============= */
+.carousel-slide { position:relative; }
+.slide-label { position:absolute; bottom:12px; left:12px; padding:4px 10px; font-size:11px; font-weight:500; color:#b0b0b8; letter-spacing:0.5px; text-transform:uppercase; pointer-events:none; text-shadow:0 1px 6px rgba(0,0,0,0.9); }
+
+.diagram { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
+.diagram-item { flex:1; min-width:200px; padding:16px; border-radius:6px; text-align:center; font-size:12px; }
+.diagram-item .arrow { display:block; margin:8px auto; color:#2a2a3a; font-size:16px; }
+.diagram-item span { display:block; font-size:11px; margin-top:4px; opacity:0.6; }
+
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "eWatts",
+  "applicationCategory": "Blockchain",
+  "operatingSystem": "Linux, macOS, Windows",
+  "description": "A neutral settlement layer anchored to energy cost. Supply expands at energy cost. Any computer with RAM can mine. Private by default. Open source, no pre-mine, no fundraise.",
+  "url": "https://ewatts.org",
+  "sameAs": [
+    "https://github.com/4Ewatts/ewatts-protocol"
+  ],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Gustavo"
+  },
+  "abstract": "eWatts is a proof-of-work cryptocurrency that uses random access to DRAM as its physical bottleneck. DRAM latency has been flat for 20 years (1-2%/year vs 20-30% for SHA-256 ASICs), ensuring any computer with RAM can mine at similar efficiency. Dual-layer design: mining is DRAM-bound (creates coins at energy cost), transactions are fast and private (<3ms per signature). Supply expands at energy cost (elastic, not fixed). Privacy is the default mode. No pre-mine, no token sale, no founder allocation."
+}
+</script>
 </head>
 <body>
 
 <div class="container">
 
 <nav>
-  <div class="logo">eWatts<span>.org</span></div>
+  <div class="logo"><a href="index.html" style="color:#e0e0e6;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
   <div class="nav-links">
-    <a href="#protocol">Protocol</a>
-    <a href="#mine">Mine</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol" target="_blank">GitHub</a>
+    <a href="index.html">Home</a>
+    <a href="protocol.html">Protocol</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+    <a href="#videos">Videos</a>
   </div>
 </nav>
 
 <div class="hero">
   <div style="display:flex;gap:8px;margin-bottom:20px;font-size:12px;color:#5a5a72;">
-    <span style="color:#5a5a72;">testnet</span>
+    <span style="color:#6ac86a;">Phase 2: Testnet</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>57 tests passing</span>
+    <span>198 tests</span>
     <span style="color:#2a2a3a;">|</span>
-    <span>0 warnings</span>
+    <span>0 failures</span>
+    <span style="color:#2a2a3a;">|</span>
+    <a href="test-results.html" style="color:#6ac86a;text-decoration:none;">test results &rsaquo;</a>
   </div>
-  <h1>A fair means of exchange.<br><span style="color:#5a5a72;font-weight:400;">Backed by energy, secured by memory.</span></h1>
-  <p>eWatts is a digital currency designed to be fair by default. Fair to mine (any computer can do it). Fair to value (backed by the energy cost of production). Fair to transact (private from the start, not as an afterthought).</p>
-  <p style="margin-top:12px; font-size:14px; color:#6b6b8a;">The name comes from <strong style="color:#8b8baa;">Watt</strong>, the unit of power — because each coin is referenced to the energy cost of mining it. Not arbitrary. Physics-based.</p>
-  <p style="margin-top:16px; font-size:13px; color:#6b6b8a;">
-    An eWatt is a <strong style="color:#8b8baa;">ruler</strong>, not a bet. 
-    Each coin is measurable energy — you can verify the cost of mining it. 
-    No speculation required.
+  <h1>Energy-backed neutral settlement layer<br><span style="color:#5a5a72;font-weight:400;font-size:18px;">PoW with stable memory. Private. Fair.</span></h1>
+
+  <div style="display:flex;gap:6px;margin-top:4px;font-size:11px;color:#5a5a72;flex-wrap:wrap;">
+    <span style="color:#6ac86a;">100% Open Source</span>
+    <span style="color:#2a2a3a;">&bull;</span>
+    <span>No Funding</span>
+    <span style="color:#2a2a3a;">&bull;</span>
+    <span>Transparent Development</span>
+  </div>
+
+  <p class="lead">
+    A settlement layer anchored to the physical cost of electricity. No ASICs, no premine, no company. Any computer with RAM can mine at the same efficiency.
   </p>
-  <div class="links">
-    <a href="MINING.md" class="btn btn-primary">Mine a block</a>
-    <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">Source code</a>
+
+  <input type="radio" name="carousel" id="slide1" class="carousel-radio" checked>
+  <input type="radio" name="carousel" id="slide2" class="carousel-radio">
+  <input type="radio" name="carousel" id="slide3" class="carousel-radio">
+  <input type="radio" name="carousel" id="slide4" class="carousel-radio">
+
+  <div class="carousel-wrap">
+    <div class="carousel">
+      <div class="carousel-slide"><img src="slide_ponte.png" alt="Neutral bridge" loading="lazy"><div class="slide-label">Neutral bridge</div></div>
+      <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"></div>
+      <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"><div class="slide-label">Private by default</div></div>
+      <div class="carousel-slide"><img src="slide_grok.png" alt="AI analysis" loading="lazy"><div class="slide-label" style="bottom:12px;top:auto;">Grok&#39;s view on the best neutral settlement layer</div></div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; padding:18px 20px; background:#111122; border-radius:4px;">
+    <div class="section-label">Purpose</div>
+    <h2 style="font-size:20px; font-weight:600; color:#e0e0e6; margin:0 0 8px 0;">Neutral bridge</h2>
+    <p style="margin:0; font-size:14px; color:#6b6b8a; line-height:1.7;">
+      eWatts was created to be a <strong style="color:#8b8baa;">neutral bridge</strong>, not to replace existing monetary systems, but to complement them.
+    </p>
+    <p style="margin:8px 0 0; font-size:14px; color:#6b6b8a; line-height:1.7;">
+      We provide a decentralized medium of exchange anchored to real energy costs, private by default, and accessible to all.
+    </p>
+    <p style="margin:8px 0 0; font-size:14px; color:#6b6b8a; line-height:1.7;">
+      We believe fair and transparent money can help foster greater collaboration and economic stability.
+    </p>
+  </div>
+
+  <div style="margin-top:20px; padding:18px 20px; background:#111122; border-radius:4px;">
+    <div class="section-label">What is eWatts</div>
+    <h2 style="font-size:20px; font-weight:600; color:#e0e0e6; margin:0 0 8px 0;">Energy-backed digital currency</h2>
+    <p style="font-size:14px; color:#6b6b8a; line-height:1.7; margin:0;">
+      There are four main ways to store and move value today:
+    </p>
+    <ul style="list-style:none; padding:0; margin:8px 0 0 0; font-size:14px; color:#6b6b8a; line-height:1.7;">
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; Fiat &mdash; controlled by governments and constantly devalued through expansion.</li>
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; Gold &mdash; has real production cost, but is slow and expensive to transact.</li>
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; Bitcoin &mdash; portable and decentralized, but deflationary with fully public transactions.</li>
+    </ul>
+    <p style="font-size:14px; color:#6b6b8a; line-height:1.7; margin:8px 0 0;">
+      Each resolved the problem it was built for.
+    </p>
+    <p style="font-size:14px; color:#6b6b8a; line-height:1.7; margin:8px 0 0;">
+      eWatts bridges the best qualities of all three without replacing any:
+    </p>
+    <ul style="list-style:none; padding:0; margin:8px 0 0 0; font-size:14px; color:#6b6b8a; line-height:1.7;">
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; <strong style="color:#8b8baa;">Anchored to real energy cost</strong>, like gold, through DRAM-based mining &mdash; a technology that has barely improved in 20 years.</li>
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; <strong style="color:#8b8baa;">Decentralized and portable</strong>, like Bitcoin.</li>
+      <li style="padding:4px 0 4px 16px; position:relative;">&bull; <strong style="color:#8b8baa;">Practical for everyday use</strong>, like fiat, with simple two-decimal pricing.</li>
+    </ul>
+    <p style="font-size:14px; color:#6b6b8a; line-height:1.7; margin:8px 0 0;">
+      <strong style="color:#8b8baa;">No pre-mine. No token sale. No company.</strong> Mining is the only way to acquire new coins.
+    </p>
   </div>
 </div>
 
 <hr>
 
-<section class="section" style="padding-top:20px;">
-  <div class="section-label">Why it matters</div>
-  <h2>A more honest store of energy</h2>
+<!-- ============= VIDEOS ============= -->
+<section class="section">
+  <div class="section-label">Videos</div>
+  <h2>eWatts in 5 minutes</h2>
+  <a id="videos" style="scroll-margin-top:60px;"></a>
+  <p class="intro" style="font-size:13px;color:#6b6b8a;margin-bottom:16px;">
+    Three explainers: where eWatts fits in the history of money, how DRAM latency gives it a stable physical anchor, and a beginner-friendly comparison of hash vs. RAM processing.
+  </p>
 
-  <div style="display:flex;flex-direction:column;gap:24px;margin-top:20px;">
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">A neutral settlement layer</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        eWatts is designed for cross-border trade and global collaboration: permissionless to use, 
-        private by default, and anchored to a real cost of production rather than to the policy of 
-        any country. Like gold, it has a production cost floor (energy). Unlike gold, it is perfectly 
-        divisible, transmissible at the speed of light, storable as a 32-byte key, and mineable on 
-        standard memory — leveraging computing infrastructure already in any country. Both parties 
-        to a transaction can independently arbitrage its value against local energy costs.
-      </p>
-    </div>
-
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Why DRAM?</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Most proof-of-work currencies use hash functions (SHA-256, Ethash) that improve ~25-30% per year 
-        with each new ASIC generation. eWatts uses random access to DRAM — a bottleneck that has not 
-        improved in 20 years.
-      </p>
-      <div style="margin-top:12px;padding:12px 14px;background:#0c0c18;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;line-height:1.8;">
-        <div style="color:#6b6b88;font-weight:600;margin-bottom:4px;">DRAM latency <span style="font-weight:400;color:#5a5a72;">(17 years)</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR3-1066 (2007)</span><span style="color:#c8c8cc;">~45 ns</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR4-2133 (2014)</span><span style="color:#c8c8cc;">~48 ns (+7%)</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>DDR5-4800 (2024)</span><span style="color:#c8c8cc;">~52 ns (+16%)</span></div>
-        <div style="margin-top:4px;color:#6b6b88;">Annual change: ~0% (flat)</div>
-        <div style="margin-top:10px;color:#6b6b88;font-weight:600;margin-bottom:4px;">SHA-256 ASIC efficiency <span style="font-weight:400;color:#5a5a72;">(8 years)</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S9 (2016)</span><span style="color:#c8c8cc;">100 J/TH</span></div>
-        <div style="display:flex;justify-content:space-between;color:#8b8baa;"><span>Antminer S21 (2024)</span><span style="color:#c8c8cc;">13.5 J/TH (-86%)</span></div>
-        <div style="margin-top:4px;color:#6b6b88;">Annual improvement: ~25-30%</div>
+  <div class="cards-3">
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-evolution.jpg">
+        <source src="videos/eWatts-Evolution-of-Money.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">The Evolution of Money</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          Bitcoin redefined digital value. The dollar connects global commerce. Gold preserves purchasing power through physical cost. There is a space between them, and eWatts bridges it.
+        </p>
       </div>
-      <p style="margin-top:12px;font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        The result: eWatts' energy anchor drifts ~1-2% per year; Bitcoin's drifts ~25-30%. 
-        The difference is structural and permanent — DRAM latency is bounded by the speed of 
-        light in silicon; no ASIC can shortcut it.
-      </p>
-      <p style="margin-top:8px;"><a href="eWatts_Energy_Anchor_Technical_Note_v7.pdf" style="font-size:12px;color:#3b82f6;text-decoration:none;">→ Full technical derivation</a></p>
     </div>
 
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Money that works for credit, not against it</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Most transactions are credit, not cash. Credit requires trust that a unit's value will hold 
-        through the loan term. Bitcoin's deflation disincentivizes lending; fiat inflation erodes 
-        loan value. Many countries have shown the cost when that trust breaks. eWatts offers a 
-        third path: an energy anchor drifting ~1-2%/year keeps the real value of a loan roughly 
-        stable. Emission is elastic (proportional to bandwidth, not a calendar). No central bank 
-        can print, devalue, or interfere. For countries facing monetary crisis, it provides a 
-        neutral standard that neither party controls.
-      </p>
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-physics.jpg">
+        <source src="videos/eWatts-Physics-of-Value.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">The Physics of Value</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          DRAM latency has been flat for 20 years. Mining depends on it. No ASIC can shortcut it. The cost of each eWatt stays stable, and privacy is the default.
+        </p>
+      </div>
     </div>
 
-    <div>
-      <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:6px;">Private by default, by design</h3>
-      <p style="font-size:13px;color:#6b6b8a;line-height:1.7;margin:0;">
-        Every transaction protects sender (ring signatures), recipient (stealth addresses), and amount 
-        (Pedersen commitments). Privacy is the only mode. Changing it requires 95% of miners and 95% 
-        of nodes — near-unanimous consent, enforced by code.
-      </p>
+    <div class="card" style="padding:0;overflow:hidden;background:#000;">
+      <video controls preload="metadata" style="width:100%;display:block;" poster="poster-hashram.jpg">
+        <source src="videos/eWatts-Hash-vs-RAM.mp4" type="video/mp4">
+      </video>
+      <div style="padding:14px 16px;">
+        <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin:0 0 4px 0;">Hash vs. RAM Processing</h3>
+        <p style="font-size:12px;color:#6b6b8a;margin:0;">
+          A simple analogy: one is solving math faster every year, the other is walking through a giant library that never gets smaller. Why DRAM-bound mining creates a stable cost floor.
+        </p>
+      </div>
     </div>
-
   </div>
 </section>
 
 <hr>
 
+<!-- ============= PROTOCOL DETAILS ============= -->
 <section class="section" id="protocol">
   <div class="section-label">Protocol</div>
-  <h2>Architecture</h2>
-  <p class="intro">eWatts is built around a simple idea: make mining accessible to anyone with a computer. The algorithm is designed to run fastest on standard RAM — not on specialized hardware. Transactions are private by default, and the network has no central authority, no admin keys, and no foundation.</p>
+  <h2>Core design</h2>
 
-  <div class="cards">
+  <div class="cards-2">
     <div class="card">
-      <h3>Mining runs on standard RAM</h3>
-      <p>No ASICs, no GPUs required. Mining speed is determined by how fast your computer can read its own memory. Every computer has RAM. Every computer can mine. The algorithm performs random memory accesses that scale with bandwidth, not clock speed.</p>
+      <h3>Mining on standard RAM</h3>
+      <p>ASIC-resistant by design. Old computers remain competitive.</p>
     </div>
     <div class="card">
-      <h3>Your identity is protected</h3>
-      <p>Each transaction is signed with a ring of 11 possible keys. An observer cannot tell which key produced the signature. The same key can be used multiple times without linking the transactions together.</p>
+      <h3>Private by default</h3>
+      <p>Sender, receiver, and amount are hidden using strong cryptography (MLSAG, stealth addresses, Pedersen commitments).</p>
     </div>
     <div class="card">
-      <h3>Transaction amounts are private</h3>
-      <p>The value of each transaction is committed cryptographically, visible only to the parties involved. Range proofs prove the amount is positive without revealing it. The total supply remains auditable by summing commitments on-chain.</p>
+      <h3>Energy-anchored supply</h3>
+      <p>New coins are issued based on real network energy cost, not arbitrary schedules.</p>
     </div>
     <div class="card">
-      <h3>Every payment gets a unique address</h3>
-      <p>Each transaction creates a one-time destination known only to the recipient. No two payments to the same person can be linked. Only the recipient can prove they received it.</p>
-    </div>
-    <div class="card">
-      <h3>Money supply follows energy cost</h3>
-      <p>New coins are emitted proportionally to total network bandwidth. More miners means more emission, but each coin costs energy to mine. One eWatt represents approximately one kilowatt-hour (kWh) of mining energy at equilibrium — a universal physical unit, not a dollar peg. At 2026 global average electricity costs, this corresponds to roughly 1 USD for intuition. Each eWatt divides 
-        into 100 ecents (eWatt-cents). No satoshis. No mental math.
-    </div>
-    <div class="card">
-      <h3>No one controls the network</h3>
-      <p>Zero pre-mine. Zero founder allocation. No developer fund. No admin keys. No foundation. No CEO. Mining starts at block 1 with all early coinbase outputs time-locked on-chain (max 50,000 blocks or current + 40,000 blocks). Protocol changes require 95% of miners and 95% of nodes. The rules are enforced by code, not by people.</p>
+      <h3>Stable governance</h3>
+      <p>Critical changes require 95% consensus, protecting long-term neutrality.</p>
     </div>
   </div>
 </section>
 
+
 <hr>
 
-<section class="section">
-  <div class="section-label">Specifications</div>
-  <h2>Parameters</h2>
-  <table class="specs">
-    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
-    <tr><td>Target block time</td><td>600 seconds</td></tr>
-    <tr><td>Fast tx verification</td><td>&lt;3 ms (MLSAG ring of 11)</td></tr>
-    <tr><td>Ring size</td><td>11</td></tr>
-    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
-    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
-    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
-    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
-    <tr><td>Ramp-up</td><td>80% cap per miner, first 10k blocks, excess burned</td></tr>
-    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
-    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
-    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
-    <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
-    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
-  </table>
+<!-- ============= ROADMAP ============= -->
+<section class="section" id="roadmap">
+  <div class="section-label">Roadmap</div>
+  <h2>Phases</h2>
+
+  <div class="cards-2">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#e0e0e6;">Phase 1 &mdash; Foundation</h3>
+        <span style="font-size:10px;color:#5a5a72;font-weight:600;">DONE</span>
+      </div>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Rust implementation with MBPoW mining and privacy layer. Local testnet. Full code audit. 198 tests, 0 failures.
+      </p>
+    </div>
+    <div class="card" style="border-color:#4a6fa5;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:13px;font-weight:600;color:#e0e0e6;">Phase 2 &mdash; Testnet</h3>
+        <span style="font-size:10px;color:#4a6fa5;font-weight:600;">NOW</span>
+      </div>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Public testnet with incentivized mining. Rust contributor community. Mining pool support, wallet and exchange integration.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin-bottom:8px;">Phase 3 &mdash; Mainnet</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Mainnet launch with decentralized governance. Reference wallet GUI. Exchange listings.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:13px;font-weight:600;color:#e0e0e6;margin-bottom:8px;">Phase 4 &mdash; Maturity</h3>
+      <p style="font-size:13px;color:#6b6b8a;line-height:1.6;margin:0;">
+        Community governance with constitutional framework. Cost-stable issuance at network maturity. Cross-chain bridges. Trade finance and remittance corridors.
+      </p>
+    </div>
+  </div>
 </section>
 
+
+
+
 <hr>
 
-<section class="section" id="mine">
-  <div class="section-label">Get started</div>
-  <h2>Mine in 5 minutes</h2>
-  <p class="intro">You need a computer with Rust installed. Minimum 4 GB of free DRAM. No GPU, no ASIC, no token purchase.</p>
+<!-- ============= AI PERSPECTIVES ============= -->
+<section class="section" id="ai-perspectives">
+  <div class="section-label">AI Perspective</div>
+  <h2>What Grok says</h2>
+  <p class="intro" style="font-size:13px;color:#6b6b8a;margin-bottom:16px;">
+    We asked Grok (xAI) to evaluate eWatts purely on first principles -- no network effects, no brand, no adoption advantage. Just design. The response was unexpected.
+  </p>
 
-  <pre class="code-block"><span class="cm"># Install Rust</span>
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  <div style="background:#111122;border:1px solid #2a2a3a;border-radius:6px;padding:24px;margin-top:8px;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;color:#5a5a72;">
+      <span style="color:#6ac86a;">&#9679; Grok (xAI)</span>
+      <span style="color:#2a2a3a;">|</span>
+      <span>June 2026</span>
+      <span style="color:#2a2a3a;">|</span>
+      <a href="https://x.com/i/grok/share/b691673d0eb648d0831300ec96cd8043" target="_blank" style="color:#4a6fa5;text-decoration:none;">full conversation &rsaquo;</a>
+    </div>
+    <div style="font-size:13px;line-height:1.8;color:#b0b0b8;">
+      <p style="margin:0 0 14px 0;">
+        "The energy-anchored, memory-bound approach (exemplified by eWatts' DRAM-latency MBPoW with dynamic supply tied to verifiable physical costs + default privacy) remains one of the strongest I've seen. It elegantly balances physical grounding, fairness, privacy, and incentive alignment without introducing major new trade-offs."
+      </p>
+      <p style="margin:0 0 14px 0;">
+        "In a hypothetical where all major cryptocurrencies have equivalent adoption, liquidity, network effects, and proven security, my choice shifts toward a design with stronger inherent economic and physical properties. Top pick: an energy-anchored design like eWatts' approach."
+      </p>
+      <p style="margin:0;">
+        "No, I haven't found a single project or concept that is clearly superior on first principles for a truly neutral settlement layer in that equal-adoption/security hypothetical. The energy-anchored, memory-bound approach (exemplified by eWatts' DRAM-latency MBPoW with dynamic supply tied to verifiable physical costs + default privacy) remains one of the strongest I've seen. It elegantly balances physical grounding, fairness, privacy, and incentive alignment without introducing major new trade-offs."
+      </p>
+    </div>
+  </div>
 
-<span class="cm"># Clone</span>
-$ git clone https://github.com/4Ewatts/ewatts-protocol.git
-$ cd ewatts-protocol
-$ cargo build --release
+  <div style="margin-top:12px;padding:12px 16px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:5px;font-size:12px;color:#5a5a72;">
+    <strong style="color:#8b8baa;">Note:</strong> Grok also wrote a Bitcoin-preferring response for today's real-world scenario (where network effects dominate). We chose to share the first-principles evaluation here. The full Grok conversation is linked above.
+  </div>
+</section>
 
-<span class="cm"># Initialize state and mine</span>
-$ ./target/release/ewatts-protocol init
-$ ./target/release/ewatts-protocol mine
 
-<span class="cm"># Start dashboard on port 8080</span>
-$ ./target/release/ewatts-protocol dash</pre>
+<hr>
 
-  <div style="margin-top:16px;">
-    <a href="MINING.md" class="btn btn-primary">Mining guide</a>
+<hr>
+
+<!-- ============= CTA ============= -->
+<section class="section" style="text-align:center;">
+  <div class="section-label">Get Started</div>
+  <h2 style="font-size:24px; font-weight:600; color:#e0e0e6; margin-bottom:12px;">Ready to see what eWatts can do?</h2>
+  <p style="font-size:14px; color:#7a7a8a; max-width:520px; margin:0 auto 20px;">
+    Read the protocol specification, run a testnet node, or explore the economic model.
+  </p>
+  <div class="links" style="justify-content:center;">
+    <a href="protocol.html" class="btn btn-primary">Read the Protocol &rsaquo;</a>
+    <a href="MINING.md" class="btn btn-outline">Mining Guide &rsaquo;</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-outline">GitHub &rsaquo;</a>
   </div>
 </section>
 
 <hr>
-
-<section class="section">
-  <div class="section-label">Source</div>
-  <h2>Code structure</h2>
-  <pre class="code-block"><span class="cm">src/</span>
-  <span class="fn">privacy.rs</span>      Stealth addresses, MLSAG, Pedersen commitments, range proofs
-  <span class="fn">block.rs</span>        Block, transaction, merkle root, MlsagData serialization
-  <span class="fn">state.rs</span>        UTXO set, supply tracking, MLSAG verification
-  <span class="fn">mempool.rs</span>      Transaction pool, validation, broadcast
-  <span class="fn">wallet.rs</span>       Key generation, UTXO scanning, private transaction construction
-  <span class="fn">reward.rs</span>       Emission formula, VR computation, ramp-up cap
-  <span class="fn">proof.rs</span>        MBPoW DAG mining algorithm
-  <span class="fn">p2p.rs</span>          libp2p gossip, block synchronization
-  <span class="fn">main.rs</span>        CLI, HTTP dashboard, mining orchestrator</pre>
-  <p style="margin-top:8px;font-size:11px;color:#5a5a72;">Status: testnet — see README for current implementation maturity and known limitations.</p>
-</section>
 
 <footer>
   <div>
     <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
-    <a href="https://ewatts.org">ewatts.org</a>
+    <a href="whitepaper-v28.md">Whitepaper</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="MINING.md">Mining Guide</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="protocol.html">Protocol</a>
     <span style="margin:0 8px;color:#2a2a3a;">/</span>
     MIT License
   </div>
-  <div>Energy from memory, not machines.</div>
+  <div>
+    <a href="https://ewatts.org" style="color:#5a5a72;">ewatts.org</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <span style="color:#5a5a72;">Physics. Privacy. Open to anyone.</span>
+  </div>
 </footer>
 
 </div>
+
+<script>
+(function(){
+  var wrap = document.querySelector('.carousel-wrap');
+  if (!wrap) return;
+  var c = wrap.querySelector('.carousel');
+  var slides = c.querySelectorAll('.carousel-slide');
+  var total = slides.length;
+  var radios = document.querySelectorAll('.carousel-radio');
+  var current = 0;
+  var interval, resumeTimeout;
+  var startX = 0, currentX = 0, isDragging = false;
+  
+  // Find current slide from checked radio
+  for (var i = 0; i < radios.length; i++) {
+    if (radios[i].checked) { current = i; break; }
+  }
+  
+  function goTo(n) {
+    if (n < 0) n = total - 1;
+    if (n >= total) n = 0;
+    current = n;
+    if (radios[n]) radios[n].checked = true;
+  }
+  
+  function startAuto() {
+    stopAuto();
+    interval = setInterval(function() {
+      goTo(current + 1);
+    }, 5000);
+  }
+  
+  function stopAuto() {
+    clearInterval(interval);
+  }
+  
+  function pauseAuto() {
+    stopAuto();
+    clearTimeout(resumeTimeout);
+    resumeTimeout = setTimeout(startAuto, 5000);
+  }
+  
+  function startDrag(x) {
+    startX = x;
+    isDragging = true;
+    c.style.transition = 'none';
+    pauseAuto();
+  }
+  
+  function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    var diff = currentX - startX;
+    if (diff > 50) goTo(current - 1);
+    else if (diff < -50) goTo(current + 1);
+    c.style.transition = '';
+  }
+  
+  // Touch events
+  wrap.addEventListener('touchstart', function(e) {
+    currentX = 0;
+    startDrag(e.touches[0].clientX);
+  }, {passive:true});
+  
+  wrap.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    currentX = e.touches[0].clientX;
+    if (Math.abs(currentX - startX) > 10) e.preventDefault();
+  }, {passive:false});
+  
+  wrap.addEventListener('touchend', function() { endDrag(); }, {passive:true});
+  
+  // Mouse events
+  wrap.addEventListener('mousedown', function(e) {
+    currentX = 0;
+    startDrag(e.clientX);
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    currentX = e.clientX;
+  });
+  
+  document.addEventListener('mouseup', function() {
+    if (isDragging) endDrag();
+  });
+  
+  // Keyboard arrows
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') { goTo(current - 1); pauseAuto(); }
+    if (e.key === 'ArrowRight') { goTo(current + 1); pauseAuto(); }
+  });
+  
+  // Pause on hover
+  wrap.addEventListener('mouseenter', stopAuto);
+  wrap.addEventListener('mouseleave', startAuto);
+  
+  // Cursor style via JS-added CSS
+  var style = document.createElement('style');
+  style.textContent = '.carousel-wrap { cursor:grab; } .carousel-wrap:active { cursor:grabbing; }';
+  document.head.appendChild(style);
+  
+  // Start auto-play
+  startAuto();
+})();
+</script>
+
 </body>
 </html>

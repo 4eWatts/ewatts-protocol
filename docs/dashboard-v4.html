@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="eWatts Protocol — Live Network Dashboard + Economic Model v4" />
+<meta name="version" content="eWatts v4 — 2026-06-11" />
+<title>eWatts — Live Network Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0b12;
+    --surface: #13131e;
+    --surface-alt: #1a1a2a;
+    --surface-hover: #222238;
+    --text: #e8e6e0;
+    --text-muted: #9896a0;
+    --text-faint: #5a5868;
+    --border: #252538;
+    --accent: #6a9ee0;
+    --accent-dim: #3a5e80;
+    --green: #3ecf8e;
+    --green-dim: #1e6a48;
+    --red: #e8634a;
+    --amber: #d9a840;
+    --blue: #4b8ed4;
+    --purple: #8678d0;
+    --coral: #d65a5a;
+    --teal: #40b4a4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Helvetica Neue", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .app { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+  /* ── Header ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0 0 1.25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  .logo-area { display: flex; align-items: center; gap: 0.75rem; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0b0b12; font-size: 16px; }
+  .logo-text { font-size: 1.2rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+  .logo-text span { color: var(--text-faint); font-weight: 400; }
+
+  .topbar-right { display: flex; align-items: center; gap: 1rem; font-size: 0.82rem; color: var(--text-faint); }
+  .node-status { display: flex; align-items: center; gap: 6px; }
+  .node-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .node-dot.offline { background: var(--red); }
+  .node-dot.stale { background: var(--amber); }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-tab {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.85rem;
+    color: var(--text-faint);
+    border: none;
+    background: none;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .nav-tab:hover { color: var(--text-muted); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Grid Layout ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1rem 0.85rem;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent-dim); }
+
+  .stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 1.3rem;
+    font-weight: 600;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .stat-sub {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    margin-top: 4px;
+  }
+  .stat-change { font-size: 0.72rem; display: inline-block; margin-top: 3px; }
+  .stat-change.up { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+  .stat-change.neutral { color: var(--text-faint); }
+
+  /* ── Chart Sections ── */
+  .section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 1.5rem 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .badge {
+    font-size: 10px;
+    background: var(--surface-alt);
+    color: var(--text-faint);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 700px) {
+    .chart-row { grid-template-columns: 1fr 1fr; }
+    .chart-row.single { grid-template-columns: 1fr; }
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem 1rem;
+  }
+  .chart-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .chart-desc {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    margin-bottom: 0.8rem;
+  }
+  .chart-wrap {
+    position: relative;
+    height: 200px;
+  }
+
+  /* ── Block Table ── */
+  .block-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .block-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--text-faint);
+  }
+  .block-table-header strong { color: var(--text); font-weight: 500; }
+  .block-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .block-table th {
+    text-align: left;
+    padding: 0.55rem 1rem;
+    background: var(--surface-alt);
+    color: var(--text-faint);
+    font-weight: 500;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .block-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  .block-table td:first-child { color: var(--text); font-weight: 500; }
+  .block-table tr:hover td { background: var(--surface-hover); }
+  .block-table .hash-cell { color: var(--accent); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Simulation ── */
+  .sim-controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .sim-controls .slider-row {
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .sim-controls .slider-row:last-child { margin-bottom: 0; }
+  .sim-controls label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-width: 100px;
+  }
+  .sim-controls input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    min-width: 100px;
+  }
+  .sim-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .sim-controls input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+  }
+  .sim-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--accent);
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+    margin-top: 0.8rem;
+    align-items: center;
+  }
+  .preset-row span { font-size: 10px; color: var(--text-faint); margin-right: 6px; }
+  .preset-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Info Panels ── */
+  .info-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .info-panel h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .info-panel p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .info-panel p:last-child { margin-bottom: 0; }
+
+  .feature-list { list-style: none; }
+  .feature-list li {
+    padding: 0.35rem 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list li strong { color: var(--text); font-weight: 500; }
+
+  /* ── Tabs Content ── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── Loader ── */
+  .loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  .footer a { color: var(--accent-dim); text-decoration: none; }
+  .footer a:hover { color: var(--accent); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+  /* ── Responsive ── */
+  @media (max-width: 500px) {
+    .app { padding: 1rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-value { font-size: 1.1rem; }
+    .nav-tab { padding: 0.6rem 0.8rem; font-size: 0.78rem; }
+    .block-table td, .block-table th { padding: 0.4rem 0.6rem; font-size: 0.7rem; }
+    .block-table .hash-cell { max-width: 70px; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="logo-area">
+      <div class="logo-icon">eW</div>
+      <div class="logo-text">eWatts <span>v4</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="node-status" id="node-status">
+        <span class="node-dot" id="node-dot"></span>
+        <span id="node-label">Connecting...</span>
+      </div>
+      <span id="refresh-time">—</span>
+    </div>
+  </div>
+
+  <!-- Nav Tabs -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="live">Live Network</button>
+    <button class="nav-tab" data-tab="sim">Economic Model</button>
+    <button class="nav-tab" data-tab="blocks">Block Explorer</button>
+    <button class="nav-tab" data-tab="about">About eWatts</button>
+  </div>
+
+  <!-- ════════ TAB: Live Network ════════ -->
+  <div class="tab-content active" id="tab-live">
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Block Height</div>
+        <div class="stat-value" id="live-height">—</div>
+        <div class="stat-sub" id="live-height-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Circulating Supply</div>
+        <div class="stat-value" id="live-supply">—</div>
+        <div class="stat-sub" id="live-supply-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">UTXO Count</div>
+        <div class="stat-value" id="live-utxos">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mempool</div>
+        <div class="stat-value" id="live-mempool">—</div>
+        <div class="stat-sub">Pending TXs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Peers</div>
+        <div class="stat-value" id="live-peers">—</div>
+        <div class="stat-sub">Connected nodes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Block Time</div>
+        <div class="stat-value" id="live-blocktime">—</div>
+        <div class="stat-sub" id="live-blocktime-sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Emission Rate</div>
+        <div class="stat-value" id="live-emission">—</div>
+        <div class="stat-sub">Per block (eW)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Difficulty</div>
+        <div class="stat-value" id="live-difficulty">—</div>
+        <div class="stat-sub">Target</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Block Height Over Time</div>
+        <div class="chart-desc">Network growth since testnet start</div>
+        <div class="chart-wrap"><canvas id="chart-height"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Supply Growth</div>
+        <div class="chart-desc">Cumulative eWatts emitted</div>
+        <div class="chart-wrap"><canvas id="chart-supply"></canvas></div>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <h3>About the testnet</h3>
+      <p>The eWatts testnet is a live MBPoW (Memory-Bound Proof of Work) network. Blocks are mined every ~600 seconds using DRAM-bound hashing. The protocol emits eWatts proportional to energy consumed by the network, with a bootstrap multiplier that decays as supply approaches 10B eWatts.</p>
+      <p><strong>Current phase:</strong> Testnet — no real value, no exchanges, no wallet downloads. For development and testing only.</p>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: Economic Model ════════ -->
+  <div class="tab-content" id="tab-sim">
+
+    <div class="info-panel">
+      <h3>Protocol parameters</h3>
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px,1fr));">
+        <div><div class="stat-label">N calibration</div><div class="stat-value" style="font-size:1rem;">100,000 miners</div></div>
+        <div><div class="stat-label">P target</div><div class="stat-value" style="font-size:1rem;">$1.00 / eW</div></div>
+        <div><div class="stat-label">M max</div><div class="stat-value" style="font-size:1rem;">100,000x</div></div>
+        <div><div class="stat-label">S threshold</div><div class="stat-value" style="font-size:1rem;">10B eW</div></div>
+        <div><div class="stat-label">Block time</div><div class="stat-value" style="font-size:1rem;">600 s</div></div>
+        <div><div class="stat-label">Node power</div><div class="stat-value" style="font-size:1rem;">75 W</div></div>
+      </div>
+    </div>
+
+    <div class="sim-controls">
+      <div class="slider-row">
+        <label>Target network size</label>
+        <input type="range" id="sim-target" min="3" max="6.3" step="0.05" value="5" />
+        <span class="sim-value" id="sim-target-val">100,000 miners</span>
+      </div>
+      <div class="slider-row">
+        <label>Time to reach target</label>
+        <input type="range" id="sim-time" min="0.25" max="4" step="0.05" value="2" />
+        <span class="sim-value" id="sim-time-val">2.0 years</span>
+      </div>
+      <div class="preset-row">
+        <span>Presets:</span>
+        <button class="preset-btn" data-target="10000" data-time="3">Slow (10k/3y)</button>
+        <button class="preset-btn" data-target="100000" data-time="2">Standard (100k/2y)</button>
+        <button class="preset-btn" data-target="500000" data-time="1">Fast (500k/1y)</button>
+        <button class="preset-btn" data-target="1000000" data-time="0.5">Viral (1M/6mo)</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="sim-metrics">
+      <div class="stat-card">
+        <div class="stat-label">Formal Maturity (M=1)</div>
+        <div class="stat-value" id="sim-mature">—</div>
+        <div class="stat-sub">Years to reach 10B supply</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Supply at Year 20</div>
+        <div class="stat-value" id="sim-supply20">—</div>
+        <div class="stat-sub">Cumulative eWatts emitted</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Early Miner (6yr)</div>
+        <div class="stat-value" id="sim-early">—</div>
+        <div class="stat-sub">Cumulative earnings, single miner</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">ROI vs Electricity</div>
+        <div class="stat-value" id="sim-roi">—</div>
+        <div class="stat-sub">Revenue / power cost at maturity</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Emission Per Block</div>
+        <div class="chart-desc">Decays during bootstrap, scales with network size. No drift.</div>
+        <div class="chart-wrap"><canvas id="chart-sim-a"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cost Per eWatt (USD)</div>
+        <div class="chart-desc">Rises exponentially toward $1 anchor. Stable plateau.</div>
+        <div class="chart-wrap"><canvas id="chart-sim-b"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Cumulative Supply</div>
+        <div class="chart-desc">Bootstrap acceleration, then linear expansion. No cap.</div>
+        <div class="chart-wrap"><canvas id="chart-sim-c"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Early Miner Daily Earnings</div>
+        <div class="chart-desc">Single miner from block 1. Drops as multiplier decays.</div>
+        <div class="chart-wrap"><canvas id="chart-sim-d"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-row single">
+      <div class="chart-card">
+        <div class="chart-title">Annual Supply Inflation</div>
+        <div class="chart-desc">Compared to Bitcoin's fixed schedule and USD M2. No artificial floor or ceiling.</div>
+        <div class="chart-wrap" style="height:220px;"><canvas id="chart-sim-e"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: Block Explorer ════════ -->
+  <div class="tab-content" id="tab-blocks">
+
+    <div class="block-table-wrap">
+      <div class="block-table-header">
+        <div><strong>Recent Blocks</strong> <span id="block-count-sub">—</span></div>
+        <span id="block-refresh-sub"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="block-table">
+          <thead>
+            <tr>
+              <th>Height</th>
+              <th>Hash</th>
+              <th>VR</th>
+              <th>Emission</th>
+              <th>Difficulty</th>
+              <th>TXs</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="block-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-faint);">Loading blocks...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Latest Block Hash</div>
+        <div class="stat-value" id="live-latest-hash" style="font-size:0.85rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Blocks in Chain</div>
+        <div class="stat-value" id="block-total">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ TAB: About ════════ -->
+  <div class="tab-content" id="tab-about">
+    <div class="info-panel">
+      <h3>What is eWatts?</h3>
+      <p>eWatts is a neutral settlement layer anchored to the physical cost of memory-bound computation. It is the only monetary protocol whose unit (the eWatt) is defined by physics, not by committee. Supply is not capped, but it is also not arbitrary — each eWatt corresponds to real energy spent by the network.</p>
+      <p>During bootstrap, emission per block is multiplied by up to 100,000x to incentivize early miners. This multiplier decays exponentially toward 1 as cumulative supply approaches the 10B threshold.</p>
+      <p>At maturity, the network anchors 1 eWatt to approximately $1 USD worth of energy, using the memory-bound nature of MBPoW (GDDR6/DRAM hashing) to keep the production cost floor stable year over year.</p>
+
+      <h3 style="margin-top:1rem;">Key properties</h3>
+      <ul class="feature-list">
+        <li><strong>No inflation target</strong> — The protocol does not codify an arbitrary inflation rate. Supply growth emerges from network growth.</li>
+        <li><strong>No drift</strong> — P_target does not decay over time. The $1/eW anchor is stable.</li>
+        <li><strong>No oracles</strong> — No external price feeds, no off-chain dependencies, no governance committees.</li>
+        <li><strong>No founder allocation</strong> — No pre-mine, no admin keys, no privileged minting.</li>
+        <li><strong>No supply cap</strong> — Hard caps create scarcity pressure that conflicts with settlement function.</li>
+        <li><strong>Memory-bound PoW</strong> — DRAM latency dominated. Resistant to ASIC specialization. Stable cost floor.</li>
+      </ul>
+
+      <h3 style="margin-top:1rem;">Resources</h3>
+      <p><a href="https://ewatts.org" target="_blank" style="color:var(--accent);">ewatts.org</a> — Whitepaper, protocol spec, mining guide, and source code.</p>
+      <p><a href="https://github.com/4eWatts/ewatts-protocol" target="_blank" style="color:var(--accent);">GitHub</a> — MIT-licensed Rust implementation.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    eWatts Protocol v4 &mdash; <a href="https://ewatts.org" target="_blank">ewatts.org</a> &mdash; MIT License
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// eWatts Live Dashboard v4
+// ── Real-time data from testnet node
+// ── Economic simulation model (static)
+// ═══════════════════════════════════════════
+
+const API_BASE = '';  // Same-origin, or proxy
+const POLL_MS = 5000;
+
+// ── State ──
+let heightHistory = [];
+let supplyHistory = [];
+let lastHeight = 0;
+let lastSupply = 0;
+let heightChart = null;
+let supplyChart = null;
+
+// ── Tabs ──
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'sim') runSimulation();
+    if (tab.dataset.tab === 'blocks') fetchBlocks();
+  });
+});
+
+// ── Live Poll ──
+async function pollNode() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    updateLiveStats(d);
+    updateNodeStatus(true);
+    document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+  } catch (e) {
+    updateNodeStatus(false);
+  }
+}
+
+function updateNodeStatus(ok) {
+  const dot = document.getElementById('node-dot');
+  const label = document.getElementById('node-label');
+  if (ok) { dot.className = 'node-dot'; label.textContent = 'Online'; }
+  else { dot.className = 'node-dot offline'; label.textContent = 'Offline'; }
+}
+
+function updateLiveStats(d) {
+  const height = d.height || 0;
+  const supply = d.supply || 0;
+  const supplyEw = supply / 1e6;
+
+  document.getElementById('live-height').textContent = height.toLocaleString();
+  document.getElementById('live-height-sub').textContent = height > 0 ? `+${height - lastHeight} since start` : '';
+  document.getElementById('live-supply').textContent = supplyEw.toLocaleString(undefined, {maximumFractionDigits:0}) + ' eW';
+  document.getElementById('live-supply-sub').textContent = supplyEw > 0 ? (supply/1e12).toFixed(2) + ' B eW' : '';
+  document.getElementById('live-utxos').textContent = (d.utxos || 0).toLocaleString();
+  document.getElementById('live-mempool').textContent = (d.mempool || 0).toLocaleString();
+  document.getElementById('live-peers').textContent = (d.peers || 0).toLocaleString();
+  document.getElementById('live-emission').textContent = d.emission ? d.emission.toLocaleString() : '—';
+  document.getElementById('live-difficulty').textContent = d.difficulty ? d.difficulty.toLocaleString() : '—';
+
+  if (d.blocks && d.blocks.length > 0) {
+    const times = d.blocks.map(b => b.time).filter(t => t > 0);
+    if (times.length > 1) {
+      const avgGap = (Math.max(...times) - Math.min(...times)) / (times.length - 1);
+      document.getElementById('live-blocktime').textContent = Math.round(avgGap) + 's';
+      document.getElementById('live-blocktime-sub').textContent = `over ${d.blocks.length} blocks`;
+    } else {
+      document.getElementById('live-blocktime').textContent = '600s';
+    }
+  }
+
+  // Track history for charts
+  if (height > lastHeight) {
+    heightHistory.push({t: Date.now(), v: height});
+    supplyHistory.push({t: Date.now(), v: supplyEw});
+    if (heightHistory.length > 200) { heightHistory.shift(); supplyHistory.shift(); }
+    updateLiveCharts();
+  }
+  lastHeight = height;
+  lastSupply = supply;
+}
+
+function updateLiveCharts() {
+  if (!heightChart) initLiveCharts();
+  const labels = heightHistory.map(p => new Date(p.t).toLocaleTimeString());
+  heightChart.data.labels = labels;
+  heightChart.data.datasets[0].data = heightHistory.map(p => p.v);
+  heightChart.update('none');
+
+  supplyChart.data.labels = labels;
+  supplyChart.data.datasets[0].data = supplyHistory.map(p => p.v);
+  supplyChart.update('none');
+}
+
+function initLiveCharts() {
+  const common = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { display: false },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5868', font: { size: 10 } } }
+    }
+  };
+
+  heightChart = new Chart(document.getElementById('chart-height'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: '#6a9ee0', backgroundColor: 'rgba(106,158,224,0.08)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    options: common
+  });
+
+  supplyChart = new Chart(document.getElementById('chart-supply'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: '#3ecf8e', backgroundColor: 'rgba(62,207,142,0.08)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    options: common
+  });
+}
+
+// ── Block Explorer ──
+async function fetchBlocks() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    const tbody = document.getElementById('block-tbody');
+    document.getElementById('block-total').textContent = (d.height || 0).toLocaleString();
+    document.getElementById('block-count-sub').textContent = `(${(d.height || 0).toLocaleString()} total)`;
+
+    if (d.blocks && d.blocks.length > 0) {
+      tbody.innerHTML = d.blocks.slice(-50).reverse().map(b => `<tr>
+        <td>${b.height}</td>
+        <td class="hash-cell" title="${b.hash}">${b.hash ? b.hash.substring(0,16)+'...' : '—'}</td>
+        <td>${b.vr || 0}</td>
+        <td>${b.reward || 0}</td>
+        <td>${b.diff || 0}</td>
+        <td>${b.txs || 0}</td>
+        <td>${b.time ? new Date(b.time*1000).toLocaleTimeString() : '—'}</td>
+      </tr>`).join('');
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-faint);">Block data unavailable via API — the node is mining but block serialization may use a format `load_blocks_since` cannot parse. Height: ${d.height}</td></tr>`;
+    }
+
+    // Latest hash
+    const infoR = await fetch('/api/v2/info');
+    const infoD = await infoR.json();
+    if (infoD.result && infoD.result.latest_block_hash) {
+      document.getElementById('live-latest-hash').textContent = infoD.result.latest_block_hash;
+      document.getElementById('live-latest-hash').title = infoD.result.latest_block_hash;
+    }
+  } catch (e) {
+    document.getElementById('block-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--red);">Could not connect to node.</td></tr>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// Economic Simulation (port from v3)
+// ═══════════════════════════════════════════
+
+const BLOCKS_YEAR = 52560;
+const UNITS_PER_EWATT = 1_000_000;
+const M_MAX = 100_000;
+const S_THRESHOLD = 10_000_000_000;
+const N_CAL = 100_000;
+
+let simCharts = {};
+let simYearMax = 20;
+
+function simLogisticTarget(target, timeYears) {
+  const k = 4 / timeYears;
+  return (y) => target / (1 + Math.exp(-k * (y - timeYears / 2)));
+}
+
+function computeEmission(supply, networkSize) {
+  const ratio = supply / S_THRESHOLD;
+  const multiplier = M_MAX * Math.exp(-4.5 * ratio);
+  const base = networkSize * 75 / 1e18;
+  return base * multiplier;
+}
+
+function runSimulation() {
+  const raw = Math.pow(10, parseFloat(document.getElementById('sim-target').value));
+  const target = Math.round(raw / 1000) * 1000;
+  const timeY = parseFloat(document.getElementById('sim-time').value);
+
+  document.getElementById('sim-target-val').textContent = target.toLocaleString() + ' miners';
+  document.getElementById('sim-time-val').textContent = timeY.toFixed(1) + ' years';
+
+  const adoptFn = simLogisticTarget(target, timeY);
+  const years = simYearMax;
+  const yearly = [];
+  let supply = 0;
+  const supplyTrace = [], emissionTrace = [], costTrace = [], minerTrace = [];
+  const inflationTrace = [];
+  let minersLast = 0;
+
+  for (let y = 0; y <= years; y += 0.1) {
+    const n = Math.max(1, Math.round(adoptFn(y)));
+    const blockEm = n * 75 / 1e18 * M_MAX * Math.exp(-4.5 * supply / S_THRESHOLD);
+    const yrEm = blockEm * BLOCKS_YEAR;
+    supply += yrEm;
+    const cost = (N_CAL / n) * 1.0;
+    const minerDaily = blockEm * (1 / n) * (24 * 6);  // 144 blocks/day
+
+    supplyTrace.push({y: Math.round(y*10)/10, v: supply / 1e6});
+    emissionTrace.push({y: Math.round(y*10)/10, v: blockEm});
+    costTrace.push({y: Math.round(y*10)/10, v: cost});
+    minerTrace.push({y: Math.round(y*10)/10, v: minerDaily});
+  }
+
+  // Inflation
+  let lastYearSupply = 0;
+  for (let y = 1; y <= years; y++) {
+    const n = Math.max(1, Math.round(adoptFn(y)));
+    const supplyAtY = (() => {
+      let s = 0;
+      for (let yy = 0; yy < y; yy += 0.1) {
+        const nn = Math.max(1, Math.round(adoptFn(yy)));
+        s += nn * 75 / 1e18 * M_MAX * Math.exp(-4.5 * s / S_THRESHOLD) * 5256;
+      }
+      return s;
+    })();
+    const prevSupply = (() => {
+      let s = 0;
+      for (let yy = 0; yy < y-1; yy += 0.1) {
+        const nn = Math.max(1, Math.round(adoptFn(yy)));
+        s += nn * 75 / 1e18 * M_MAX * Math.exp(-4.5 * s / S_THRESHOLD) * 5256;
+      }
+      return s;
+    })();
+    const infl = prevSupply > 0 ? (supplyAtY - prevSupply) / prevSupply : 1;
+    inflationTrace.push({y: y, v: infl, label: 'eWatts'});
+  }
+
+  // Bitcoin: fixed 1.7% @2024→0.8% @2028 decay
+  const btcInflation = [1.7, 1.7, 1.7, 0.8, 0.8, 0.8, 0.8, 0.4, 0.4, 0.4, 0.4, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.1, 0.05];
+  const usdInflation = Array(20).fill(0).map((_,i) => 7 + Math.exp(-i/5)*3);
+
+  // Metrics
+  let matureYear = null;
+  let checkSupply = 0;
+  for (let y = 0; y <= 100; y++) {
+    const n = Math.max(1, Math.round(adoptFn(y)));
+    checkSupply += n * 75 / 1e18 * M_MAX * Math.exp(-4.5 * checkSupply / S_THRESHOLD) * BLOCKS_YEAR;
+    if (checkSupply >= S_THRESHOLD) { matureYear = y + (checkSupply - (checkSupply - n * 75 / 1e18 * M_MAX * Math.exp(-4.5 * (checkSupply - n * 75 / 1e18 * M_MAX * Math.exp(-4.5 * checkSupply / S_THRESHOLD)) / S_THRESHOLD) * BLOCKS_YEAR)) / (n * 75 / 1e18 * Math.exp(-4.5 * 1) * BLOCKS_YEAR); break; }
+  }
+
+  // Quick estimate maturity
+  let estMature = 0;
+  let s = 0, i = 0;
+  while (s < S_THRESHOLD && i < 100) {
+    const n = Math.max(1, Math.round(adoptFn(i)));
+    s += n * 75 / 1e18 * M_MAX * Math.exp(-4.5 * s / S_THRESHOLD) * BLOCKS_YEAR;
+    i++;
+    estMature = i;
+  }
+
+  document.getElementById('sim-mature').textContent = estMature < 100 ? `~${estMature} years` : '>100 yrs';
+  document.getElementById('sim-supply20').textContent = (supplyTrace.find(d => d.y >= 20)?.v || 0).toLocaleString(undefined, {maximumFractionDigits:0}) + ' eW';
+  document.getElementById('sim-early').textContent = minerTrace[0]?.v?.toFixed(2) + ' eW/day';
+  document.getElementById('sim-roi').textContent = '~$' + (costTrace[costTrace.length-1]?.v || 0).toFixed(2) + '/eW';
+
+  updateSimCharts(emissionTrace, costTrace, supplyTrace, minerTrace, inflationTrace, usdInflation, btcInflation);
+}
+
+function updateSimCharts(emission, cost, supply, miner, infl, usd, btc) {
+  const labels = emission.map(d => d.y + 'y');
+
+  function chartOpts(ylabel) { return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#9896a0', font: { size: 11 } } }
+    },
+    scales: {
+      x: { ticks: { color: '#5a5868', font: { size: 9 }, maxTicksLimit: 10 } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5868', font: { size: 9 } }, title: { display: !!ylabel, text: ylabel, color: '#5a5868', font: { size: 10 } } }
+    }
+  }; }
+
+  if (!simCharts.a) {
+    simCharts.a = new Chart(document.getElementById('chart-sim-a'), { type: 'line', data: { labels:[], datasets:[{ label: 'eW per block', data:[], borderColor: '#4b8ed4', tension:0.3, pointRadius:0 }] }, options: chartOpts('eW') });
+    simCharts.b = new Chart(document.getElementById('chart-sim-b'), { type: 'line', data: { labels:[], datasets:[{ label: 'USD/eW', data:[], borderColor: '#3ecf8e', tension:0.3, pointRadius:0 }] }, options: chartOpts('USD') });
+    simCharts.c = new Chart(document.getElementById('chart-sim-c'), { type: 'line', data: { labels:[], datasets:[{ label: 'Cumulative supply', data:[], borderColor: '#d9a840', backgroundColor:'rgba(217,168,64,0.06)', fill:true, tension:0.3, pointRadius:0 }] }, options: chartOpts('eW') });
+    simCharts.d = new Chart(document.getElementById('chart-sim-d'), { type: 'line', data: { labels:[], datasets:[{ label: 'eW/day', data:[], borderColor: '#d65a5a', tension:0.3, pointRadius:0 }] }, options: chartOpts('eW/day') });
+    simCharts.e = new Chart(document.getElementById('chart-sim-e'), { type: 'line', data: {
+      labels: Array.from({length:20}, (_,i) => `Year ${i+1}`),
+      datasets: [
+        { label: 'eWatts', data: [], borderColor: '#6a9ee0', tension:0.3, pointRadius:1 },
+        { label: 'Bitcoin', data: [], borderColor: '#d9a840', tension:0.3, pointRadius:1, borderDash: [4,3] },
+        { label: 'USD M2', data: [], borderColor: '#d65a5a', tension:0.3, pointRadius:1, borderDash: [2,4] }
+      ]
+    }, options: chartOpts('%') });
+  }
+
+  simCharts.a.data.labels = labels; simCharts.a.data.datasets[0].data = emission.map(d => d.v); simCharts.a.update('none');
+  simCharts.b.data.labels = labels; simCharts.b.data.datasets[0].data = cost.map(d => d.v); simCharts.b.update('none');
+  simCharts.c.data.labels = labels; simCharts.c.data.datasets[0].data = supply.map(d => d.v); simCharts.c.update('none');
+  simCharts.d.data.labels = labels; simCharts.d.data.datasets[0].data = miner.map(d => d.v); simCharts.d.update('none');
+  simCharts.e.data.datasets[0].data = infl.map(d => d.v * 100);
+  simCharts.e.data.datasets[1].data = btc.slice(0,20);
+  simCharts.e.data.datasets[2].data = usd.slice(0,20);
+  simCharts.e.update('none');
+}
+
+// ── Sim Controls ──
+document.getElementById('sim-target').addEventListener('input', runSimulation);
+document.getElementById('sim-time').addEventListener('input', runSimulation);
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = parseFloat(btn.dataset.target);
+    const tm = parseFloat(btn.dataset.time);
+    const logVal = Math.log10(t);
+    document.getElementById('sim-target').value = Math.min(6.3, Math.max(3, logVal));
+    document.getElementById('sim-time').value = tm;
+    runSimulation();
+  });
+});
+
+// ── Init ──
+pollNode();
+fetchBlocks();
+runSimulation();
+setInterval(pollNode, POLL_MS);
+setInterval(fetchBlocks, POLL_MS * 3);
+</script>
+</body>
+</html>
