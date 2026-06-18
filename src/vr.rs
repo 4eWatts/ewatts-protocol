@@ -8,16 +8,18 @@ pub struct VrResult {
     pub window_blocks: u64,
 }
 
+/// Compute VR usando AOPS (Access OPerations per Second) como métrica primária.
+/// A energia é derivada do número de acessos × J_PER_ACCESS (wall power realista).
 pub fn compute_vr(
-    avg_effective_gbps: f64,
+    avg_effective_aops: f64,     // access operations per second
     total_ewatts_mined: f64,
     window_blocks: u64,
     block_time_secs: u64,
 ) -> VrResult {
     if total_ewatts_mined <= 0.0
         || window_blocks == 0
-        || !avg_effective_gbps.is_finite()
-        || avg_effective_gbps <= 0.0
+        || !avg_effective_aops.is_finite()
+        || avg_effective_aops <= 0.0
     {
         return VrResult {
             block_number: 0,
@@ -32,9 +34,9 @@ pub fn compute_vr(
         };
     }
     let total_secs = window_blocks as f64 * block_time_secs as f64;
-    // Convert Gbps to GB/s (divide by 8) and compute joules
-    let total_gb = (avg_effective_gbps * total_secs) / 8.0;
-    let total_joules = total_gb * constants::J_PER_GB;
+    // Energia = total_acessos × joules por acesso (wall power)
+    let total_accesses = avg_effective_aops * total_secs;
+    let total_joules = total_accesses * constants::J_PER_ACCESS;
     let total_kwh = total_joules / constants::J_PER_KWH;
     VrResult {
         block_number: 0,
@@ -66,14 +68,14 @@ pub fn format_vr(vr: f64) -> String {
     }
 }
 
-pub fn compute_vr_series(eff: &[f64], emit: &[f64], window: u64, bt: u64) -> Vec<VrResult> {
-    let n = eff.len();
+pub fn compute_vr_series(aops: &[f64], emit: &[f64], window: u64, bt: u64) -> Vec<VrResult> {
+    let n = aops.len();
     if n < window as usize || emit.len() != n {
         return vec![];
     }
     let mut s = Vec::with_capacity(n - window as usize);
     for i in (window as usize)..n {
-        let avg = eff[i - window as usize..i].iter().sum::<f64>() / window as f64;
+        let avg = aops[i - window as usize..i].iter().sum::<f64>() / window as f64;
         let total: f64 = emit[i - window as usize..i].iter().sum();
         let mut vr = compute_vr(avg, total, window, bt);
         vr.block_number = i as u64;
@@ -87,12 +89,12 @@ mod tests {
     use super::*;
     #[test]
     fn test_vr_basic() {
-        let v = compute_vr(100., 100_000., 1000, 600);
+        let v = compute_vr(20_000_000., 100_000., 1000, 600);
         assert!(v.vr_kwh_per_ewatt > 0.);
     }
     #[test]
     fn test_vr_zero() {
-        let v = compute_vr(100., 0., 1000, 600);
+        let v = compute_vr(20_000_000., 0., 1000, 600);
         assert_eq!(v.vr_kwh_per_ewatt, 0.);
     }
     #[test]
@@ -101,24 +103,25 @@ mod tests {
     }
     #[test]
     fn test_vr_series() {
-        let s = compute_vr_series(&[100.; 2000], &[100.; 2000], 1000, 600);
+        let s = compute_vr_series(&[20_000_000.; 2000], &[100.; 2000], 1000, 600);
         assert_eq!(s.len(), 1000);
     }
     #[test]
     fn test_vr_doubles() {
-        let a = compute_vr(100., 100_000., 1000, 600);
-        let b = compute_vr(200., 100_000., 1000, 600);
+        let a = compute_vr(20_000_000., 100_000., 1000, 600);
+        let b = compute_vr(40_000_000., 100_000., 1000, 600);
         assert!((b.vr_kwh_per_ewatt / a.vr_kwh_per_ewatt - 2.).abs() < 1e-6);
     }
 
     #[test]
-    fn test_vr_gbps_to_gb_conversion() {
-        // 100 Gbps for 600s = 60,000 Gb = 7,500 GB at 0.08 J/GB = 600 J
-        let v = compute_vr(100., 100_000., 1, 600);
+    fn test_vr_aops_to_joules() {
+        // 25M ops/s por 600s = 15B ops × 3.75e-6 J/op = 56,250 J
+        let v = compute_vr(25_000_000., 100_000., 1, 600);
+        let expected = 25_000_000.0 * 600.0 * 3.75e-6; // 56,250
         assert!(
-            (v.total_energy_joules - 600.0).abs() < 1.0,
-            "expected ~600J, got {}",
-            v.total_energy_joules
+            (v.total_energy_joules - expected).abs() < 0.1,
+            "expected ~{}J, got {}",
+            expected, v.total_energy_joules
         );
     }
 

@@ -22,7 +22,18 @@ pub const RAMP_UP_BLOCKS: u64 = 10000;
 pub const RAMP_UP_CAP: f64 = 0.80;                    // v27: max 80% reward per miner during ramp-up
 pub const FOUNDER_LOCK_BLOCKS: u64 = 50000;            // v27: founder cannot spend until block 50000
 pub const FOUNDER_LOCK_ADDITIONAL: u64 = 40000;        // v27: additional lock blocks after coinbase
-pub const MIN_COMMIT_GBS: f64 = 1.0;
+pub const MIN_COMMIT_GBS: f64 = 1.0;          // legacy, mantido para compat
+pub const MIN_COMMIT_AOPS: f64 = 20_000_000.0; // 20M random accesses/s (DDR baseline)
+
+// Wall power por random access: 75W nó típico ÷ 20M acessos/s
+// Inclui DRAM + CPU + PSU losses (não apenas datasheet do chip)
+pub const WATTS_PER_NODE: f64 = 75.0;
+pub const J_PER_ACCESS: f64 = WATTS_PER_NODE / MIN_COMMIT_AOPS;  // 3.75e-6 J = 3.75 µJ
+
+// Calibração por geração (wall power realista, ~2.7x entre extremos)
+pub const J_PER_ACCESS_DDR3: f64 = 10.0e-6;  // ~10 µJ (sistemas antigos)
+pub const J_PER_ACCESS_DDR4: f64 = 5.0e-6;   // ~5 µJ
+pub const J_PER_ACCESS_DDR5: f64 = 3.75e-6;  // ~3.75 µJ (moderno, baseline)
 pub const EFFICIENCY_PENALTY_THRESHOLD: f64 = 0.7;
 pub const EFFICIENCY_CAP_THRESHOLD: f64 = 1.3;
 pub const BASE_ACCESSES: u64 = 1_000_000_000;
@@ -42,4 +53,4 @@ pub const TESTNET_COMMIT_WINDOW: u64 = 43;   // v27: 30 day equiv on testnet
 pub const TESTNET_RAMP_UP_CAP: f64 = 0.80;
 pub const TESTNET_FOUNDER_LOCK: u64 = 500;
 pub const MAX_PEERS: usize = 125;
-pub const PROTOCOL_VERSION: u32 = 0x0003;
+pub const PROTOCOL_VERSION: u32 = 0x0005;  // v3 emission + AOPS commitment

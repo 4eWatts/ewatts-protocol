@@ -280,6 +280,8 @@ pub struct WorkReport {
     pub elapsed_ms: u64,
     pub gb_processed: f64,
     pub gbps: f64,
+    /// Access Operations Per Second (AOPS) — métrica primária.
+    pub aops: f64,
 }
 
 impl WorkReport {
@@ -291,12 +293,18 @@ impl WorkReport {
         } else {
             0.0
         };
+        let aops = if s.elapsed_ms > 0 {
+            s.walk_length as f64 / (s.elapsed_ms as f64 / 1000.0)
+        } else {
+            0.0
+        };
         WorkReport {
             nonce: s.nonce,
             walk_length: s.walk_length,
             elapsed_ms: s.elapsed_ms,
             gb_processed: gb,
             gbps,
+            aops,
         }
     }
 }

@@ -6,9 +6,9 @@ fn ewatt_to_units(ewatt: f64) -> u64 {
     (ewatt * constants::UNITS_PER_EWATT as f64).round() as u64
 }
 
-pub fn compute_emission_rate(total_effective_gbps: f64, historical_avg_gbps: f64) -> f64 {
-    if historical_avg_gbps <= 0.0 { return constants::BASE_EMISSION; }
-    let rate = constants::BASE_EMISSION * total_effective_gbps / historical_avg_gbps;
+pub fn compute_emission_rate(total_effective_aops: f64, historical_avg_aops: f64) -> f64 {
+    if historical_avg_aops <= 0.0 { return constants::BASE_EMISSION; }
+    let rate = constants::BASE_EMISSION * total_effective_aops / historical_avg_aops;
     rate.clamp(constants::BASE_EMISSION * constants::EMISSION_FLOOR_MULTIPLIER,
                constants::BASE_EMISSION * constants::EMISSION_CEILING_MULTIPLIER)
 }
@@ -54,17 +54,18 @@ pub struct RewardSummary {
     pub burned: u64,
 }
 
-pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], previous_commitments: &[f64], historical_avg_gbps: f64) -> RewardSummary {
+pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], previous_commitments: &[f64], historical_avg_aops: f64) -> RewardSummary {
     let mut effective = Vec::new();
     let mut total_eff = 0.0;
     for c in commitments {
         if commitment::validate_commitment(c, previous_commitments).is_err() { continue; }
-        let eff = commitment::compute_efficiency(c.work_gb, c.bandwidth_gbps, c.time_seconds);
-        let c_eff = commitment::effective_commitment(c.bandwidth_gbps, eff);
+        // Use AOPS: efficiency = total_access_ops / (declared_ops_per_sec × time)
+        let eff = commitment::compute_efficiency_aops(c.total_access_ops, c.access_ops_per_sec, c.time_seconds);
+        let c_eff = commitment::effective_commitment(c.access_ops_per_sec, eff);
         effective.push((c_eff, c.miner_id));
         total_eff += c_eff;
     }
-    let emission = compute_emission_rate(total_eff, historical_avg_gbps);
+    let emission = compute_emission_rate(total_eff, historical_avg_aops);
     let mut rewards = Vec::new();
     for (c_eff, mid) in &effective {
         let r = if total_eff > 0.0 { (*c_eff / total_eff) * emission } else { 0.0 };
@@ -82,10 +83,10 @@ pub fn compute_block_rewards(block_number: u64, commitments: &[Commitment], prev
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn test_emission_stable() { assert!((compute_emission_rate(100.,100.) - constants::BASE_EMISSION).abs() < 1e-6); }
-    #[test] fn test_emission_double() { assert!((compute_emission_rate(200.,100.) - constants::BASE_EMISSION * 2.).abs() < 1e-6); }
-    #[test] fn test_emission_floor() { assert!((compute_emission_rate(1.,100.) - constants::BASE_EMISSION * 0.05).abs() < 1e-6); }
-    #[test] fn test_emission_ceiling() { assert!((compute_emission_rate(2000.,100.) - constants::BASE_EMISSION * 20.).abs() < 1e-6); }
+    #[test] fn test_emission_stable() { assert!((compute_emission_rate(25_000_000.,25_000_000.) - constants::BASE_EMISSION).abs() < 1e-6); }
+    #[test] fn test_emission_double() { assert!((compute_emission_rate(50_000_000.,25_000_000.) - constants::BASE_EMISSION * 2.).abs() < 1e-6); }
+    #[test] fn test_emission_floor() { assert!((compute_emission_rate(1.,25_000_000.) - constants::BASE_EMISSION * 0.05).abs() < 1e-6); }
+    #[test] fn test_emission_ceiling() { assert!((compute_emission_rate(500_000_000.,25_000_000.) - constants::BASE_EMISSION * 20.).abs() < 1e-6); }
     #[test] fn test_ramp_up_cap() {
         let mut rewards = vec![(vec![1u8;32], 100.0), (vec![2u8;32], 0.0)];
         let burned = apply_ramp_up_cap(5000, &mut rewards);
@@ -110,11 +111,10 @@ mod tests {
         assert_eq!(ewatt_to_units(0.0000005), 1);  // rounding up
     }
     #[test] fn test_reward_proportional() {
-        // Two miners with same effective commitment should get equal rewards
         use crate::commitment::Commitment;
         use ed25519_dalek::Signer;
-        fn signed_commit(pk: [u8;32], bw: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
-            let mut c = Commitment { miner_id: pk, bandwidth_gbps: bw, block_number: 0, work_gb: bw, time_seconds: 1., signature: vec![] };
+        fn signed_commit_aops(pk: [u8;32], aops: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
+            let mut c = Commitment { miner_id: pk, access_ops_per_sec: aops, block_number: 0, total_access_ops: aops, time_seconds: 1., signature: vec![] };
             let msg = crate::commitment::commit_msg(&c);
             c.signature = sk.sign(&msg).to_bytes().to_vec();
             c
@@ -123,19 +123,18 @@ mod tests {
         let pk1 = sk1.verifying_key().to_bytes();
         let sk2 = ed25519_dalek::SigningKey::from_bytes(&[2u8;32]);
         let pk2 = sk2.verifying_key().to_bytes();
-        let c1 = signed_commit(pk1, 100., &sk1);
-        let c2 = signed_commit(pk2, 100., &sk2);
-        let prev = vec![50., 100., 100., 100.];
-        let r = compute_block_rewards(20000, &[c1, c2], &prev, 100.);
+        let c1 = signed_commit_aops(pk1, 25_000_000., &sk1);
+        let c2 = signed_commit_aops(pk2, 25_000_000., &sk2);
+        let prev = vec![20_000_000., 25_000_000., 25_000_000., 25_000_000.];
+        let r = compute_block_rewards(20000, &[c1, c2], &prev, 25_000_000.);
         assert_eq!(r.miner_rewards[0].1, r.miner_rewards[1].1);
         assert!(r.miner_rewards[0].1 > 0);
     }
     #[test] fn test_reward_honest_more() {
-        // Honest miner (eff=1.0) should get more than under-declarer (eff=0.5 after cap)
         use crate::commitment::Commitment;
         use ed25519_dalek::Signer;
-        fn signed_commit(pk: [u8;32], bw: f64, w: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
-            let mut c = Commitment { miner_id: pk, bandwidth_gbps: bw, block_number: 0, work_gb: w, time_seconds: 1., signature: vec![] };
+        fn signed_commit_aops(pk: [u8;32], aops: f64, ops: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
+            let mut c = Commitment { miner_id: pk, access_ops_per_sec: aops, block_number: 0, total_access_ops: ops, time_seconds: 1., signature: vec![] };
             let msg = crate::commitment::commit_msg(&c);
             c.signature = sk.sign(&msg).to_bytes().to_vec();
             c
@@ -144,30 +143,34 @@ mod tests {
         let pk1 = sk1.verifying_key().to_bytes();
         let sk2 = ed25519_dalek::SigningKey::from_bytes(&[2u8;32]);
         let pk2 = sk2.verifying_key().to_bytes();
-        let honest = signed_commit(pk1, 100., 100., &sk1);
-        let under = signed_commit(pk2, 10., 100., &sk2);
-        let prev = vec![50., 100., 100., 100.];
-        let r = compute_block_rewards(20000, &[honest, under], &prev, 100.);
-        // honest c_eff=100, under c_eff=13 (capped at 1.3×): honest should get ~88.5%
+        // Ambos declaram 25M ops/s (acima de MIN_COMMIT_AOPS = 20M)
+        // Honest: entrega 25M ops = eff 1.0 → c_eff 25M
+        // Under: entrega 3.25M ops = eff 0.13 → c_eff 3.25M (penalizado)
+        // ratio esperado: 25 / 28.25 ≈ 0.885
+        let honest = signed_commit_aops(pk1, 25_000_000., 25_000_000., &sk1);
+        let under = signed_commit_aops(pk2, 25_000_000., 3_250_000., &sk2);
+        let prev = vec![20_000_000., 25_000_000., 25_000_000., 25_000_000.];
+        let r = compute_block_rewards(20000, &[honest, under], &prev, 25_000_000.);
+        assert_eq!(r.miner_rewards.len(), 2, "both miners should be in rewards");
         assert!(r.miner_rewards[0].1 > r.miner_rewards[1].1);
-        let ratio = r.miner_rewards[0].1 as f64 / (r.miner_rewards[0].1 + r.miner_rewards[1].1) as f64;
-        assert!((ratio - 0.885).abs() < 0.01);
+        let total = r.miner_rewards[0].1 as f64 + r.miner_rewards[1].1 as f64;
+        let ratio = r.miner_rewards[0].1 as f64 / total;
+        assert!((ratio - 0.885).abs() < 0.02, "expected ~0.885, got {}", ratio);
     }
     #[test] fn test_total_emission_matches() {
-        // Verify that sum of miner rewards + burned == total_emission
         use crate::commitment::Commitment;
         use ed25519_dalek::Signer;
-        fn signed_commit(pk: [u8;32], bw: f64, w: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
-            let mut c = Commitment { miner_id: pk, bandwidth_gbps: bw, block_number: 0, work_gb: w, time_seconds: 1., signature: vec![] };
+        fn signed_commit_aops(pk: [u8;32], aops: f64, ops: f64, sk: &ed25519_dalek::SigningKey) -> Commitment {
+            let mut c = Commitment { miner_id: pk, access_ops_per_sec: aops, block_number: 0, total_access_ops: ops, time_seconds: 1., signature: vec![] };
             let msg = crate::commitment::commit_msg(&c);
             c.signature = sk.sign(&msg).to_bytes().to_vec();
             c
         }
         let sk = ed25519_dalek::SigningKey::from_bytes(&[1u8;32]);
         let pk = sk.verifying_key().to_bytes();
-        let c = signed_commit(pk, 100., 100., &sk);
-        let prev = vec![50., 100., 100., 100.];
-        let r = compute_block_rewards(5000, &[c], &prev, 100.);
+        let c = signed_commit_aops(pk, 25_000_000., 25_000_000., &sk);
+        let prev = vec![20_000_000., 25_000_000., 25_000_000., 25_000_000.];
+        let r = compute_block_rewards(5000, &[c], &prev, 25_000_000.);
         let sum_miners: u64 = r.miner_rewards.iter().map(|(_, amt)| amt).sum();
         assert_eq!(sum_miners + r.burned, r.total_emission);
     }

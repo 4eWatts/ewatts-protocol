@@ -47,10 +47,7 @@ fn main() {
         "info" => cmd_info(),
         "dash" => cmd_dashboard_sync(),
         "txhash" => cmd_txhash(),
-        "p2p" => {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
-            rt.block_on(async { cmd_p2p(&args).await });
-        }
+        "p2p" => cmd_p2p(&args),
         _ => cmd_help(),
     }
 }
@@ -448,20 +445,20 @@ pub(crate) fn mine_block_with_difficulty(
     header.elapsed_ms = sol.elapsed_ms as u32;
     header.proof_merkle_root = sol.merkle_root;
 
-    // Create commitment
-    let declared_gbps = wr.gbps.max(constants::MIN_COMMIT_GBS); // use actual work report
+    // Create commitment com AOPS como métrica primária
+    let declared_aops = wr.aops.max(constants::MIN_COMMIT_AOPS);
     let mut commit = commitment::Commitment {
         miner_id: miner_pk,
-        bandwidth_gbps: declared_gbps,
+        access_ops_per_sec: declared_aops,
         block_number: height,
-        work_gb: wr.gb_processed.max(0.0001), // min work for fast testnet
+        total_access_ops: wr.walk_length as f64,
         time_seconds: (sol.elapsed_ms.max(1) as f64) / 1000.0,
         signature: vec![],
     };
     let msg = commitment::commit_msg(&commit);
     commit.signature = sk.sign(&msg).to_bytes().to_vec();
 
-    // Validate commitment against recent bandwidth history
+    // Validate commitment against recent AOPS history
     let recent: Vec<f64> = {
         let all_blocks = crate::store::load_blocks().unwrap_or_default();
         let window_len = constants::COMMIT_WINDOW_BLOCKS as usize;
@@ -469,7 +466,7 @@ pub(crate) fn mine_block_with_difficulty(
         if start < all_blocks.len() {
             all_blocks[start..]
                 .iter()
-                .flat_map(|b| b.body.commitments.iter().map(|c| c.bandwidth_gbps))
+                .flat_map(|b| b.body.commitments.iter().map(|c| c.access_ops_per_sec))
                 .collect()
         } else {
             vec![]
@@ -478,9 +475,9 @@ pub(crate) fn mine_block_with_difficulty(
     commitment::validate_commitment(&commit, &recent)
         .map_err(|e| format!("Commitment invalid: {}", e))?;
 
-    // Compute effective commitment
-    let eff = commitment::compute_efficiency(commit.work_gb, commit.bandwidth_gbps, commit.time_seconds);
-    let ce = commitment::effective_commitment(commit.bandwidth_gbps, eff);
+    // Compute effective commitment usando AOPS
+    let eff = commitment::compute_efficiency_aops(commit.total_access_ops, commit.access_ops_per_sec, commit.time_seconds);
+    let ce = commitment::effective_commitment(commit.access_ops_per_sec, eff);
     header.miner_effective_commit = ce;
 
     // Emission rate: compute avg_hist from recent block history

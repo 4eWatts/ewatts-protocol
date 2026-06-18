@@ -1,3 +1,5 @@
+use crate::constants;
+
 #[cfg(test)]
 use ed25519_dalek::SigningKey;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
@@ -6,11 +8,25 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Commitment {
     pub miner_id: [u8; 32],
-    pub bandwidth_gbps: f64,
+    /// Access operations per second (AOPS) — métrica primária.
+    /// DDR moderna faz ~20-25M random accesses/s.
+    pub access_ops_per_sec: f64,
     pub block_number: u64,
-    pub work_gb: f64,
+    /// Total de acessos realizados (access ops), substitui work_gb.
+    pub total_access_ops: f64,
     pub time_seconds: f64,
     pub signature: Vec<u8>,
+}
+
+impl Commitment {
+    /// Deriva bandwidth equivalente de AOPS para compatibilidade.
+    /// Cada acesso = DAG_ELEMENT_SIZE (64) bytes.
+    pub fn bandwidth_gbps(&self) -> f64 {
+        self.access_ops_per_sec * 64.0 / 1_000_000_000.0
+    }
+    pub fn work_gb(&self) -> f64 {
+        self.total_access_ops * 64.0 / 1_000_000_000.0
+    }
 }
 
 pub fn compute_efficiency(w: f64, d: f64, t: f64) -> f64 {
@@ -18,6 +34,17 @@ pub fn compute_efficiency(w: f64, d: f64, t: f64) -> f64 {
         0.0
     } else {
         w / (d * t)
+    }
+}
+
+/// Versão AOPS: efficiency = total_access_ops / (declared_ops_per_sec × time)
+pub fn compute_efficiency_aops(total_ops: f64, declared_ops_per_sec: f64, time_secs: f64) -> f64 {
+    if !total_ops.is_finite() || !declared_ops_per_sec.is_finite() || !time_secs.is_finite()
+        || declared_ops_per_sec <= 0.0 || time_secs <= 0.0
+    {
+        0.0
+    } else {
+        total_ops / (declared_ops_per_sec * time_secs)
     }
 }
 
@@ -49,33 +76,37 @@ fn median(v: &[f64]) -> f64 {
 
 pub fn min_commitment(r: &[f64]) -> f64 {
     if r.is_empty() {
-        1.0
+        constants::MIN_COMMIT_AOPS
     } else {
-        1.0f64.max(0.1 * median(r))
+        constants::MIN_COMMIT_AOPS.max(0.1 * median(r))
     }
 }
 
 pub fn commit_msg(commit: &Commitment) -> Vec<u8> {
     let mut msg = Vec::new();
     msg.extend_from_slice(&commit.miner_id);
-    msg.extend_from_slice(&commit.bandwidth_gbps.to_le_bytes());
+    msg.extend_from_slice(&commit.access_ops_per_sec.to_le_bytes());
     msg.extend_from_slice(&commit.block_number.to_le_bytes());
-    msg.extend_from_slice(&commit.work_gb.to_le_bytes());
+    msg.extend_from_slice(&commit.total_access_ops.to_le_bytes());
     msg.extend_from_slice(&commit.time_seconds.to_le_bytes());
     msg
 }
 
 pub fn validate_commitment(c: &Commitment, r: &[f64]) -> Result<(), String> {
-    if c.bandwidth_gbps < 1.0 {
-        return Err("abaixo do minimo".into());
+    // Primary check: AOPS minimum
+    if c.access_ops_per_sec < constants::MIN_COMMIT_AOPS {
+        return Err(format!(
+            "abaixo do minimo AOPS: {:.0} < {:.0}",
+            c.access_ops_per_sec, constants::MIN_COMMIT_AOPS
+        ));
     }
-    if c.bandwidth_gbps < min_commitment(r) {
+    if c.access_ops_per_sec < min_commitment(r) {
         return Err("abaixo do minimo rolling".into());
     }
     if c.signature.len() != 64 {
         return Err("assinatura invalida".into());
     }
-    let e = compute_efficiency(c.work_gb, c.bandwidth_gbps, c.time_seconds);
+    let e = compute_efficiency_aops(c.total_access_ops, c.access_ops_per_sec, c.time_seconds);
     if e <= 0.0 {
         return Err("eficiencia zero".into());
     }
@@ -103,6 +134,13 @@ mod tests {
         assert!((compute_efficiency(100., 100., 1.) - 1.).abs() < 1e-6);
     }
     #[test]
+    fn test_eff_aops() {
+        // 25M ops em 1s com declarados 25M/s = eficiencia 1.0
+        assert!((compute_efficiency_aops(25_000_000., 25_000_000., 1.) - 1.).abs() < 1e-6);
+        // 10M ops em 1s com declarados 25M/s = eficiencia 0.4
+        assert!((compute_efficiency_aops(10_000_000., 25_000_000., 1.) - 0.4).abs() < 1e-6);
+    }
+    #[test]
     fn test_penalty() {
         assert!((effective_commitment(100., 0.5) - 50.).abs() < 1e-6);
     }
@@ -111,14 +149,28 @@ mod tests {
         assert!((effective_commitment(100., 2.0) - 130.).abs() < 1e-6);
     }
     #[test]
+    fn test_bandwidth_derived() {
+        // 25M ops/s × 64 bytes = 1,600,000,000 bytes/s = 1.6 GB/s
+        let c = Commitment {
+            miner_id: [0; 32],
+            access_ops_per_sec: 25_000_000.,
+            block_number: 0,
+            total_access_ops: 0.,
+            time_seconds: 1.,
+            signature: vec![],
+        };
+        let bw = c.bandwidth_gbps();
+        assert!((bw - 1.6).abs() < 0.01, "expected ~1.6 GB/s, got {}", bw);
+    }
+    #[test]
     fn test_sign() {
         let sk = make_key();
         let pk = sk.verifying_key().to_bytes();
         let mut c = Commitment {
             miner_id: pk,
-            bandwidth_gbps: 100.,
+            access_ops_per_sec: 25_000_000.,
             block_number: 1,
-            work_gb: 100.,
+            total_access_ops: 25_000_000.,
             time_seconds: 1.,
             signature: vec![],
         };
@@ -130,9 +182,9 @@ mod tests {
     fn test_bad_sig() {
         let c = Commitment {
             miner_id: [0; 32],
-            bandwidth_gbps: 100.,
+            access_ops_per_sec: 25_000_000.,
             block_number: 1,
-            work_gb: 100.,
+            total_access_ops: 25_000_000.,
             time_seconds: 1.,
             signature: vec![0; 64],
         };
@@ -167,16 +219,16 @@ mod tests {
 
     #[test]
     fn test_min_commitment_empty() {
-        assert!((min_commitment(&[]) - 1.0).abs() < 1e-6);
+        assert!((min_commitment(&[]) - constants::MIN_COMMIT_AOPS).abs() < 1e-6);
     }
 
     #[test]
     fn test_validate_commitment_short_sig() {
         let c = Commitment {
             miner_id: [0; 32],
-            bandwidth_gbps: 100.,
+            access_ops_per_sec: 25_000_000.,
             block_number: 1,
-            work_gb: 100.,
+            total_access_ops: 25_000_000.,
             time_seconds: 1.,
             signature: vec![0; 32], // too short (should be 64)
         };

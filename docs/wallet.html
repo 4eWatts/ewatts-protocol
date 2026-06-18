@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts Wallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:14px; line-height:1.6; }
+.container { max-width:1000px; margin:0 auto; padding:0 16px; }
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #1a1a2a; margin-bottom:16px; }
+.logo { font-size:16px; font-weight:600; color:#fff; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:12px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; }
+.nav-links a:hover { color:#fff; }
+.card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:16px; margin-bottom:12px; }
+.card h3 { color:#fff; font-size:14px; margin-bottom:8px; }
+.balance-display { font-size:28px; font-weight:700; color:#fff; font-family:'JetBrains Mono',monospace; }
+.balance-label { font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; }
+.btn { display:inline-block; padding:8px 16px; border-radius:4px; font-size:13px; font-weight:500; cursor:pointer; border:none; }
+.btn-primary { background:#3b82f6; color:#fff; }
+.btn-primary:hover { background:#5a94f8; }
+.btn-outline { background:transparent; border:1px solid #2a2a3a; color:#c8c8cc; }
+.btn-outline:hover { border-color:#3b82f6; color:#fff; }
+.btn-danger { background:#ef4444; color:#fff; }
+input, textarea { background:#0c0c18; border:1px solid #2a2a3a; border-radius:4px; padding:8px 12px; color:#d4d4dc; font-size:13px; width:100%; font-family:'JetBrains Mono',monospace; }
+input:focus, textarea:focus { outline:none; border-color:#3b82f6; }
+label { display:block; font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+.form-group { margin-bottom:12px; }
+.tabs { display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid #1a1a2a; }
+.tab { padding:8px 16px; cursor:pointer; font-size:13px; color:#5a5a72; border-bottom:2px solid transparent; }
+.tab.active { color:#fff; border-bottom-color:#3b82f6; }
+.tab:hover { color:#c8c8cc; }
+.tx-table { width:100%; }
+.tx-table td { padding:6px 8px; font-size:12px; border-bottom:1px solid #0c0c18; font-family:'JetBrains Mono',monospace; }
+.tx-table .amount { color:#22c55e; }
+.status { font-size:12px; color:#5a5a72; padding:4px 0; }
+.error { color:#ef4444; font-size:12px; }
+.hash-preview { max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width:720px) {
+  nav { flex-direction:column; gap:8px; }
+  .balance-display { font-size:22px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<nav>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">wallet</span></div>
+    <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="protocol.html">Protocol</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+  </div>
+</nav>
+
+<div id="app">
+  <div class="status" id="status">Connecting to node...</div>
+</div>
+
+<footer style="text-align:center;padding:20px 0;font-size:11px;color:#5a5a72;border-top:1px solid #1a1a2a;margin-top:20px;">
+  Keys are stored locally. This wallet connects to the eWatts daemon API.
+</footer>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let state = { keys: [], balance: 0, utxos: [] };
+let currentTab = 'dashboard';
+
+async function api(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error('API error: ' + r.status);
+  return r.json();
+}
+
+function show() {
+  const el = document.getElementById('app');
+  const statusEl = document.getElementById('status');
+  
+  let html = '<div class="tabs">';
+  html += `<div class="tab ${currentTab==='dashboard'?'active':''}" onclick="switchTab('dashboard')">Dashboard</div>`;
+  html += `<div class="tab ${currentTab==='send'?'active':''}" onclick="switchTab('send')">Send</div>`;
+  html += `<div class="tab ${currentTab==='receive'?'active':''}" onclick="switchTab('receive')">Receive</div>`;
+  html += `<div class="tab ${currentTab==='keys'?'active':''}" onclick="switchTab('keys')">Keys</div>`;
+  html += '</div>';
+  
+  if (currentTab === 'dashboard') {
+    html += '<div class="card">';
+    html += '<div class="balance-label">Total Balance</div>';
+    html += `<div class="balance-display">${(state.balance / 1e6).toFixed(6)} <span style="font-size:14px;color:#5a5a72;">Ewatt</span></div>`;
+    html += `<div style="font-size:12px;color:#5a5a72;margin-top:4px;">${state.balance.toLocaleString()} base units</div>`;
+    html += '</div>';
+    
+    html += '<div class="card">';
+    html += '<h3>Your UTXOs</h3>';
+    if (state.utxos.length === 0) {
+      html += '<div class="status">No UTXOs found. If you have keys, try scanning.</div>';
+    } else {
+      html += '<table class="tx-table">';
+      html += '<tr><td style="color:#5a5a72;">Address</td><td style="color:#5a5a72;">Amount</td><td style="color:#5a5a72;">Spendable</td></tr>';
+      for (const u of state.utxos.slice(0, 20)) {
+        const spendable = u.spendable_after && u.spendable_after > 0 ? `Block ${u.spendable_after}` : 'Yes';
+        html += `<tr><td class="hash-preview" title="${u.address}">${u.address ? u.address.substring(0,16)+'...' : '-'}</td>`;
+        html += `<td class="amount">${(u.amount / 1e6).toFixed(6)}</td>`;
+        html += `<td>${spendable}</td></tr>`;
+      }
+      if (state.utxos.length > 20) html += `<tr><td colspan="3" style="color:#5a5a72;">...and ${state.utxos.length - 20} more</td></tr>`;
+      html += '</table>';
+    }
+    html += '</div>';
+    
+    html += '<div class="card">';
+    html += '<h3>Network Info</h3>';
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">`;
+    html += `<div><span style="color:#5a5a72;">Height:</span> ${state.height || '-'}</div>`;
+    html += `<div><span style="color:#5a5a72;">Supply:</span> ${state.supply ? (state.supply/1e6).toFixed(0) + ' Ewatt' : '-'}</div>`;
+    html += `<div><span style="color:#5a5a72;">UTXOs:</span> ${state.utxos_total || '-'}</div>`;
+    html += `<div><span style="color:#5a5a72;">Keys:</span> ${state.keys.length}</div>`;
+    html += '</div></div>';
+  }
+  
+  if (currentTab === 'send') {
+    html += '<div class="card">';
+    html += '<h3>Send Ewatt</h3>';
+    html += '<div class="form-group"><label>From Key Index</label><input id="sendIdx" type="number" value="0" min="0"></div>';
+    html += '<div class="form-group"><label>Recipient Address (hex)</label><input id="sendTo" placeholder="64 hex chars"></div>';
+    html += '<div class="form-group"><label>Amount (base units)</label><input id="sendAmount" type="number" placeholder="1000000 = 1 Ewatt"></div>';
+    html += `<button class="btn btn-primary" onclick="sendTx()">Send Transaction</button>`;
+    html += '<div id="sendResult" class="status" style="margin-top:8px;"></div>';
+    html += '</div>';
+  }
+  
+  if (currentTab === 'receive') {
+    html += '<div class="card">';
+    html += '<h3>Receive Ewatt</h3>';
+    if (state.keys.length === 0) {
+      html += '<div class="status">No keys loaded. Your address will appear here once a key is available.</div>';
+    } else {
+      for (let i = 0; i < state.keys.length; i++) {
+        html += `<div style="margin-bottom:8px;">`;
+        html += `<div style="font-size:11px;color:#5a5a72;">Key #${i}: ${state.keys[i].label || 'unnamed'}</div>`;
+        html += `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;color:#3b82f6;">${state.keys[i].address}</div>`;
+        html += `<button class="btn btn-outline" style="font-size:11px;margin-top:4px;" onclick="copyToClip('${state.keys[i].address}')">Copy</button>`;
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+  }
+  
+  if (currentTab === 'keys') {
+    html += '<div class="card">';
+    html += '<h3>Wallet Keys</h3>';
+    for (let i = 0; i < state.keys.length; i++) {
+      html += `<div style="margin-bottom:8px;padding:8px;background:#0c0c18;border-radius:4px;">`;
+      html += `<div style="font-size:11px;color:#5a5a72;">Key #${i}</div>`;
+      html += `<div style="font-size:12px;">Label: ${state.keys[i].label || 'unnamed'}</div>`;
+      html += `<div style="font-size:11px;font-family:'JetBrains Mono',monospace;word-break:break-all;">Address: ${state.keys[i].address}</div>`;
+      html += '</div>';
+    }
+    if (state.keys.length === 0) {
+      html += '<div class="status">No keys. Generate using CLI: ewatts keygen</div>';
+    }
+    html += '</div>';
+  }
+  
+  el.innerHTML = html;
+  statusEl.textContent = 'Ready';
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  show();
+}
+
+async function sendTx() {
+  const idx = parseInt(document.getElementById('sendIdx').value);
+  const to = document.getElementById('sendTo').value.trim();
+  const amount = parseInt(document.getElementById('sendAmount').value);
+  const rEl = document.getElementById('sendResult');
+  
+  if (!to || to.length !== 64 || isNaN(amount)) {
+    rEl.textContent = 'Invalid inputs. Address must be 64 hex chars.';
+    rEl.style.color = '#ef4444';
+    return;
+  }
+  
+  // Try wallet API first
+  fetch(WALLET_API + '/wallet/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ key_index: idx, to: to, amount: amount }),
+    signal: AbortSignal.timeout(5000),
+  }).then(r => r.json()).then(d => {
+    if (d.status === 'submitted') {
+      rEl.innerHTML = '✅ Transaction submitted! Hash: <code>' + d.tx_hash.substring(0,16) + '...</code>';
+      rEl.style.color = '#22c55e';
+    } else if (d.tx_hash) {
+      rEl.innerHTML = '✅ Sent! Hash: <code>' + d.tx_hash.substring(0,16) + '...</code>';
+      rEl.style.color = '#22c55e';
+    } else {
+      rEl.textContent = 'Error: ' + (d.error || 'unknown');
+      rEl.style.color = '#ef4444';
+    }
+  }).catch(e => {
+    rEl.innerHTML = 'Wallet API not available. Use CLI: <code>ewatts wallet send ' + idx + ' ' + to + ' ' + amount + '</code>';
+    rEl.style.color = '#3b82f6';
+  });
+}
+
+function copyToClip(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// Init — try wallet API first, fallback to public API
+// Wallet API runs on the eWatts node (port 9090, started with: ewatts wallet serve)
+const WALLET_API = 'http://178.104.193.51:9090';
+const statusEl = document.getElementById('status');
+
+async function fetchWallet(path) {
+  try {
+    const r = await fetch(WALLET_API + path, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) return r.json();
+  } catch(e) { /* wallet server not available */ }
+  return null;
+}
+
+async function init() {
+  try {
+    const d = await api('/status');
+    state.height = d.height;
+    state.supply = d.supply;
+    state.utxos_total = d.utxos;
+    
+    const w = await fetchWallet('/wallet/balance');
+    if (w) state.balance = w.balance || 0;
+    const k = await fetchWallet('/wallet/keys');
+    if (k && k.keys) state.keys = k.keys;
+    const u = await fetchWallet('/wallet/utxos');
+    if (u && u.utxos) state.utxos = u.utxos;
+    
+    // Fallback
+    if (state.utxos.length === 0) {
+      const pool = await api('/ring/pool').catch(() => ({ utxos: [] }));
+      if (pool.utxos) state.utxos = pool.utxos.slice(0, 100);
+    }
+  } catch(e) {
+    statusEl.textContent = 'Cannot connect to node.';
+  }
+  show();
+}
+
+init();
+</script>
+</body>
+</html>

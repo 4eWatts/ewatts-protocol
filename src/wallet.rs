@@ -428,7 +428,7 @@ mod tests {
         let utxo_set = UtxoSet::new();
         let dummy_addr = crate::privacy::StealthAddress {
             spend_key: curve25519_dalek::ristretto::CompressedRistretto([0u8; 32]).decompress().unwrap_or(crate::privacy::ring_g()),
-            view_key: curve25519_dalek::ristretto::RistrettoPoint::identity(),
+            view_key: curve25519_dalek::ristretto::CompressedRistretto([0u8; 32]).decompress().unwrap(),
         };
         let result = create_private_tx(&w, &dummy_addr, 0, &utxo_set, &mut rand::thread_rng());
         assert!(result.is_err(), "zero amount tx should be rejected");

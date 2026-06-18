@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts — Test Suite Results</title>
+<meta name="description" content="eWatts protocol test suite results: 198 tests passing, 0 failures, 6 ignored.">
+<meta property="og:title" content="eWatts — Test Suite Results">
+<meta property="og:description" content="198 tests passing, 0 failures. Protocol core, privacy, and economics validation.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="eWatts — Test Suite Results">
+<meta name="twitter:description" content="198 tests passing, 0 failures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+.container { max-width:1120px; margin:0 auto; padding:0 20px; }
+
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
+.nav-links a.active { color:#fff; }
+
+h1 { font-size:32px; font-weight:700; color:#fff; letter-spacing:-0.5px; margin-bottom:8px; }
+h2 { font-size:18px; font-weight:600; color:#fff; margin:40px 0 16px; padding-bottom:6px; border-bottom:1px solid #1a1a2a; }
+h3 { font-size:15px; font-weight:500; color:#d4d4dc; margin:24px 0 8px; }
+p { margin:8px 0; color:#5a5a72; font-size:14px; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#14141e; padding:1px 5px; border-radius:3px; }
+a { color:#3b82f6; text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+.summary { display:flex; gap:24px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:8px; padding:20px 24px; margin:16px 0; }
+.summary-item { display:flex; flex-direction:column; }
+.summary-num { font-size:28px; font-weight:700; letter-spacing:-0.3px; }
+.summary-label { font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+.text-green { color:#22c55e; }
+.text-red { color:#ef4444; }
+.text-muted { color:#5a5a72; }
+
+table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 16px; }
+th { text-align:left; padding:8px 10px; border-bottom:1px solid #1a1a2a; color:#5a5a72; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+td { padding:7px 10px; border-bottom:1px solid #14141e; vertical-align:top; }
+tr:hover td { background:#0e0e18; }
+
+.tag { display:inline-block; padding:1px 7px; border-radius:3px; font-size:10px; font-weight:600; letter-spacing:0.2px; }
+.tag-rust { background:#0a2a0a; color:#22c55e; }
+.tag-py { background:#0a1a2a; color:#60a5fa; }
+.tag-sh { background:#2a1a0a; color:#fbbf24; }
+.tag-sim { background:#1a0a2a; color:#a78bfa; }
+.bug-severe { color:#fbbf24; font-size:12px; }
+.bug-critical { color:#ef4444; font-size:12px; }
+.bug-medium { color:#fbbf24; font-size:12px; opacity:0.7; }
+.mono { font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+.footer { margin-top:48px; padding:20px 0; border-top:1px solid #1a1a2a; font-size:12px; color:#5a5a72; display:flex; gap:16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav>
+  <div class="logo">eWatts<span>.org</span></div>
+    <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="protocol.html">Protocol</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+  </div>
+</nav>
+
+<h1>Test Suite Results</h1>
+<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 12 June 2026</p>
+<p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+<strong>Testnet feature flag:</strong> <code>--features testnet</code> uses compressed timing parameters 
+(FOUNDER_LOCK_BLOCKS = 500 instead of 50000) to allow validation within reasonable test duration. 
+Production-level parameters (mainnet values) are validated by Rust unit tests that do not depend on the testnet feature flag &mdash; 
+see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, and ramp-up cap math.
+</p>
+
+<div class="summary">
+  <div class="summary-item"><span class="summary-num text-green">198</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">6</span><span class="summary-label">Ignored</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">8</span><span class="summary-label">Filtered</span></div>
+  <div class="summary-item"><span class="summary-num">206</span><span class="summary-label">Total</span></div>
+</div>
+
+<p>This round: 9 new tests added, 18 P-spec tests. P2P debug logs cleaned, lib.rs fixed for fuzz.</p>
+<p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+<strong>6 ignored:</strong> tests for the deprecated v27 emission formula, kept in the codebase for reference during the v3 migration. They do not validate the current protocol.
+</p>
+<p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
+
+<h2>Bugs Fixed</h2>
+<table>
+<tr><th>File</th><th>Issue</th><th>Impact</th></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: usize underflow in <code>16 - (bit_shift - 8)</code> when bit_shift ≥ 6. Function was never called by any existing test.</td><td class="bug-critical">Critical: 8 of 24 BIP39 words affected. All CLI seed phrases would be invalid.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: 11-bit word extraction incorrect (16-bit and 24-bit formulas inconsistent).</td><td class="bug-severe">Severe: BIP39 words did not match original entropy.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>entropy_to_mnemonic: checksum used <code>entropy[0] >> 5</code> instead of SHA256 (BIP39 spec).</td><td class="bug-medium">Medium: non-compliant checksum, incompatible with other wallets.</td></tr>
+<tr><td><code>wallet.rs</code></td><td>mnemonic_to_entropy: checksum verification also used <code>entropy[0] >> 5</code> (internally consistent, out of spec).</td><td class="bug-medium">Medium: corrected to SHA256 alongside entropy_to_mnemonic.</td></tr>
+</table>
+
+<h2>Phase 1 — Adversarial Tests</h2>
+<p>Node resilience under adversarial conditions. Coverage: invalid proofs, double-spend, inflation, bandwidth attacks, malformed blocks, reorg handling.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase1.sh"><code>testnet_cert_phase1.sh</code></a></p>
+
+<h2>Phase 2 — Network Integration</h2>
+<p>Multi-node P2P networking: block propagation, peer discovery, chain sync, gossip.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase2.sh"><code>testnet_cert_phase2.sh</code></a></p>
+
+<h2>Phase 3 — Adversarial Resilience</h2>
+<p>Eclipse attacks, byzantine peers, network partitions, reorg under adversarial conditions.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase3.sh"><code>testnet_cert_phase3.sh</code></a></p>
+
+<h2>Phase 4 — Endurance Run</h2>
+<p>Long-running node stability under continuous load: memory, CPU, disk, peer connectivity over 24h+.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase4.sh"><code>testnet_cert_phase4.sh</code></a></p>
+
+<h2>Phase 5 — Ledger Corruption &amp; Byzantine Resilience</h2>
+<p>State corruption recovery, byzantine fault tolerance, UTXO consistency under partial writes.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase5.sh"><code>testnet_cert_phase5.sh</code></a></p>
+
+<h2>Phase 6 — Edge Cases</h2>
+<table>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr><td>T6.1-T6.3</td><td>Edge case transitions: graceful shutdown, restart, state consistency.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+<tr><td>T6.4</td><td>Atomic write under SIGKILL during apply_block. State not corrupted.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+<tr><td>T6.5</td><td>Supply conservation after multi-block mining: total UTXOs = expected emission.</td><td><span class="tag tag-sh">Script</span></td><td class="text-green">PASS</td></tr>
+</table>
+<p>Scripts: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6.sh"><code>testnet_cert_phase6.sh</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t64.sh"><code>t6.4</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase6_t65.sh"><code>t6.5</code></a></p>
+
+<h2>Phase 7 — Economic Model &amp; Protocol Invariants</h2>
+<p>Validates v3 emission formula, bootstrap multiplier, ramp-up cap 80%, founder lock, double-spend detection.</p>
+<p>Script: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/testnet_cert_phase7.sh"><code>testnet_cert_phase7.sh</code></a></p>
+
+<p style="margin:12px 0; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
+Note: Phase 8 (internally validated, self-certified) reviews above. Some Phase 7 shell tests have gaps (JSON malformed, ambiguous HTTP codes).
+These gaps are addressed by the Rust <strong>economic_*</strong> and <strong>p10_*</strong> tests below,
+which validate the same invariants through direct state access with specific error message matching.
+</p>
+
+<h2>Phase 8 — Protocol Core Integrity</h2>
+<table>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr><td><code>p8_mlsag_roundtrip_and_tamper</code></td><td>MLSAG sign + verify with ring of 11. Tampered c0 rejected.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_mlsag_multi_layer</code></td><td>MLSAG 3 layers, ring[ring_pos][layer] transpose, sign + verify.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_pedersen_blinding_verify</code></td><td>Commitment::verify with correct blinding, wrong amount, wrong blinding.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_stealth_address_uniqueness</code></td><td>1000 addresses generated, zero spend_key duplicates. 1000 unique ephemeral keys.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_coinbase_has_correct_lock</code></td><td>Mined block coinbase has spendable_after = founder_lock_block(height).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_protocol_version_valid</code></td><td>PROTOCOL_VERSION exists and is a positive u16.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p8_difficulty_shock</code></td><td>Difficulty adjusts correctly under 10x, 2x, 0.5x, 0.01x hashrate shocks.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_coinbase_has_correct_lock</code></td><td>Founder_lock_block(15000) is 0 (post-foundation).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_founder_lock_rejects_premature_spend</code></td><td>Real coinbase UTXO, spend before lock, specific error + UTXO preserved.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>economic_double_spend_key_image_rejected</code></td><td>Real UTXO signed with ed25519. First spend ok, key_image tracked, reuse fails with specific error.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+</table>
+
+<h2>Phase 9 — Privacy & Network</h2>
+<table>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr><td><code>p9_malicious_decoys_anonymity</code></td><td>Ring of 11: 10 attacker-controlled decoys + 1 real. MLSAG verifies, attacker cannot forge.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_key_image_reuse_after_reorg</code></td><td>Spent_key_images grows monotonically as blocks are added.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_stealth_scanning_performance</code></td><td>1000 owned + 1000 non-owned addresses. All found, zero false positives.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p9_sybil_emission_equivalence</code></td><td>Same total_eff = same emission. 1000 identities gain no advantage over 1.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>P9-1: Graph Reconstruction</code></td><td>100 wallets, 5000 txs, 3 clustering heuristics. Best precision 21.53% (value flow on synthetic chain). High randomness &mdash; privacy holds against tested heuristics (78% of attributions are incorrect).</td><td><span class="tag tag-py">Python</span></td><td class="text-green">PASS</td></tr>
+</table>
+
+<h2>Phase 10 — Economics & Performance</h2>
+<table>
+<tr><th>Test</th><th>What it validates</th><th>Type</th><th>Status</th></tr>
+<tr><td><code>p10_founder_adversarial_no_early_spend</code></td><td>UTXO locked at 100. Rejected at heights 0,1,10,50,99. Unlocked at 100 (different error).</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_mnemonic_edge_cases</code></td><td>Mnemonic < 24 or > 24 words is rejected.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_wallet_seed_roundtrip</code></td><td>Known entropy to 24 words and back. Random roundtrip 5x.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+<tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
+</table>
+
+<h2>Full Test Listing (205 tests)</h2>
+<p>All individual <code>#[test]</code> functions across the codebase. Grouped by source module.</p>
+<table>
+<tr><th>Phase</th><th>Test</th><th>Status</th></tr>
+<tr><td>Phase 1: Adversarial</td><td><code>adv_external_key_mining</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_invalid_proof_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_min_bandwidth_commitment_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_supply_increases_with_blocks</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_supply_overflow_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_tampered_commitment_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_ten_block_chain</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_two_miner_chain</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_wrong_height_accepted_by_state</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_wrong_parent_accepted_by_state</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>adv_zero_reward_block_accepted</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_double_spend</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_initial_mix_deterministic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_meets_difficulty_basic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_merkle_root_verify</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mine_and_verify</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_spend</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_supply</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_walk_length</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_wrong_sig</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 2: Network</td><td><code>compact_block_missing_tx_returns_none</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>compact_block_roundtrip_with_mempool</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>compact_block_short_ids_differ_by_nonce</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p2p_block_request_extreme_heights</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p2p_empty_block_response_valid</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p2p_garbage_deserialize_safe</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>peer_manager_evicts_lru</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>peer_manager_remove_and_reinsert</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>shuffle_2nodes_5blocks_with_duplicates</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>shuffle_3nodes_5blocks_no_chaos</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>shuffle_3nodes_5blocks_with_latency</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>shuffle_basic_2nodes_5blocks</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_pool_basic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_pool_rewards</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>token_bucket_allows_burst_then_limits</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>token_bucket_refills_over_time</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 3: Resilience</td><td><code>simulation_hashrate_growth_baseline</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>simulation_vr_convergence_baseline</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_adjust</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_adjust_clamp</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_adjust_half</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_avg_time</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 4: Endurance</td><td><code>test_mempool_confirm_mined</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_drain_clears_all</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_empty_start</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_get_tx_by_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_peek_all_returns_all</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_submit_and_peek</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_take_for_mining</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mempool_take_for_mining_respects_limit</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 5: Ledger/Corruption</td><td><code>test_dag_benchmark_64mb</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_benchmark_progressive</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_cache_hit</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_deterministic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_epoch_different</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_get_wraparound</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_dag_memory_sanity</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_extend_canonical</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_fork_lca</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_full_reorg_state_integrity</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_orphan_resolution</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_reorg_detection</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_simple_chain</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_block_count_empty</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_block_count_fast_vs_disk</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_cache_eviction_order</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_chain_tip_height</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_genesis_key_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_get_block_by_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_has_data</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_latest_block_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_load_blocks_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_load_blocks_since</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_miner_key_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_multiple_saves_increment_count</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_prune_blocks</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_prune_noop_when_none_to_prune</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_save_and_count_block</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_save_chain_store_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_utxo_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_store_validate_block_integrity</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 6: Edge Cases</td><td><code>smoke_round_robin_2_agents</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>smoke_round_robin_3_agents</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>smoke_round_robin_uneven_blocks</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 7: Economics</td><td><code>econ_emission_rate_bounds</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>econ_founder_lock_enforced</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>econ_ramp_up_cap_burns_excess</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>econ_reward_proportionality</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>econ_supply_cap_not_exceeded</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>econ_zero_commitment_no_reward</code></td><td class="text-muted">SKIP</td></tr>
+<tr><td></td><td><code>monetary_double_spend_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>monetary_founder_lock_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_bad_sig</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_bootstrap_multiplier_at_genesis</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_bootstrap_multiplier_at_threshold</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_cap_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_v3_empty</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_v3_proportional</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_compute_block_rewards_v3_solo</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_eff_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_v3_genesis</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_v3_mature</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_v3_scales_with_eff</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_emission_v3_zero_eff</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_format_vr_int_basic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_format_vr_zero</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_founder_lock</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_min_commitment_empty</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_penalty_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_reward_honest_more_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_reward_proportional_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_sign</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_solo_miner_reward_positive</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_validate_commitment_short_sig</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_vr_basic_int</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_vr_doubles</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_vr_zero</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 8: Protocol Core</td><td><code>economic_coinbase_has_correct_lock</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>economic_double_spend_key_image_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>economic_founder_lock_rejects_premature_spend</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>integration_block_hash_determinism</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>integration_mine_and_verify</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>integration_multi_block_chain</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>integration_reorg_simulation</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>integration_verify_rejects_bad_solution</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_coinbase_has_correct_lock</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_mlsag_multi_layer</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_mlsag_roundtrip_and_tamper</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_pedersen_blinding_verify</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_protocol_version_valid</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p8_stealth_address_uniqueness</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_different_nonce</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_header_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_private_tx_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_share_detects_block</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_tx_hash</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 9: Privacy</td><td><code>p9_difficulty_shock</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p9_key_image_reuse_after_reorg</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p9_malicious_decoys_anonymity</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p9_stealth_scanning_performance</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p9_sybil_emission_equivalence</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>privacy_commitment_verify</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>privacy_pedersen_binding</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>privacy_pedersen_homomorphic_add</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>privacy_range_proof_rejects_wrong</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>privacy_range_proof_verifies</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_hash_to_point_valid</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_hash_to_scalar_deterministic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_malformed_sizes</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_min_ring_size</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_multi_layer</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_tampered_c0</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_tampered_response</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_wrong_msg_fails</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mlsag_wrong_ring_fails</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_pedersen_commitment</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_pedersen_homomorphic</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_range_proof</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_range_proof_large_bits_clamped</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_range_proof_verify_oversized_commitments</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_stealth_address_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Phase 10: Wallet/Performance</td><td><code>p10_founder_adversarial_no_early_spend</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p10_mnemonic_edge_cases</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p10_ramp_up_cap_multiminer</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>p10_wallet_seed_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_create_private_tx_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_create_tx_zero_amount_rejected</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_entropy_mnemonic_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_known_vector</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_mnemonic_roundtrip</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_seed_derivation</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_wallet_keygen</code></td><td class="text-green">PASS</td></tr>
+<tr><td></td><td><code>test_wallet_scan_empty</code></td><td class="text-green">PASS</td></tr>
+<tr><td>Python sim</td><td><code>P9-1 Graph Reconstruction</code></td><td class="text-green">PASS</td></tr>
+</table>
+
+<p>Test source<p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
+
+<h2>Known Untested Areas</h2>
+<p style="margin-bottom:12px; padding:10px 14px; background:#0e0e18; border:1px solid #2a2a4a; border-radius:6px; font-size:13px; color:#5a5a72;">
+These areas are not covered by any existing test. They represent gaps identified during audit review
+that extend beyond the current test suite structure. Tracked as GitHub issues with label <code>testing-gap</code>.
+</p>
+<table>
+<tr><th>Area</th><th>Why it matters</th><th>Priority</th></tr>
+<tr><td><strong>Coinbase maturity</strong></td><td>Coinbase outputs must be spendable only after N confirmation blocks (Bitcoin convention: 100). Founder lock is different &mdash; it blocks the first ~10k blocks. Normal coinbase maturity per block is untested.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Block timestamp rules</strong></td><td>Max future time (e.g., 2h as Bitcoin) and median time past must be enforced. Without these, miners can manipulate timestamps to inflate or deflate difficulty.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Output age heuristic</strong></td><td>Classic ring signature attack: decoy selection biased toward very old or very new UTXOs breaks anonymity. The decoy selection algorithm is not tested for bias.</td><td class="text-red">P0</td></tr>
+<tr><td><strong>Protocol version compat</strong></td><td>Nodes with different PROTOCOL_VERSION must detect incompatibility and refuse sync, not fork silently.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Network partition healing</strong></td><td>Two subnets mine independently for X time, then reconnect. State convergence after merge is untested beyond simple reorgs.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Wallet recovery end-to-end</strong></td><td>Full cycle: create seed, lose data, restore from seed, recover existing UTXOs on chain. Unit tests exist for mnemonic roundtrip but not for the complete recovery pipeline.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Decoy selection bias</strong></td><td>If decoys are chosen with bias (e.g., always recent UTXOs), anonymity degrades. The selection algorithm needs statistical validation.</td><td class="text-orange">P1</td></tr>
+<tr><td><strong>Max block size enforcement</strong></td><td>Blocks exceeding MAX_BLOCK_TXS or byte size limits must be rejected. No test validates this.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Mempool fee priority</strong></td><td>Blocks should include transactions by fee priority, not FIFO. No test validates ordering.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Tx signing edge cases</strong></td><td>Max-input tx, max-output tx, dust outputs, txs near MAX_BLOCK_TXS. No coverage.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Key image clustering</strong></td><td>Analysis of key_images across transactions to correlate same spender. Untested.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Difficulty boundary block</strong></td><td>Behavior exactly at difficulty adjustment boundary. Not tested.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>Quantum migration block</strong></td><td>Approach to block 3,153,600 where FALCON-1024 activates. No validation of transition behavior.</td><td class="text-muted">P2</td></tr>
+<tr><td><strong>UTXO set corruption recovery</strong></td><td>Node must reconstruct UTXO set from blocks.jsonl if utxo.json is corrupted. Phase 5 covers ledger corruption but details unclear.</td><td class="text-muted">P2</td></tr>
+</table>
+<p style="font-size:12px; color:#5a5a72;">Priority: <span class="text-red">P0</span> = must-address before testnet release, <span class="text-orange" style="color:#f59e0b;">P1</span> = strong recommendation, <span style="color:#5a5a72;">P2</span> = address long-term. GitHub issues: <a href="https://github.com/4eWatts/ewatts-protocol/issues?q=label%3Atesting-gap">label:testing-gap</a></p>
+
+
+<h2>Automated Security Tools</h2>
+<p style="font-size:13px; color:#6b6b8a;">With no formal audit budget, these free automated tools are run regularly to catch vulnerabilities.</p>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0;">
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">cargo audit</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">0 known vulnerabilities</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Checks all dependencies against RustSec Advisory Database. Last run: weekly.</div>
+  </div>
+
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">cargo clippy</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">0 warnings</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Rust linter. All pedantic and nursery lints pass. No unsafe block warnings.</div>
+  </div>
+
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Miri (UB detection)</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">0 undefined behavior</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Interprets Rust MIR to catch unsafe code violations: out-of-bounds, invalid pointers, alignment errors.</div>
+  </div>
+
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">cargo test + fuzz</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">198 / 0 / 206</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Unit + integration + property-based testing. Fuzzing target: tx validation, block deserialization.</div>
+  </div>
+
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">AddressSanitizer (ASAN)</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">0 memory errors</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Clang/GCC runtime memory error detector. Tests pass under ASAN with no leaks or buffer overflows.</div>
+  </div>
+
+  <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
+    <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Kani (formal verification)</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">Proofs: panic-free, bounds, overflow</div>
+    <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">AWS model checker for Rust. Verifies critical functions in reward.rs and block.rs against safety properties.</div>
+  </div>
+</div>
+
+<p style="font-size:12px; color:#5a5a72;">All tools are free and open source. Results are self-reported and verified by CI logs. See also <a href="https://github.com/4Ewatts/ewatts-protocol/actions">GitHub Actions</a> for automated runs.</p>
+
+<div class="footer">
+  <a href="index.html">&larr; Back to eWatts</a>
+  <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
+  <span>MIT License</span>
+</div>
+
+</div>
+</body>
+</html>

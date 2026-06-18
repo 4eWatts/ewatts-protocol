@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts Block Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:14px; line-height:1.6; }
+.container { max-width:1200px; margin:0 auto; padding:0 16px; }
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #1a1a2a; margin-bottom:16px; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
+.search-box { display:flex; gap:6px; }
+.search-box input { background:#10101a; border:1px solid #2a2a3a; border-radius:4px; padding:6px 12px; color:#d4d4dc; font-size:13px; width:280px; font-family:'JetBrains Mono',monospace; }
+.search-box input:focus { outline:none; border-color:#3b82f6; }
+.search-box button { background:#3b82f6; border:none; border-radius:4px; padding:6px 14px; color:#fff; font-size:13px; cursor:pointer; }
+.search-box button:hover { background:#5a94f8; }
+.stats { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-bottom:16px; }
+.stat-card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:12px 16px; }
+.stat-label { font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; }
+.stat-value { font-size:18px; font-weight:600; color:#fff; margin-top:2px; font-family:'JetBrains Mono',monospace; }
+.section-title { font-size:15px; font-weight:600; color:#fff; margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+th { text-align:left; font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; padding:8px 10px; border-bottom:1px solid #1a1a2a; }
+td { padding:8px 10px; border-bottom:1px solid #1a1a2a; font-size:13px; font-family:'JetBrains Mono',monospace; }
+td a { color:#3b82f6; text-decoration:none; }
+td a:hover { color:#5a94f8; text-decoration:underline; }
+tr:hover td { background:#0c0c18; }
+.hash { max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.detail-card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:16px; margin-bottom:12px; }
+.detail-row { display:flex; padding:6px 0; border-bottom:1px solid #0c0c18; }
+.detail-label { color:#5a5a72; width:140px; flex-shrink:0; font-size:12px; }
+.detail-value { color:#d4d4dc; font-family:'JetBrains Mono',monospace; font-size:12px; word-break:break-all; }
+.error { color:#ef4444; padding:20px; text-align:center; }
+.loading { color:#5a5a72; padding:20px; text-align:center; }
+.tx-type { font-size:10px; padding:2px 6px; border-radius:3px; }
+.tx-private { background:#1a3a1a; color:#22c55e; }
+.tx-public { background:#3a1a1a; color:#ef4444; }
+.nav-links a:hover { color:#c8c8cc !important; }
+@media (max-width:720px) {
+  .stats { grid-template-columns:1fr 1fr; }
+  nav { flex-direction:column; gap:8px; align-items:flex-start; }
+  .search-box input { width:200px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<nav>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">explorer</span></div>
+    <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="protocol.html">Protocol</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+  </div>
+</nav>
+
+<div class="search-box" style="margin-bottom:16px;">
+  <input id="searchInput" type="text" placeholder="Block height, tx hash, or address..." onkeydown="if(event.key==='Enter')search()">
+  <button onclick="search()">Search</button>
+</div>
+
+<div id="content">
+  <div class="loading">Loading chain data...</div>
+</div>
+
+<footer style="text-align:center;padding:20px 0;font-size:11px;color:#5a5a72;border-top:1px solid #1a1a2a;margin-top:20px;">
+  <a href="https://ewatts.org" style="color:#5a5a72;">ewatts.org</a>
+  <span style="margin:0 8px;">/</span>
+  <a href="https://github.com/4Ewatts/ewatts-protocol" style="color:#5a5a72;">GitHub</a>
+  <span style="margin:0 8px;">/</span>
+  <a href="http://178.104.193.51:8080/" style="color:#5a5a72;">Live Dashboard</a>
+</footer>
+</div>
+
+<script>
+// HTTPS via Cloudflare Tunnel — valid cert, no warnings, works from ewatts.org
+const LIVE_NODE = 'https://api.ewatts.org';
+const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? window.location.origin + '/api'
+  : LIVE_NODE + '/api';
+
+async function api(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function fmtHash(h, len=8) {
+  if (!h || h.length < len*2) return h || '-';
+  return h.substring(0, len) + '...' + h.substring(h.length - len);
+}
+
+function fmtTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString();
+}
+
+function fmtEwatt(amount) {
+  if (!amount) return '0';
+  const e = amount / 1000000;
+  return e.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:6}) + ' Ewatt';
+}
+
+async function loadHome() {
+  const el = document.getElementById('content');
+  try {
+    const status = await api('/status');
+    const blocks = status.blocks || [];
+    const recent = blocks.slice(-20).reverse();
+
+    let html = '<div class="stats">';
+    html += `<div class="stat-card"><div class="stat-label">Height</div><div class="stat-value">${status.height || 0}</div></div>`;
+    html += `<div class="stat-card"><div class="stat-label">Supply</div><div class="stat-value">${fmtEwatt(status.supply)}</div></div>`;
+    html += `<div class="stat-card"><div class="stat-label">UTXOs</div><div class="stat-value">${(status.utxos || 0).toLocaleString()}</div></div>`;
+    html += `<div class="stat-card"><div class="stat-label">VR</div><div class="stat-value">${formatVR(status.vr)}</div></div>`;
+    html += '</div>';
+
+    html += '<div class="section-title">Latest Blocks</div>';
+    html += '<table><tr><th>Height</th><th>Hash</th><th>Time</th><th>VR</th><th>Reward</th><th>TXs</th></tr>';
+    for (const b of recent) {
+      html += `<tr onclick="showBlock(${b.height})" style="cursor:pointer;">`;
+      html += `<td><a href="#" onclick="event.preventDefault();showBlock(${b.height})">${b.height}</a></td>`;
+      html += `<td class="hash" title="${b.hash}">${fmtHash(b.hash)}</td>`;
+      html += `<td>${fmtTime(b.time)}</td>`;
+      html += `<td>${formatVR(b.vr)}</td>`;
+      html += `<td>${b.reward || '-'}</td>`;
+      html += `<td>${b.txs || 0}</td>`;
+      html += '</tr>';
+    }
+    html += '</table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `
+      <div class="error" style="padding:32px 20px;">
+        <div style="font-size:15px;margin-bottom:12px;">Could not reach the testnet node.</div>
+        <div style="color:#6b6b8a;font-size:13px;margin-bottom:16px;">
+          The explorer connects to <code style="color:#d4d4dc;background:#1a1a2a;padding:2px 6px;border-radius:3px;">${LIVE_NODE}</code>.<br>
+          If you're on HTTPS (ewatts.org), your browser may block the HTTP connection.<br>
+          Open the explorer directly from the node to bypass this:
+        </div>
+        <a href="${LIVE_NODE}" target="_blank" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:8px 18px;border-radius:4px;font-size:13px;">Check node status →</a>
+      </div>
+    `;
+  }
+}
+
+async function showBlock(height) {
+  const el = document.getElementById('content');
+  try {
+    const status = await api('/status');
+    const blocks = status.blocks || [];
+    const b = blocks.find(x => x.height === height);
+    if (!b) { el.innerHTML = '<div class="error">Block not found</div>'; return; }
+
+    let html = `<a href="#" onclick="event.preventDefault();loadHome()" style="color:#3b82f6;font-size:13px;">&larr; Back to explorer</a>`;
+    html += '<div class="detail-card" style="margin-top:8px;">';
+    html += `<h3 style="color:#fff;font-size:16px;margin-bottom:10px;">Block #${b.height}</h3>`;
+    html += `<div class="detail-row"><span class="detail-label">Hash</span><span class="detail-value">${b.hash}</span></div>`;
+    html += `<div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-value">${fmtTime(b.time)}</span></div>`;
+    html += `<div class="detail-row"><span class="detail-label">VR</span><span class="detail-value">${formatVR(b.vr)}</span></div>`;
+    html += `<div class="detail-row"><span class="detail-label">Reward</span><span class="detail-value">${b.reward || '-'}</span></div>`;
+    html += `<div class="detail-row"><span class="detail-label">Difficulty</span><span class="detail-value">${b.diff || '-'}</span></div>`;
+    html += `<div class="detail-row"><span class="detail-label">Transactions</span><span class="detail-value">${b.txs || 0}</span></div>`;
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+async function showAddress(addr) {
+  const el = document.getElementById('content');
+  try {
+    // Fetch blocks to find transactions involving this address
+    const status = await api('/status');
+    const blocks = status.blocks || [];
+    
+    let html = `<a href="#" onclick="event.preventDefault();loadHome()" style="color:#3b82f6;font-size:13px;">&larr; Back to explorer</a>`;
+    html += `<div class="detail-card" style="margin-top:8px;">`;
+    html += `<h3 style="color:#fff;font-size:16px;margin-bottom:10px;">Address</h3>`;
+    html += `<div class="detail-row"><span class="detail-label">Public Key</span><span class="detail-value">${addr}</span></div>`;
+    
+    // Check ring pool for UTXOs
+    try {
+      const pool = await api('/ring/pool');
+      const utxos = pool.utxos || [];
+      const addrUtxos = utxos.filter(u => u.stealth && u.stealth.includes(addr.substring(0, 16)));
+      html += `<div class="detail-row"><span class="detail-label">Known UTXOs</span><span class="detail-value">${addrUtxos.length}</span></div>`;
+    } catch(e) { /* pool may not be available */ }
+    
+    html += '</div>';
+    
+    // Recent transactions involving this address
+    html += '<div class="section-title" style="margin-top:12px;">Recent Blocks</div>';
+    html += '<table><tr><th>Height</th><th>Hash</th><th>Time</th></tr>';
+    const recent = blocks.slice(-50).reverse();
+    for (const b of recent) {
+      html += `<tr onclick="showBlock(${b.height})" style="cursor:pointer;">`;
+      html += `<td><a href="#" onclick="event.preventDefault();showBlock(${b.height})">${b.height}</a></td>`;
+      html += `<td class="hash" title="${b.hash}">${fmtHash(b.hash)}</td>`;
+      html += `<td>${fmtTime(b.time)}</td>`;
+      html += '</tr>';
+    }
+    html += '</table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+function formatVR(vr) {
+  if (!vr || vr === 0) return '0 kWh/Ewatt';
+  const kwh = vr / 1000000;
+  if (kwh < 1e-6) return (kwh * 1e9).toFixed(2) + ' uWh/Ewatt';
+  if (kwh < 1e-3) return (kwh * 1000).toFixed(2) + ' mWh/Ewatt';
+  return kwh.toFixed(3) + ' kWh/Ewatt';
+}
+
+function search() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  
+  // Check if it's a number (block height)
+  if (/^\d+$/.test(q)) {
+    showBlock(parseInt(q));
+    return;
+  }
+  // Check if it looks like a hash (64 hex chars)
+  if (/^[0-9a-f]{64}$/i.test(q)) {
+    showBlock(0); // Let it try - will check blocks
+    return;
+  }
+  // Assume it's an address/pubkey
+  showAddress(q);
+}
+
+loadHome();
+</script>
+</body>
+</html>

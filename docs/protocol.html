@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eWatts — Protocol</title>
+<meta name="description" content="eWatts Protocol: block explorer, wallet, mining guide, and network tools.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="logo.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+.container { max-width:1120px; margin:0 auto; padding:0 20px; }
+
+nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:24px; position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
+.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
+.logo span { color:#5a5a72; }
+.nav-links { display:flex; gap:20px; }
+.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
+.nav-links a:hover { color:#c8c8cc; }
+
+.section { padding:48px 0; }
+.section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5a5a72; margin-bottom:6px; }
+.section h2 { font-size:20px; font-weight:600; color:#fff; margin-bottom:8px; }
+.section p.intro { color:#5a5a72; font-size:13px; margin-bottom:16px; }
+hr { border:none; height:1px; background:#1a1a2a; margin:0; }
+
+.card { background:#10101a; border:1px solid #1e1e32; border-radius:6px; padding:20px; margin-top:12px; }
+.card h3 { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
+.card p { font-size:13px; color:#5a5a72; line-height:1.6; }
+.card ul { list-style:none; padding:0; margin:8px 0 0; }
+.card ul li { font-size:12px; color:#6b6b8a; padding:3px 0; padding-left:12px; position:relative; }
+.card ul li::before { content:"\2192"; position:absolute; left:0; color:#3b82f6; }
+
+table.specs { width:100%; margin-top:20px; border-collapse:collapse; font-size:14px; }
+table.specs tr { border-bottom:1px solid #1a1a2a; }
+table.specs tr:last-child { border:none; }
+table.specs td { padding:10px 0; vertical-align:top; }
+table.specs td:first-child { color:#6b6b88; width:160px; padding-right:16px; }
+table.specs td:last-child { color:#c8c8cc; }
+code { font-family:'JetBrains Mono',monospace; font-size:12px; background:#0c0c14; padding:1px 5px; border-radius:3px; color:#b0b0c0; }
+
+pre.code-block { background:#0a0a14; border:1px solid #1a1a2a; border-radius:6px; padding:18px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.9; overflow:auto; margin-top:16px; color:#b0b0c0; white-space:pre-wrap; word-break:break-word; }
+pre.code-block .cm { color:#5a5a72; }
+
+.btn { display:inline-block; padding:9px 18px; border-radius:5px; font-size:13px; font-weight:500; text-decoration:none; transition:all .12s; }
+.btn-primary { background:#3b82f6; color:#fff; }
+.btn-primary:hover { background:#5a94f8; }
+.btn-outline { border:1px solid #2a2a3a; color:#c8c8cc; }
+.btn-outline:hover { border-color:#3b82f6; color:#fff; }
+
+footer { padding:40px 0; border-top:1px solid #1a1a2a; margin-top:40px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:#5a5a72; }
+
+@media (max-width:720px) {
+  .container { max-width:100%; padding:0 16px; }
+  nav { margin-bottom:16px; }
+  .nav-links { overflow-x:auto; gap:12px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .nav-links::-webkit-scrollbar { display:none; }
+  .nav-links a { font-size:12px; white-space:nowrap; }
+  .section { padding:32px 0; }
+  table.specs, table.specs tr, table.specs td { display:block; width:100%; }
+  table.specs td:first-child { width:auto; padding-bottom:0; }
+  table.specs td { padding:6px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<nav>
+  <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a></div>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="protocol.html">Protocol</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="ewatts_economics.html">Economic Model</a>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="section-label">Protocol</div>
+  <h2>Explorer</h2>
+  <p class="intro">Browse blocks, transactions, and network activity on the eWatts testnet.</p>
+
+  <div class="card">
+    <h3>Live Dashboard</h3>
+    <p>View real-time block production, mempool status, and mining activity at the <a href="https://ewatts.org/explorer" style="color:#3b82f6;text-decoration:none;">block explorer</a> or run locally on port 8080.</p>
+  </div>
+
+  <div class="card">
+    <h3>Test Results</h3>
+    <p><a href="test-results.html" style="color:#3b82f6;text-decoration:none;">View test suite results</a> — 198 tests passing, 0 failures.</p>
+  </div>
+</section>
+
+<hr>
+
+<section class="section" id="wallet">
+  <div class="section-label">Wallet</div>
+  <h2>Wallet</h2>
+  <p class="intro">eWatts wallets are CLI-based. Each wallet generates a spend key and a view key for stealth address management.</p>
+
+  <div class="card">
+    <h3>Key Generation</h3>
+    <p>Run <code>ewatts-protocol wallet --generate</code> to create a new wallet. Keys are stored locally. The wallet scans the UTXO set for your stealth addresses on each sync.</p>
+  </div>
+
+  <div class="card">
+    <h3>Private Transactions</h3>
+    <p>Each transaction uses ring signatures (11 keys), one-time stealth addresses, and Pedersen commitments. Sender, receiver, and amount are hidden by default.</p>
+  </div>
+
+  <div class="card">
+    <h3>Balance Check</h3>
+    <p>Use <code>ewatts-protocol wallet --balance</code> to view your spendable balance. The wallet scans the blockchain for outputs belonging to your stealth addresses.</p>
+  </div>
+</section>
+
+<hr>
+
+<section class="section" id="mining">
+  <div class="section-label">Mining</div>
+  <h2>Mining Guide</h2>
+  <p class="intro">Any computer with 4 GB of RAM can mine eWatts. No GPU, no ASIC, no token purchase. Just RAM.</p>
+
+  <div style="margin-top:16px;padding:12px 16px;background:#0c0c18;border:1px solid #3b3b1a;border-radius:5px;font-size:13px;color:#c8c8c8;">
+    <strong>&#9888;&#65039; Disk space:</strong> Compilation uses ~1.5 GB temporarily. Blockchain data is &lt;50 MB.
+  </div>
+
+  <div style="margin-top:20px;">
+    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">&#x1f41a; Windows (PowerShell)</h3>
+    <p style="font-size:12px;color:#5a5a72;">Open PowerShell. Paste commands ONE AT A TIME:</p>
+    <pre class="code-block" style="font-size:12px;"><span class="cm"># Step 1 — Install Rust (~1 min)</span>
+PS> curl.exe --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+<span class="cm"># CLOSE and REOPEN PowerShell</span>
+<span class="cm"># Step 2 — Download and compile (~6 min)</span>
+PS> git clone https://github.com/4Ewatts/ewatts-protocol.git
+PS> cd ewatts-protocol
+PS> cargo build --release
+
+<span class="cm"># Step 3 — Connect to testnet and mine</span>
+PS> .\target\release\ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1</pre>
+  </div>
+
+  <div style="margin-top:16px;">
+    <h3 style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px;">&#x1f427; Linux / Mac</h3>
+    <pre class="code-block" style="font-size:12px;"><span class="cm"># Install Rust</span>
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ source ~/.cargo/env
+
+<span class="cm"># Download and compile</span>
+$ git clone https://github.com/4Ewatts/ewatts-protocol.git
+$ cd ewatts-protocol
+$ cargo build --release
+
+<span class="cm"># Connect to public testnet</span>
+$ ./target/release/ewatts-protocol start --p2p --p2p-port 9001 --dash-port 8080 --difficulty 1 --bootstrap /ip4/178.104.193.50/tcp/25080/p2p/12D3KooWDTpEvdP2FneHTxRSAhLLykRm5yRMff7S9v3Pvtz2RUf1</pre>
+  </div>
+
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="MINING.md" class="btn btn-primary">Detailed Mining Guide</a>
+    <a href="install.sh" class="btn btn-outline" style="border-color:#22c55e;color:#22c55e;">Quick install (Linux/Mac)</a>
+    <a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Report issues</a>
+  </div>
+</section>
+
+<hr>
+
+<section class="section" id="specs">
+  <div class="section-label">Specifications</div>
+  <h2>Parameters</h2>
+  <div style="margin-top:20px;padding:14px 16px;background:#0c0c18;border:1px solid #1e6e3a;border-radius:5px;">
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="color:#3b82f6;font-size:16px;">&#9432;</span>
+      <div>
+        <strong style="color:#c8c8cc;font-size:13px;">No token sale. No ICO. No pre-mine.</strong>
+        <p style="color:#6b6b8a;font-size:12px;margin-top:4px;line-height:1.5;">
+          eWatts has no fundraising, no investor allocation, and no entity controlling its treasury.
+          Mining is the only way to acquire coins. Founder outputs are time-locked on-chain
+          (<code>spendable_after = max(50000, block + 40000)</code>). Mining public key published before block 1.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <table class="specs">
+    <tr><td>Consensus</td><td>MBPoW (Memory-Bound Proof of Work)</td></tr>
+    <tr><td>Target block time</td><td>600 seconds</td></tr>
+    <tr><td>Signature verification</td><td>&lt;3 ms per MLSAG signature (ring of 11)</td></tr>
+    <tr><td>Ring size</td><td>11</td></tr>
+    <tr><td>Signature scheme</td><td>MLSAG over Ristretto255</td></tr>
+    <tr><td>Address format</td><td>Stealth (spend key + view key), 32 bytes</td></tr>
+    <tr><td>Amount privacy</td><td>Pedersen commitments + range proofs</td></tr>
+    <tr><td>Emission formula</td><td><code>R = BASE_EMISSION x (total_eff / historical_avg)</code>, clamped [0.05x, 20x]</td></tr>
+    <tr><td>BASE_EMISSION</td><td>100 eWatt/block</td></tr>
+    <tr><td>Historical window</td><td>4,300 blocks (30 days)</td></tr>
+    <tr><td>Ramp-up (blocks 1-10k)</td><td>80% cap per miner, excess burned</td></tr>
+    <tr><td>Founder lock</td><td>On-chain: <code>max(50000, block + 40000)</code></td></tr>
+    <tr><td>Privacy change threshold</td><td>95% miners + 95% nodes</td></tr>
+    <tr><td>Unit</td><td>1 eWatt = 100 ecents</td></tr>
+    <tr><td>Implementation</td><td>Rust, ~3,300 LOC</td></tr>
+  </table>
+
+  <p style="margin-top:16px;font-size:12px;color:#5a5a72;">
+    See <a href="architecture.html" style="color:#3b82f6;">3-layer architecture</a> for the formal system design, and <a href="ewatts_economics.html" style="color:#3b82f6;">interactive dashboard</a> for adoption scenario simulation.
+  </p>
+</section>
+
+<hr>
+
+<section class="section" id="github">
+  <div class="section-label">Source</div>
+  <h2>GitHub</h2>
+  <p class="intro">All eWatts code is open source under the MIT License. Browse, fork, and contribute.</p>
+  <a href="https://github.com/4Ewatts/ewatts-protocol" class="btn btn-primary">View on GitHub</a>
+  <span style="margin-left:10px;"><a href="https://github.com/4Ewatts/ewatts-protocol/issues" class="btn btn-outline">Report issues</a></span>
+</section>
+
+<footer>
+  <div>
+    <a href="https://github.com/4Ewatts/ewatts-protocol">GitHub</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    <a href="https://ewatts.org">ewatts.org</a>
+    <span style="margin:0 8px;color:#2a2a3a;">/</span>
+    MIT License
+  </div>
+  <div>A settlement layer anchored to physics. Private by default. Open to anyone.</div>
+</footer>
+
+</div>
+</body>
+</html>
