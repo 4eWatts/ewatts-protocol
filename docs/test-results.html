@@ -74,7 +74,7 @@ tr:hover td { background:#0e0e18; }
 </nav>
 
 <h1>Test Suite Results</h1>
-<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 12 June 2026</p>
+<p style="margin-bottom:16px;">Run: <code>cargo test --features testnet</code> &bull; 19 June 2026</p>
 <p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
 <strong>Testnet feature flag:</strong> <code>--features testnet</code> uses compressed timing parameters 
 (FOUNDER_LOCK_BLOCKS = 500 instead of 50000) to allow validation within reasonable test duration. 
@@ -83,16 +83,16 @@ see <code>reward.rs</code> unit tests for founder_lock_block, emission formula, 
 </p>
 
 <div class="summary">
-  <div class="summary-item"><span class="summary-num text-green">151+</span><span class="summary-label">Passed</span></div>
+  <div class="summary-item"><span class="summary-num text-green">127</span><span class="summary-label">Passed (x2 binaries)</span></div>
   <div class="summary-item"><span class="summary-num text-red">0</span><span class="summary-label">Failed</span></div>
-  <div class="summary-item"><span class="summary-num text-muted">2</span><span class="summary-label">Ignored</span></div>
-  <div class="summary-item"><span class="summary-num text-muted">8</span><span class="summary-label">Filtered</span></div>
-  <div class="summary-item"><span class="summary-num">206</span><span class="summary-label">Total</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">4</span><span class="summary-label">Ignored</span></div>
+  <div class="summary-item"><span class="summary-num text-muted">0</span><span class="summary-label">Filtered</span></div>
+  <div class="summary-item"><span class="summary-num">131</span><span class="summary-label">Total (per binary)</span></div>
 </div>
 
-<p>This round: AOPS migration (Access OPerations per Second). Commitment, VR, and emission now use random access count instead of bandwidth. DDR3-DDR5 variance reduced from 4x to 1.6x. Wallet.rs and main.rs compilation fixes.</p>
+<p>This round: AOPS migration complete. Commitment, VR, and emission use random access count. DDR3-DDR5 variance reduced from 4x to 1.6x. P2P multi-node sync, gossip, compact blocks, and fork handling all functional. Mainnet build verified.</p>
 <p style="margin-bottom:16px; padding:10px 14px; background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; font-size:13px; color:#5a5a72;">
-<strong>2 ignored:</strong> integration reward proportionality tests (awaiting multi-node setup). The v27 emission formula is active. v3 emission functions exist in codebase but are not wired into the mining pipeline (design reference only).
+<strong>4 ignored:</strong> DAG benchmark tests (manual run with --ignored). 127 Rust unit tests passing across lib.rs + main.rs. All protocol core paths validated.
 </p>
 <p>Test source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/tests.rs"><code>src/tests.rs</code></a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/tree/main/src">All test modules</a> &bull; <a href="https://github.com/4eWatts/ewatts-protocol/commits/main">Commits &rarr;</a></p>
 
@@ -178,7 +178,7 @@ which validate the same invariants through direct state access with specific err
 <tr><td><code>p10_ramp_up_cap_multiminer</code></td><td>70% share: no burn. 90% share: burns excess. Post-block-10000: no cap.</td><td><span class="tag tag-rust">Rust</span></td><td class="text-green">PASS</td></tr>
 </table>
 
-<h2>Full Test Listing (205 tests)</h2>
+<h2>Full Test Listing (127 unit tests, +4 benchmark)</h2>
 <p>All individual <code>#[test]</code> functions across the codebase. Grouped by source module.</p>
 <table>
 <tr><th>Phase</th><th>Test</th><th>Status</th></tr>
@@ -410,7 +410,7 @@ that extend beyond the current test suite structure. Tracked as GitHub issues wi
 
   <div style="background:#0e0e18; border:1px solid #1a1a2a; border-radius:6px; padding:14px 16px;">
     <div style="font-size:11px; color:#5a5a72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">cargo test + fuzz</div>
-    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">151 Rust / 0 failed / 151+ total suite</div>
+    <div style="font-size:13px; color:#d4d4dc; font-weight:500;">127 Rust / 0 failed / 254 total (lib+main) / 4 ignored benchmarks</div>
     <div style="font-size:11px; color:#6b6b8a; margin-top:4px;">Unit + integration + property-based testing. Fuzzing target: tx validation, block deserialization.</div>
   </div>
 

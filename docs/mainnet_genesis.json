@@ -1,11 +1,12 @@
 {
   "version": "1.0",
-  "protocol_version": 4,
+  "protocol_version": 5,
   "genesis": {
-    "timestamp": "Wed Jun  3 09:07:24 PM UTC 2026",
+    "timestamp": "19 Jun 2026 UTC",
     "supply": 1000000000000000,
     "founder_pubkey": "",
-    "block_hash": ""
+    "block_hash": "",
+    "note": "Founder pubkey TBD — set before mainnet launch"
   },
   "params": {
     "target_block_time_secs": 600,
@@ -20,10 +21,40 @@
     "ramp_up_cap": 0.8,
     "founder_lock_blocks": 50000,
     "founder_lock_additional": 40000,
-    "min_commit_gbps": 1.0,
     "commit_window_blocks": 4300,
     "j_per_gb": 6.0,
     "ring_size": 11,
     "max_peers": 125
+  },
+  "consensus": {
+    "difficulty_window": 100,
+    "difficulty_bound_min": 0.5,
+    "difficulty_bound_max": 2.0,
+    "dag_epoch_blocks": 2016,
+    "dag_growth_bytes_per_year": 536870912,
+    "base_accesses": 1000000000,
+    "verification_sample_rate": 0.001
+  },
+  "emission": {
+    "m_max": 100000,
+    "s_threshold_units": 10000000000000000,
+    "n_calibration": 100000,
+    "p_target_micro_usd": 1000000,
+    "ramp_up_cap": 0.80,
+    "founder_lock_blocks": 50000,
+    "founder_lock_additional": 40000
+  },
+  "privacy": {
+    "ring_size": 11,
+    "stealth_addresses": true,
+    "quantum_activation_block": 3153600,
+    "pq_sig_scheme": "FALCON-1024"
+  },
+  "p2p": {
+    "max_peers": 125,
+    "protocol_version": 5,
+    "gossip_heartbeat_secs": 5,
+    "idle_timeout_secs": 60,
+    "bootstrap_nodes": []
   }
 }
