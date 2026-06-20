@@ -679,8 +679,6 @@ pub fn mnemonic_to_entropy(words: &[String]) -> Result<[u8; 32], String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use curve25519_dalek::traits::Identity;
-
     #[test]
     fn test_wallet_keygen() {
         let mut w = Wallet { keys: vec![] };
