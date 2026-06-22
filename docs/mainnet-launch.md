@@ -7,7 +7,7 @@ This document outlines the steps required to launch the eWatts mainnet.
 ## Prerequisites
 
 - [ ] Testnet stable for 7+ days without issues
-- [ ] All 84+ tests passing
+- [x] All 127 tests passing (127/127, 4 ignored are DAG benchmarks + emission bounds)
 - [ ] Multi-node P2P sync verified across different networks
 - [ ] Security audit completed
 

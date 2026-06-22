@@ -7,7 +7,7 @@ eWatts is a digital currency secured by DRAM bandwidth. Mining is memory-bound p
 | Status | Value |
 |--------|-------|
 | Release | **v7** (25/mai/2026) |
-| Testnet | Live (84/84 tests, multi-node P2P sync) |
+| Testnet | Live (127/127 tests, multi-node P2P sync) |
 | P2P | Multi-node connected, gossip sync + block request/response |
 | Mining | MBPoW — DRAM bandwidth, --no-mine for light nodes |
 | Privacy | MLSAG ring sigs, stealth addresses, Pedersen commitments |
