@@ -397,7 +397,7 @@ v27 introduced a dual-mode formula with a 30-day historical average and ramp-up 
 
 8. Murialdo, M., & Belof, J. (2024). "E-Stablecoin: A Physical-Asset-Backed Cryptocurrency." _Cryptoeconomic Systems_. LLNL-JRNL-864863. https://cryptoeconomicsystems.pubpub.org/pub/murialdo-physical-asset-stablecoin
 
-   → Related work on energy-anchored cryptocurrency. E-Stablecoin pegs token value to 1 kWh via direct redeemability (thermodynamic reversibility). eWatts differs in anchoring emission to verifiable production cost rather than promising redemption, avoiding the physical settlement challenge.
+   → Related work on energy-anchored cryptocurrency. E-Stablecoin pegs token value to 1 kWh via direct redeemability (thermodynamic reversibility). eWatts takes a different approach: anchoring emission to verifiable production cost via the VR mechanism, without promising token redemption for physical energy. Both are valid designs for different use cases — price stability vs. production-cost-anchored settlement.
 
 ---
 
