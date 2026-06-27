@@ -395,6 +395,10 @@ v27 introduced a dual-mode formula with a 30-day historical average and ramp-up 
 
 7. Kim, J.S., et al. (2014). "The DRAM Latency PUF: Quickly Estimating Physical Random-Access Memory Latency." _Proceedings of the 6th Workshop on Hot Topics in Memory (HotMemory)_.
 
+8. Murialdo, M., & Belof, J. (2024). "E-Stablecoin: A Physical-Asset-Backed Cryptocurrency." _Cryptoeconomic Systems_. LLNL-JRNL-864863. https://cryptoeconomicsystems.pubpub.org/pub/murialdo-physical-asset-stablecoin
+
+   → Related work on energy-anchored cryptocurrency. E-Stablecoin pegs token value to 1 kWh via direct redeemability (thermodynamic reversibility). eWatts differs in anchoring emission to verifiable production cost rather than promising redemption, avoiding the physical settlement challenge.
+
 ---
 
 *Ewatts Protocol v29 — June 2026*
