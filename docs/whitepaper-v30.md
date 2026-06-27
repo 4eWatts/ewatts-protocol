@@ -1,4 +1,4 @@
-# Ewatts Protocol v29 — Neutral Settlement Layer
+# Ewatts Protocol v30 — Neutral Settlement Layer
 
 **DRAM-Bound Proof-of-Energy — Whitepaper**
 *June 2026*
@@ -16,6 +16,7 @@
 | v24-v27 | 17 May 2026 | Single-chain, dual-hash, privacy, ramp-up, founder locks |
 | v28 | June 2026 | Bootstrap multiplier proposal (not implemented) |
 | **v29** | **June 2026** | **AOPS-based commitment replaces GB/s. Real emission formula from code. J_PER_ACCESS wall-power calibration. DRAM-energy correlation explicit. All numbers reconciled with protocol v0.5.** |
+| **v30** | **June 2026** | **Precise DRAM latency data with tRC values. Academic references added. Bandwidth vs. latency distinction clarified.** |
 
 ---
 
@@ -188,15 +189,20 @@ The protocol uses **J_PER_ACCESS = 3.75 µJ**, derived from a 75W reference node
 
 ### 4.3 Stability Across Generations
 
-| Generation | Max BW | Random Access Latency | J_PER_ACCESS (wall) | Relative Efficiency |
-|-----------|--------|----------------------|--------------------|--------------------|
-| DDR3 | 12.8 GB/s | ~12-15 ns | ~10 µJ | 1.0x (baseline) |
-| DDR4 | 25.6 GB/s | ~12-15 ns | ~5 µJ | 2.0x |
-| DDR5 | 48 GB/s | ~12-15 ns | ~3.75 µJ | 2.7x |
+| Generation | Max BW | Random Access Latency (tRC/tRCD) | J_PER_ACCESS (wall) | Relative Efficiency |
+|-----------|--------|----------------------------------|--------------------|--------------------|
+| DDR3 | 12.8 GB/s | ~46-50 ns (tRC) | ~10 µJ | 1.0x (baseline) |
+| DDR4 | 25.6 GB/s | ~44-48 ns (tRC) | ~5 µJ | 2.0x |
+| DDR5 | 48 GB/s | ~48-52 ns (tRC) | ~3.75 µJ | 2.7x |
+| DDR6 (est.) | 64+ GB/s | ~44-50 ns (tRC) | ~2.5-3 µJ | 3.5-4.0x |
 
-The key property: **latency has been flat at ~12-15 ns for 20 years** while bandwidth has grown 10x. This means mining efficiency (energy per verified access) has barely improved — the total system power is divided across more bandwidth, but each individual random access still costs roughly the same energy.
+The key property: **row cycle time (tRC) has remained flat at ~45-52 ns for over 20 years** [1][2][3], while bandwidth has grown more than 10x and capacity over 100x. Random access latency, measured by the complete row activation + column access cycle (tRCD + tCL), has improved only ~1.3-1.6x in total across DDR1 through DDR5 — an annual compound improvement of roughly 1-2%. [4][5]
 
-The protocol documents calibration values for each generation but uses DDR5 as the baseline. A hard fork via 95% supermajority can recalibrate if empirical wattmeter data shows systematic deviation.
+This physical stagnation occurs because DRAM latency is fundamentally limited by bitline capacitance, sense amplifier settling time, and wire RC delay — parameters that do not scale well with process shrinks. Unlike transistor density or bus clock speed, which have benefited enormously from Moore's Law, the physical readout of a DRAM cell has remained nearly constant.
+
+**Implication for mining:** Because the energy cost per verified random access is dominated by row activation, and row activation time is physically bound, the efficiency improvement between generations comes primarily from reduced operating voltage and improved bus utilization — not from faster cell access. Mining hardware that is competitive on a DDR4 system will remain competitive when DDR5 becomes standard. The protocol documents calibration values for each generation but uses DDR5 as the baseline. A hard fork via 95% supermajority can recalibrate if empirical wattmeter data shows systematic deviation.
+
+**Note on bandwidth vs. latency:** The 7-10x improvement in peak bandwidth between DDR3 and DDR5 reflects wider prefetch (8n to 16n), higher burst lengths, and faster I/O clock rates — not faster random cell access. For Memory-Bound Proof-of-Work, what matters is random access latency and its associated energy cost, not sequential throughput. This is a critical distinction.
 
 ---
 
@@ -370,6 +376,24 @@ The chip-level value of 0.08 J/GB does not account for system overhead. For accu
 ### 12.2 Previous Formula Revisions
 
 v27 introduced a dual-mode formula with a 30-day historical average and ramp-up factor. v28 proposed a bootstrap multiplier M(S) with cost-anchored emission. Neither was adopted in code — the protocol chose the simpler proportional emission model described in Section 3 above. The v28 proposal remains an interesting academic reference but does not reflect the protocol behavior.
+
+---
+
+## 13. References
+
+1. Feng, Y., Liu, Z., Huang, J., Li, C., & Bhattacharjee, A. (2020). "Access Pattern-Aware DRAM Latency." _Proceedings of the VLDB Endowment_, 13(7), 898-911. https://www.vldb.org/pvldb/vol13/p898-feng.pdf
+
+2. Jacob, B., Ng, S., & Wang, D. (2008). _Memory Systems: Cache, DRAM, Disk_. Morgan Kaufmann. ISBN 978-0-12-379751-3.
+
+3. JEDEC Solid State Technology Association. JESD79-series standards: DDR3 (JESD79-3F), DDR4 (JESD79-4C), DDR5 (JESD79-5B). https://www.jedec.org/
+
+4. Mutlu, O., & Subramanian, L. (2014). "Research Problems and Opportunities in Memory Systems." _Supercomputing Frontiers and Innovations_, 1(3). https://doi.org/10.14529/jsfi140301
+
+5. Lee, D., et al. (2015). "Reducing DRAM Latency at Low Cost by Exploiting Heterogeneity." _Proceedings of the 48th International Symposium on Microarchitecture (MICRO-48)_. ACM.
+
+6. Hassan, M., et al. (2017). "SoftMC: A Flexible and Practical Open-Source Infrastructure for Enabling Experimental DRAM Studies." _Proceedings of the 23rd International Symposium on High Performance Computer Architecture (HPCA)_. IEEE.
+
+7. Kim, J.S., et al. (2014). "The DRAM Latency PUF: Quickly Estimating Physical Random-Access Memory Latency." _Proceedings of the 6th Workshop on Hot Topics in Memory (HotMemory)_.
 
 ---
 
