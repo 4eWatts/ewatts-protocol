@@ -189,20 +189,23 @@ The protocol uses **J_PER_ACCESS = 3.75 µJ**, derived from a 75W reference node
 
 ### 4.3 Stability Across Generations
 
-| Generation | Max BW | Random Access Latency (tRC/tRCD) | J_PER_ACCESS (wall) | Relative Efficiency |
-|-----------|--------|----------------------------------|--------------------|--------------------|
-| DDR3 | 12.8 GB/s | ~46-50 ns (tRC) | ~10 µJ | 1.0x (baseline) |
-| DDR4 | 25.6 GB/s | ~44-48 ns (tRC) | ~5 µJ | 2.0x |
-| DDR5 | 48 GB/s | ~48-52 ns (tRC) | ~3.75 µJ | 2.7x |
-| DDR6 (est.) | 64+ GB/s | ~44-50 ns (tRC) | ~2.5-3 µJ | 3.5-4.0x |
+| Generation | Max BW | Random Access Latency (tRC) | J_PER_ACCESS (wall) | Relative Efficiency |
+|-----------|--------|-----------------------------|--------------------|--------------------|
+| DDR1 | 3.2 GB/s | ~52-60 ns | ~22 µJ | — |
+| DDR2 | 6.4 GB/s | ~50-54 ns | ~15 µJ | — |
+| DDR3 | 12.8 GB/s | ~46-50 ns | ~10 µJ | 1.0x (baseline) |
+| DDR4 | 25.6 GB/s | ~44-48 ns | ~5 µJ | 2.0x |
+| DDR5 | 48 GB/s | ~48-52 ns | ~3.75 µJ | 2.7x |
 
-The key property: **row cycle time (tRC) has remained flat at ~45-52 ns for over 20 years** [1][2][3], while bandwidth has grown more than 10x and capacity over 100x. Random access latency, measured by the complete row activation + column access cycle (tRCD + tCL), has improved only ~1.3-1.6x in total across DDR1 through DDR5 — an annual compound improvement of roughly 1-2%. [4][5]
+**Latency (tRC) has remained essentially flat at ~45-60 ns for over 25 years** [1][2][3], improving only ~1.3x across DDR1 through DDR5 — an annual compound rate of approximately 1%. [4][5] This is the memory wall: a physical limit set by bitline capacitance, sense amplifier settling time, and wire RC delay. These parameters do not scale with process shrinks the way transistor density does.
 
-This physical stagnation occurs because DRAM latency is fundamentally limited by bitline capacitance, sense amplifier settling time, and wire RC delay — parameters that do not scale well with process shrinks. Unlike transistor density or bus clock speed, which have benefited enormously from Moore's Law, the physical readout of a DRAM cell has remained nearly constant.
+**Energy per access (J_PER_ACCESS) has improved more significantly** — roughly 2.7x from DDR3 to DDR5, or ~7% CAGR — driven by reduced operating voltage, smaller process nodes, and improved sense amplifier design. This improvement matters for the VR energy calculation but does not affect mining difficulty or the latency-bound nature of the Proof-of-Work.
 
-**Implication for mining:** Because the energy cost per verified random access is dominated by row activation, and row activation time is physically bound, the efficiency improvement between generations comes primarily from reduced operating voltage and improved bus utilization — not from faster cell access. Mining hardware that is competitive on a DDR4 system will remain competitive when DDR5 becomes standard. The protocol documents calibration values for each generation but uses DDR5 as the baseline. A hard fork via 95% supermajority can recalibrate if empirical wattmeter data shows systematic deviation.
+**The key insight for the protocol:** mining is a latency-bound operation (the DAG walk cannot proceed faster than random access latency allows), not an energy-bound one. Even as J_PER_ACCESS improves with each generation, the fundamental speed of random access remains nearly constant. A miner on DDR5 cannot complete significantly more AOPS per second than a miner on DDR4 — the row activation time has not changed. The energy efficiency improvement is captured by the VR calculation but does not confer a speed advantage in the Proof-of-Work.
 
-**Note on bandwidth vs. latency:** The 7-10x improvement in peak bandwidth between DDR3 and DDR5 reflects wider prefetch (8n to 16n), higher burst lengths, and faster I/O clock rates — not faster random cell access. For Memory-Bound Proof-of-Work, what matters is random access latency and its associated energy cost, not sequential throughput. This is a critical distinction.
+**Note on bandwidth vs. latency:** The 10-15x improvement in peak bandwidth between DDR1 and DDR5 reflects wider prefetch (2n to 16n), longer burst lengths, and faster I/O clocks — not faster random cell access. For Memory-Bound Proof-of-Work, what matters is random access latency and its physical constraint on operations per second, not sequential throughput.
+
+The protocol documents calibration values for each generation but uses DDR5 as the baseline. A hard fork via 95% supermajority can recalibrate if empirical data shows systematic deviation.
 
 ---
 
