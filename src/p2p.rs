@@ -7,7 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
-use log::{info, warn, error, trace};
+use log::{debug, info, warn, error, trace};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::collections::{HashMap, VecDeque};
@@ -395,7 +395,7 @@ impl P2pNode {
                 let diff = state.apply_block_and_track(block, height)?;
                 store.block_diffs.insert(block.header.hash(), diff);
                 store.set_chain_tip(&block.header.hash()).ok();
-                info!("P2P: Extended canonical chain to #{}", height);
+                debug!("P2P: Extended canonical chain to #{}", height);
             }
             crate::reorg::ForkDecision::ReorgToNew { to_unwind, to_apply } => {
                 info!("P2P: REORG — unwinding {} blocks, applying {}",
@@ -433,7 +433,7 @@ impl P2pNode {
             error!("P2P: Store error: {}", e);
             return;
         }
-        info!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
+        debug!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
 
         // Deterministic nonce: first 8 bytes of block hash.
         // Every node produces the same CompactBlock for the same block,

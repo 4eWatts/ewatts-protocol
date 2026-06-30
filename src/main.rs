@@ -202,6 +202,7 @@ async fn serve_dashboard(port: &str) {
     println!("  API:       http://{}/status", addr);
     println!("  API:       http://{}/api/status", addr);
     println!("  API:       http://{}/api/mempool", addr);
+    println!("  API:       http://{}/api/peers", addr);
 
     let html = fs::read_to_string("ewatts_dashboard.html").ok();
 
@@ -231,12 +232,43 @@ async fn serve_dashboard(port: &str) {
                         "diff": b.header.difficulty_target, "time": b.header.timestamp,
                         "txs": b.body.transactions.len(),
                     })).collect();
+                    // Read P2P peer info from p2p_peers.txt (written by P2P node)
+                    let (peer_id, peers_connected) = if let Ok(contents) = std::fs::read_to_string("p2p_peers.txt") {
+                        let lines: Vec<&str> = contents.lines().collect();
+                        let own_id = lines.first().map(|s| s.to_string()).unwrap_or_default();
+                        let peers = lines.len().saturating_sub(1);
+                        (own_id, peers)
+                    } else {
+                        (String::new(), 0)
+                    };
+                    let latest_hash = blocks.last().map(|b| hex::encode(b.header.hash())).unwrap_or_default();
                     let status = serde_json::json!({
                         "height": height, "supply": supply, "utxos": utxos,
                         "vr": vr, "emission": emission, "difficulty": diff,
                         "mempool": mempool, "blocks": blk,
+                        "peers": peers_connected,
+                        "peer_id": peer_id,
+                        "latest_hash": latest_hash,
+                        "p2p_enabled": !peer_id.is_empty(),
                     });
                     json_response(200, &serde_json::to_string(&status).unwrap())
+                } else if request.starts_with("GET /api/peers") {
+                    // P2P peer list
+                    let (own_id, peer_ids) = if let Ok(contents) = std::fs::read_to_string("p2p_peers.txt") {
+                        let mut lines = contents.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+                        let own = if !lines.is_empty() { lines.remove(0) } else { String::new() };
+                        (own, lines)
+                    } else {
+                        (String::new(), vec![])
+                    };
+                    let json = serde_json::json!({
+                        "node_id": own_id,
+                        "peer_count": peer_ids.len(),
+                        "peers": peer_ids.iter().map(|id| serde_json::json!({
+                            "id": id,
+                        })).collect::<Vec<_>>(),
+                    });
+                    json_response(200, &serde_json::to_string(&json).unwrap())
                 } else if request.starts_with("GET /api/mempool") {
                     let pool = crate::mempool::peek();
                     let json = serde_json::json!({

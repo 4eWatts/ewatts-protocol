@@ -1,0 +1,38 @@
+{
+  "utxos": {
+    "26281d7e32fc55d39eaf5174ee0c22bdf51df22d339816e46dbbdc36c0fa5d2d_0": {
+      "amount": 100000000,
+      "pubkey_hash": [
+        57,
+        241,
+        180,
+        68,
+        60,
+        136,
+        137,
+        33,
+        3,
+        63,
+        13,
+        126,
+        176,
+        20,
+        49,
+        255,
+        252,
+        76,
+        103,
+        6
+      ],
+      "spendable_after": 0,
+      "block_height": 0,
+      "tx_index": 0,
+      "output_index": 0,
+      "stealth_dest": null,
+      "ephemeral": null,
+      "commitment_bytes": null
+    }
+  },
+  "spent_key_images": [],
+  "total_supply": 100000000
+}
