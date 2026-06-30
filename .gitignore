@@ -10,3 +10,4 @@ testnet_cert_*.sh
 testnet_cert_*.txt
 testnet_cert_*.csv
 .build_trigger
+ewatts_data_corrupt_*/
