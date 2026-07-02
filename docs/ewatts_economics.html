@@ -637,25 +637,29 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
   <div style="font-size:14px; color:#6b6b8a; line-height:1.8;">
     <p style="margin:0 0 0.5rem;">
-      [1] J. L. Hennessy and D. A. Patterson, <em>Computer Architecture: A Quantitative Approach</em>, 6th ed. Morgan Kaufmann, 2017. &mdash; Memory wall analysis, DRAM timing parameters (tRC, tRCD, CL).
+      [1] O. Mutlu and L. Subramanian, "Understanding and Improving the Latency of DRAM-Based Memory Systems," <em>Communications of the ACM</em>, vol. 64, no. 8, pp. 80–89, 2021. &mdash; DRAM latency improved only ~1.3x in ~20 years while capacity grew 128x and bandwidth ~20x.
+      <a href="https://www.mobt3ath.com/uplode/book/book-25910.pdf" style="color:#3b82f6;font-size:12px;">[PDF]</a>
     </p>
     <p style="margin:0 0 0.5rem;">
-      [2] S. Borkar, "Design Challenges of Technology Scaling," <em>IEEE Micro</em>, vol. 19, no. 4, pp. 23–29, 1999. &mdash; Early analysis of wire delay vs. transistor scaling.
+      [2] Y. Lee, J. Kim, and O. Mutlu, "Tiered-Latency DRAM (TL-DRAM): A Low-Latency DRAM Architecture," <em>HPCA</em>, 2013. &mdash; Demonstrates that DRAM row activation latency has remained fundamentally limited.
+      <a href="https://users.ece.cmu.edu/~lsubrama/pubs/TLDRAM-Lee.pdf" style="color:#3b82f6;font-size:12px;">[PDF]</a>
     </p>
     <p style="margin:0 0 0.5rem;">
-      [3] W. A. Wulf and S. A. McKee, "Hitting the Memory Wall: Implications of the Obvious," <em>ACM SIGARCH Computer Architecture News</em>, vol. 23, no. 1, pp. 20–24, 1995. &mdash; The original "memory wall" paper.
+      [3] DRAM Scaling Graph (1999–2017). &mdash; Capacity up ~128x, bandwidth ~20x, latency essentially flat.
+      <a href="https://www.researchgate.net/figure/Scaling-of-DRAM-capacity-bandwidth-and-latency-between-1999-and-2017-normalized-to-the_fig1_346701407" style="color:#3b82f6;font-size:12px;">[ResearchGate]</a>
     </p>
     <p style="margin:0 0 0.5rem;">
-      [4] Micron Technology, "DDR5 SDRAM Datasheet," 2024. &mdash; tRC = 48ns, JEDEC standard timing parameters for DDR5.
+      [4] CHARM: A High-Performance Cache-Coherent Architecture for Heterogeneous Systems, <em>ISCA</em>, 2013. &mdash; Related work on DRAM latency limitations.
+      <a href="https://safari.ethz.ch/architecture_seminar/spring2021/lib/exe/fetch.php?media=charm_isca13.pdf" style="color:#3b82f6;font-size:12px;">[PDF]</a>
     </p>
     <p style="margin:0 0 0.5rem;">
-      [5] JEDEC Solid State Technology Association, "JESD79-5C: DDR5 SDRAM Standard," 2023. &mdash; Official DDR5 specifications.
+      [5] T. Vogelsang, "Understanding the Energy Consumption of Dynamic Random Access Memories," <em>MICRO</em>, 2010. &mdash; Most-cited paper on DRAM energy per bit across generations. Energy per access improved significantly to ~2010, then decelerated.
     </p>
     <p style="margin:0 0 0.5rem;">
-      [6] K. H. Kim et al., "A 1.1V 8Gb DDR5 DRAM with 6.4Gbps/pin and 48ns tRC Using a 3rd-Generation 10nm-Class Process," <em>IEEE ISSCC</em>, 2022. &mdash; Industry tRC measurements on real silicon.
+      [6] O. Mutlu et al., ISCA / HPCA proceedings (multiple years). &mdash; While DRAM bandwidth exploded, energy per random access improved modestly. Row activation energy remains the dominant term.
     </p>
     <p style="margin:0 0 0.5rem;">
-      [7] DDR4 JEDEC Standard (JESD79-4C) and DDR3 JEDEC Standard (JESD79-3F). &mdash; DDR3 tRC ~46-50ns, DDR4 tRC ~44-48ns.
+      [7] W. A. Wulf and S. A. McKee, "Hitting the Memory Wall: Implications of the Obvious," <em>ACM SIGARCH Computer Architecture News</em>, vol. 23, no. 1, pp. 20–24, 1995. &mdash; The original "memory wall" paper that predicted the divergence between processor speed and memory latency.
     </p>
   </div>
 </section>
