@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
-<meta name="version" content="eWatts v3 — 2026-05-29" />
+<meta name="version" content="eWatts v0.5 — 2026-07-02" />
 <title>eWatts — Economic model</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -81,52 +81,60 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 <div class="container">
 
   <header>
-    <div class="eyebrow">Economic Model — v3</div>
-    <h1>How the supply, cost and incentive curves evolve</h1>
-    <p class="subtitle">Interactive model of the eWatts emission formula. No drift, no inflation target, no oracle. Adjust the adoption scenario to see how the bootstrap phase transitions into mature operation under different network growth trajectories.</p>
+    <div class="eyebrow">Economic Model — v0.5</div>
+    <h1>Emission anchored to bandwidth, not time</h1>
+    <p class="subtitle">Interactive simulation of the eWatts emission formula. Supply expands when the network grows, contracts when it shrinks, and stabilizes when it plateaus — all from a single ratio: effective bandwidth over historical average.</p>
   </header>
 
-  <p class="lead">eWatts is a neutral settlement layer anchored to the physical cost of memory-bound computation. Its supply is not capped, but it is also not arbitrary — each eWatt corresponds to real energy spent by the network. The charts below illustrate how this works in practice across adoption scenarios.</p>
+  <p class="lead">Every eWatt is backed by energy spent on DAG-bound computation. The protocol does not target a price or an inflation rate. Instead, it adjusts emission proportionally to how committed bandwidth changes relative to its trailing average. There is no oracle, no governance parameter, and no pre-programmed decay.</p>
 
   <div class="calibration">
-    <h3>Protocol parameters</h3>
+    <h3>Protocol parameters (constants.rs)</h3>
     <div class="calibration-grid">
       <div class="calibration-item">
-        <div class="calibration-label">N calibration</div>
-        <div class="calibration-value">100,000 miners</div>
+        <div class="calibration-label">Base emission</div>
+        <div class="calibration-value">100 Ewatt/block</div>
       </div>
       <div class="calibration-item">
-        <div class="calibration-label">P target</div>
-        <div class="calibration-value">$1.00 / eWatt</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">M max</div>
-        <div class="calibration-value">100,000×</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">S threshold</div>
-        <div class="calibration-value">10B eWatts</div>
+        <div class="calibration-label">Emission range</div>
+        <div class="calibration-value">5 - 2,000</div>
       </div>
       <div class="calibration-item">
         <div class="calibration-label">Block time</div>
         <div class="calibration-value">600 s</div>
       </div>
       <div class="calibration-item">
-        <div class="calibration-label">Node power</div>
-        <div class="calibration-value">75 W</div>
+        <div class="calibration-label">Energy per access</div>
+        <div class="calibration-value">3.75 &micro;J</div>
+      </div>
+      <div class="calibration-item">
+        <div class="calibration-label">Base accesses</div>
+        <div class="calibration-value">1 &times; 10<sup>9</sup></div>
+      </div>
+      <div class="calibration-item">
+        <div class="calibration-label">Ramp-up cap</div>
+        <div class="calibration-value">80% (10k blocks)</div>
+      </div>
+      <div class="calibration-item">
+        <div class="calibration-label">Initial DAG</div>
+        <div class="calibration-value">8 GB</div>
+      </div>
+      <div class="calibration-item">
+        <div class="calibration-label">Founder lock</div>
+        <div class="calibration-value">50,000 blocks</div>
       </div>
     </div>
   </div>
 
   <div class="scenario-bar">
-    <div class="scenario-label">Adoption scenario</div>
+    <div class="scenario-label">Bandwidth adoption scenario</div>
 
     <div class="slider-row">
       <div class="slider-header">
-        <span class="slider-name">Target network size</span>
-        <span class="slider-value" id="target-display">100,000 miners</span>
+        <span class="slider-name">Target bandwidth</span>
+        <span class="slider-value" id="target-display">1,000 GB/s</span>
       </div>
-      <input type="range" id="target-slider" min="3" max="6.3" step="0.05" value="5" />
+      <input type="range" id="target-slider" min="1.5" max="5" step="0.05" value="3" />
     </div>
 
     <div class="slider-row">
@@ -139,29 +147,29 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     <div class="scenario-presets">
       <span class="preset-label">Quick presets:</span>
-      <button class="preset-btn" data-target="10000" data-time="3">Slow (10k/3y)</button>
-      <button class="preset-btn" data-target="100000" data-time="2">Standard (100k/2y)</button>
-      <button class="preset-btn" data-target="500000" data-time="1">Fast (500k/1y)</button>
-      <button class="preset-btn" data-target="1000000" data-time="0.5">Viral (1M/6mo)</button>
+      <button class="preset-btn" data-target="32" data-time="3">Slow (32 GB/s / 3y)</button>
+      <button class="preset-btn" data-target="1000" data-time="2">Standard (1 TB/s / 2y)</button>
+      <button class="preset-btn" data-target="10000" data-time="1">Fast (10 TB/s / 1y)</button>
+      <button class="preset-btn" data-target="100000" data-time="0.5">Viral (100 TB/s / 6mo)</button>
     </div>
   </div>
 
   <div class="metric-cards">
     <div class="metric-card">
-      <div class="metric-label">Formal maturity (M=1)</div>
-      <div class="metric-value" id="m-mature">—</div>
+      <div class="metric-label">Avg emission year 1</div>
+      <div class="metric-value" id="m-avg-emission1">—</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Supply at year 20</div>
       <div class="metric-value" id="m-supply20">—</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Early miner, 6yr cumulative</div>
-      <div class="metric-value" id="m-early">—</div>
+      <div class="metric-label">VR at year 20</div>
+      <div class="metric-value" id="m-vr20">—</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">ROI vs electricity cost</div>
-      <div class="metric-value" id="m-roi">—</div>
+      <div class="metric-label">Peak inflation (year)</div>
+      <div class="metric-value" id="m-peak-inf">—</div>
     </div>
   </div>
 
@@ -169,79 +177,96 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 
     <div class="chart-card">
       <h3 class="chart-title">Emission per block</h3>
-      <p class="chart-desc">Decays exponentially during bootstrap, then scales with network size. No drift, no inflation parameter.</p>
-      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per block decaying from bootstrap to mature baseline"></canvas></div>
+      <p class="chart-desc">Tracks the bandwidth ratio: 100 Ewatt/block at hist_avg, up to 2,000 when bandwidth surges, down to 5 when it contracts. No programmed decay.</p>
+      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Emission per block following bandwidth ratio"></canvas></div>
     </div>
 
     <div class="chart-card">
-      <h3 class="chart-title">Cost per eWatt (USD)</h3>
-      <p class="chart-desc">Rises exponentially toward $1 anchor. Stable plateau in mature phase — no programmed erosion.</p>
-      <div class="chart-wrapper"><canvas id="chart-b" role="img" aria-label="Cost per eWatt rising exponentially to one dollar then stable"></canvas></div>
+      <h3 class="chart-title">Value Reference (kWh / eWatt)</h3>
+      <p class="chart-desc">Cumulative energy spent divided by total supply. Converges to the physical cost floor over time. No oracle, no external price feed.</p>
+      <div class="chart-wrapper"><canvas id="chart-b" role="img" aria-label="Value reference converging toward physical cost floor"></canvas></div>
     </div>
 
     <div class="chart-card">
       <h3 class="chart-title">Cumulative supply</h3>
-      <p class="chart-desc">Bootstrap acceleration, then linear expansion proportional to network. No cap. Always backed by real energy.</p>
-      <div class="chart-wrapper"><canvas id="chart-c" role="img" aria-label="Cumulative supply accelerating in bootstrap then linear in maturity"></canvas></div>
+      <p class="chart-desc">Accelerates during growth, stabilizes when bandwidth plateaus. No hard cap. Always energy-backed.</p>
+      <div class="chart-wrapper"><canvas id="chart-c" role="img" aria-label="Cumulative supply over time"></canvas></div>
     </div>
 
     <div class="chart-card">
-      <h3 class="chart-title">Early miner daily earnings</h3>
-      <p class="chart-desc">Single miner running from block 1. Drops as others enter and multiplier decays. The asymmetry that funds bootstrap.</p>
-      <div class="chart-wrapper"><canvas id="chart-d" role="img" aria-label="Single miner daily earnings declining over time"></canvas></div>
+      <h3 class="chart-title">1 GB/s miner daily earnings</h3>
+      <p class="chart-desc">A miner running 1 GB/s of committed bandwidth from block 1. Earnings depend on share of network and ramp-up cap.</p>
+      <div class="chart-wrapper"><canvas id="chart-d" role="img" aria-label="Single miner daily earnings over time"></canvas></div>
     </div>
 
     <div class="chart-card">
       <h3 class="chart-title">Annual supply inflation</h3>
-      <p class="chart-desc">High during bootstrap by design. Emergent in maturity from network growth. No artificial floor or ceiling.</p>
-      <div class="chart-wrapper"><canvas id="chart-e" role="img" aria-label="eWatts annual supply inflation compared to Bitcoin gold and USD"></canvas></div>
+      <p class="chart-desc">High during early growth, then emergent from bandwidth expansion. No artificial floor or programmed halving.</p>
+      <div class="chart-wrapper"><canvas id="chart-e" role="img" aria-label="eWatts annual supply inflation compared to benchmarks"></canvas></div>
     </div>
 
     <div class="chart-card">
-      <h3 class="chart-title">Cost vs actual network size</h3>
-      <p class="chart-desc">Calibrated for 100k miners → $1. If actual network differs, cost shifts proportionally. The protocol promises the relationship, not the level.</p>
-      <div class="chart-wrapper"><canvas id="chart-f" role="img" aria-label="Cost per eWatt as function of actual network size"></canvas></div>
+      <h3 class="chart-title">Emission vs bandwidth ratio</h3>
+      <p class="chart-desc">As bandwidth deviates from hist_avg, emission scales proportionally. Clamped at 5x below and 20x above base.</p>
+      <div class="chart-wrapper"><canvas id="chart-f" role="img" aria-label="Emission response curve vs bandwidth ratio"></canvas></div>
     </div>
 
   </div>
 
   <hr />
 
-  <h2>How to read this</h2>
+  <h2>How the formula works</h2>
 
-  <p>The protocol has two phases that flow continuously into each other. During <strong>bootstrap</strong>, emission per block is multiplied by a factor that decays from 100,000× to 1× as cumulative supply approaches the threshold. This creates strong incentive for early miners while ensuring the multiplier resolves naturally over time.</p>
+  <p>Emission per block follows a simple ratio:</p>
 
-  <p>At <strong>formal maturity</strong> (supply reaches 10B), the multiplier is 1, and emission becomes proportional only to active network size. Each block emits enough eWatts to absorb the network's real energy consumption at the calibrated cost — no more, no less.</p>
+  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
+    emission = clamp(100 &times; total_eff / hist_avg, 5, 2,000)
+  </p>
 
-  <p>Post-maturity, supply continues to grow ad infinitum. There is no cap. But growth is not arbitrary either: it tracks real network expansion. If the network grows, supply grows proportionally. If the network stabilizes, supply expansion slows naturally.</p>
+  <p><strong>total_eff</strong> is the sum of all miners' effective committed bandwidth (GB/s) declared in the current block. <strong>hist_avg</strong> is the trailing average of total_eff over the last 100 blocks (DIFFICULTY_WINDOW_BLOCKS).</p>
 
-  <h2>What is not in the formula</h2>
+  <p>When bandwidth is exactly at its trailing average, emission stays at the base rate of 100 Ewatt per block. If bandwidth doubles, emission doubles (up to the ceiling of 2,000). If bandwidth halves, emission halves (down to the floor of 5). The system self-adjusts to whatever pace the network actually grows at.</p>
+
+  <p>The first 10,000 blocks have a <strong>ramp-up cap of 80%</strong>: no single miner can earn more than 80% of the block reward, even if they dominate the network. Any excess is burned. This prevents a single early miner from capturing the entire emission during bootstrap.</p>
+
+  <p>Miner outputs from the first 10,000 blocks are <strong>locked for 50,000 blocks</strong> (about 347 days after the last block in the bootstrap window). This ensures early miners have a long-term commitment to the network's health, not a short-term extractive window.</p>
+
+  <h2>The Value Reference (VR)</h2>
+
+  <p>The code computes a <strong>Value Reference</strong> defined as:</p>
+
+  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
+    VR = total_kwh / total_ewatts_mined
+  </p>
+
+  <p>Total kWh is derived from the network's effective bandwidth over time, multiplied by the physical energy cost per DAG access (J_PER_ACCESS = 3.75 &micro;J). This gives a purely computational lower bound on the energy required to produce each eWatt. No oracle, no quotation service, no subjective input. The market price of eWatt will float above this floor by whatever premium the market assigns to a neutral settlement layer.</p>
+
+  <h2>What the protocol does not do</h2>
 
   <ul class="assumption-list">
-    <li><strong>No inflation target.</strong> The protocol does not codify an arbitrary inflation rate.</li>
-    <li><strong>No drift mechanism.</strong> P_target does not decay over time. The anchor is stable.</li>
+    <li><strong>No price target.</strong> There is no $1.00/eWatt or any other programmed price. The market discovers price; the protocol only tracks energy cost.</li>
+    <li><strong>No inflation target.</strong> No arbitrary inflation rate codified. Supply adjusts to bandwidth, period.</li>
+    <li><strong>No supply cap.</strong> Hard caps create scarcity pressure that conflicts with settlement function.</li>
+    <li><strong>No halving schedule.</strong> No time-based reward decay. Emission responds to network activity, not a calendar.</li>
     <li><strong>No oracles.</strong> No external price feeds, no off-chain dependencies, no governance committees.</li>
     <li><strong>No founder allocation.</strong> No pre-mine, no admin keys, no privileged minting.</li>
-    <li><strong>No supply cap.</strong> Hard caps create scarcity pressure that conflicts with settlement function.</li>
   </ul>
 
-  <p>What remains is a single emission curve, parameterized by four numbers: M_max, S_threshold, N_calibration, and P_target. Everything else emerges from these and from the physical constraints of memory-bound mining.</p>
+  <p>Everything emerges from two numbers per block (total_eff and hist_avg) and a handful of physical constants that never change.</p>
 
   <h2>Open questions, acknowledged</h2>
 
-  <p>The model above is honest about its limits. Two tensions remain:</p>
+  <p><strong>Long-term security budget.</strong> Once network bandwidth stabilizes, per-block rewards are proportional to that stable bandwidth. Transaction fees will eventually dominate miner compensation, as they do on Bitcoin. Whether fees will be sufficient is an open question that cannot be predicted in advance.</p>
 
-  <p><strong>Long-term security budget.</strong> Once the network stabilizes, per-block rewards become small relative to total supply. Miners will increasingly depend on transaction fees. This is the same tension Bitcoin faces (block reward already at 0.83% annually and falling). No definitive solution exists yet; community evaluation when the problem arises is more honest than codifying an arbitrary parameter now.</p>
-
-  <p><strong>Adoption is uncertain.</strong> Every forward-looking value in this dashboard depends on network growth that has not happened. The protocol exists. The economic model exists. Adoption is a bet, not a derivation.</p>
+  <p><strong>Adoption is uncertain.</strong> Every forward-looking value in this dashboard depends on bandwidth growth that has not happened. The protocol exists. The economic model exists. Adoption is a bet, not a derivation.</p>
 
   <div class="footer-note">
     <strong>Model assumptions.</strong>
-    Block time 600 seconds. Node power 75 W. Reference electricity price $0.165/kWh (US EIA residential average 2024–2025). Bootstrap multiplier M(S) = max(1, 100,000 × exp(−ln(100,000) × S / 10,000,000,000)). Mature emission = N × $0.002063 / $1.00. Maturity boundary at supply ≥ 10B eWatts. Per-miner reward assumes equal commitment across active miners. Adoption curves modeled as logistic functions to target N over specified period. Reference inflation values: Bitcoin 0.83% post-2024 halving (industry sources); gold 1.7% (World Gold Council, 25-year average); USD M2 ~6.5% (Federal Reserve long-run average). All forward-looking metrics depend on network growth that has not yet occurred — these are illustrations of the model, not predictions of outcomes.
+    Block time 600 seconds. BASE_EMISSION = 100 Ewatt/block. Emission range [5, 2000]. hist_avg computed as simple moving average over trailing 100 blocks of total_eff. RAMP_UP_CAP = 80% for first 10,000 blocks. Bandwidth adoption modeled as logistic growth from initial 1 GB/s to target. Energy per DAG access = 3.75 &micro;J (J_PER_ACCESS). VR = cumulative_kwh / cumulative_supply. Reference inflation values: Bitcoin 0.83% post-2024 halving (industry sources); gold 1.7% (World Gold Council, 25-year average); USD M2 ~6.5% (Federal Reserve long-run average). All forward-looking metrics depend on adoption that has not yet occurred.
   </div>
 
   <div class="source-line">
-    Data sources: US EIA Electric Power Monthly · World Gold Council Gold Hub · Federal Reserve M2 series · industry reports on Bitcoin halving.
+    Sources: eWatts v0.5 source code (constants.rs, proof.rs, reward.rs, vr.rs) &middot; US EIA &middot; World Gold Council &middot; Federal Reserve
   </div>
 
 </div>
@@ -249,167 +274,214 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 /*
- * eWatts v3 — Interactive Economic Dashboard
- * ==========================================
+ * eWatts v0.5 — Interactive Economic Dashboard
+ * =============================================
  *
  * This simulation runs entirely client-side. No server calls, no data tracking.
  *
- * KEY FORMULAS (v3 specification):
+ * KEY FORMULAS (from source code):
  *
- *   cost_per_block_per_node = 75W × 600s ÷ 3,600,000 × $0.165/kWh = $0.002063
- *   M(S)          = max(1, 100,000 × exp(-ln(100,000) × S / 10B))
- *   emission(S,n) = n × $0.002063 × M(S) / $1.00
- *   cost(S)       = $1.00 / M(S)   (at N = N_calibration)
- *   solo_reward   = $0.002063 × M(S) / $1.00  eWatts per block
+ *   J_PER_ACCESS       = 3.75e-6 J        (constants.rs)
+ *   J_PER_KWH          = 3,600,000        (constants.rs)
+ *   BASE_ACCESSES      = 1,000,000,000    (constants.rs)
+ *   BASE_EMISSION      = 100 Ewatt/block  (constants.rs)
+ *   EMISSION_FLOOR     = 5 Ewatt/block    (constants.rs)
+ *   EMISSION_CEILING   = 2000 Ewatt/block (constants.rs)
+ *   RAMP_UP_CAP        = 0.80             (constants.rs)
+ *   RAMP_UP_BLOCKS     = 10000            (constants.rs)
+ *   FOUNDER_LOCK       = 50000 blocks     (constants.rs)
+ *   DIFFICULTY_WINDOW  = 100 blocks       (constants.rs)
  *
- * No drift. No inflation parameter. No oracle. No post-maturity adjustment.
+ *   emission(total_eff, hist_avg) = clamp(BASE_EMISSION * total_eff / hist_avg,
+ *                                          EMISSION_FLOOR, EMISSION_CEILING)
  *
- * CHANGES FROM ORIGINAL SIMULATION (v3 adaptation):
- *   - BLOCKS_YEAR corrected to 52560 (was 52596; 365 days × 144 blocks/day)
- *   - Adoption uses logistic S-curve with smoother mid-point
- *   - All text updated to v3 framing
- *   - Added version metadata
+ *   reward(miner_eff, total_eff, emission, block):
+ *     share = miner_eff / total_eff
+ *     if block < 10000 and share > RAMP_UP_CAP:
+ *       reward = emission * RAMP_UP_CAP         (excess burned)
+ *     else:
+ *       reward = emission * share
+ *
+ *   VR(window) = total_kwh / total_ewatts_mined
+ *
+ * No price target. No oracle. No multiplier. No threshold.
+ * Just bandwidth, its trailing average, and a clamp.
  */
 
 (function() {
-  // ── Physical constants (from eWatts whitepaper v28) ──────────────
-  const W_NODE = 75;
-  const T_BLOCK = 600;
-  const E_KWH = 0.165;
-  const USD_BLOCK_NODE = W_NODE * T_BLOCK / 3600000 * E_KWH;  // $0.002063
+  // ── Protocol constants (from constants.rs) ──────────────────────
+  const BASE_EMISSION = 100;          // Ewatt/block at hist_avg
+  const EMISSION_FLOOR = 5;           // Minimum Ewatt/block
+  const EMISSION_CEILING = 2000;      // Maximum Ewatt/block
+  const J_PER_ACCESS = 3.75e-6;       // Joules per DAG access
+  const J_PER_KWH = 3600000;          // Joules per kWh
+  const BASE_ACCESSES = 1e9;          // Accesses at difficulty 1
+  const RAMP_UP_CAP = 0.80;           // Max share per miner in first 10k blocks
+  const RAMP_UP_BLOCKS = 10000;       // Ramp-up window
+  const DIFFICULTY_WINDOW = 100;      // hist_avg trailing window
+  const BLOCK_TIME = 600;             // seconds
+  const BLOCKS_YEAR = 52560;          // 144 blocks/day × 365
+  const BLOCKS_DAY = 144;             // (24 × 3600) / 600
 
-  // ── Protocol parameters (immutable) ──────────────────────────────
-  const P_TARGET = 1.0;            // Target cost per eWatt at maturity ($)
-  const N_CAL = 100000;            // Reference network size
-  const M_MAX = 100000;            // Bootstrap multiplier at block 1
-  const THRESHOLD = 10000000000;   // 10B eWatts = formal maturity
-  const BLOCKS_YEAR = 52560;       // 144 blocks/day × 365 days (CORRECTED from 52596)
-  const BLOCKS_DAY = 144;          // (24 × 3600) / 600
-  const k_decay = Math.log(M_MAX); // ln(100,000) ≈ 11.5129
+  // ── Derived constants ────────────────────────────────────────────
+  const ENERGY_PER_BLOCK_BASE = BASE_ACCESSES * J_PER_ACCESS;  // Joules at diff 1
 
   // ── State ────────────────────────────────────────────────────────
-  let targetN = 100000;
-  let timeToTarget = 2.0;
+  let targetBW = 1000;  // target bandwidth in GB/s
+  let timeToTarget = 2.0; // years
   let charts = {};
   let renderTimeout = null;
 
-  // ── Bootstrap multiplier ─────────────────────────────────────────
-  // M(S) = max(1, M_MAX × exp(-k × S / S_threshold))
-  // Decays exponentially from 100,000x to 1x as supply → 10B.
-  // At S = S_threshold: M(S) = 1 exactly (continuous transition).
-  function mult(supply) {
-    if (supply >= THRESHOLD) return 1.0;
-    return Math.max(1.0, M_MAX * Math.exp(-k_decay * supply / THRESHOLD));
-  }
+  // ── Helper: clamp ────────────────────────────────────────────────
+  function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
-  // ── Emission per block ───────────────────────────────────────────
-  // E_block(S,n) = n × C_node × M(S) / P_target
-  // This is the COMPLETE emission formula. No post-maturity drift.
-  function emission(supply, n) {
-    return (USD_BLOCK_NODE * n / P_TARGET) * mult(supply);
-  }
-
-  // ── Adoption S-curve ─────────────────────────────────────────────
-  // Logistic function: starts at 1 miner, approaches targetN asymptotically
-  // over `timeToTarget` years. At x=0.5 (half elapsed): ~half of target.
-  // At x=1.0: reaches target (clamped at target thereafter).
+  // ── Bandwidth adoption ───────────────────────────────────────────
+  // Logistic from 1 GB/s to targetBW over timeToTarget years.
   function adoption(block) {
     const fullAt = timeToTarget * BLOCKS_YEAR;
     const x = block / fullAt;
-    if (x >= 1) return targetN;
-    // Logistic: f(x) = 1 + (targetN-1) / (1 + exp(-10*(x-0.5)))
-    return Math.max(1, Math.floor(1 + (targetN - 1) / (1 + Math.exp(-10 * (x - 0.5)))));
+    if (x >= 1) return targetBW;
+    const startBW = 1;
+    return startBW + (targetBW - startBW) / (1 + Math.exp(-10 * (x - 0.5)));
+  }
+
+  // ── Trailing average of total_eff ────────────────────────────────
+  class RingBuffer {
+    constructor(size) {
+      this.size = size;
+      this.data = [];
+      this.idx = 0;
+      this.sum = 0;
+    }
+    push(v) {
+      if (this.data.length < this.size) {
+        this.data.push(v);
+        this.sum += v;
+      } else {
+        this.sum -= this.data[this.idx];
+        this.data[this.idx] = v;
+        this.sum += v;
+        this.idx = (this.idx + 1) % this.size;
+      }
+    }
+    avg() {
+      if (this.data.length === 0) return 1;
+      return this.sum / this.data.length;
+    }
+  }
+
+  // ── Emission per block ───────────────────────────────────────────
+  function calcEmission(totalEff, histAvg) {
+    if (histAvg <= 0) return BASE_EMISSION;
+    const ratio = totalEff / histAvg;
+    return clamp(BASE_EMISSION * ratio, EMISSION_FLOOR, EMISSION_CEILING);
+  }
+
+  // ── Miner reward (single miner with commitment c) ────────────────
+  function minerReward(minerBW, totalBW, emission, block) {
+    if (totalBW <= 0 || minerBW <= 0) return 0;
+    let share = minerBW / totalBW;
+    if (block < RAMP_UP_BLOCKS && share > RAMP_UP_CAP) {
+      return emission * RAMP_UP_CAP;
+    }
+    return emission * share;
   }
 
   // ── Simulation engine ────────────────────────────────────────────
-  // Runs full block-by-block simulation for `years` years.
-  // Samples ~200 points evenly for charting.
+  // Block-by-block for `years` years. Samples ~200 points.
   function simulate(years) {
-    const total_blocks = Math.floor(years * BLOCKS_YEAR);
-    const sample_every = Math.max(1, Math.floor(total_blocks / 200));
+    const totalBlocks = Math.floor(years * BLOCKS_YEAR);
+    const sampleEvery = Math.max(1, Math.floor(totalBlocks / 200));
+    const histBuf = new RingBuffer(DIFFICULTY_WINDOW);
     let supply = 0;
-    let mature_at_year = null;
-    let early_total = 0;
+    let cumEnergyKWh = 0;
     const points = [];
-    const yearly_supply = [0];
+    const yearlySupply = [0];
+    const minerCommitment = 1; // 1 GB/s miner
 
-    for (let block = 0; block < total_blocks; block++) {
-      const n = adoption(block);
-      const e = emission(supply, n);
-      early_total += e / n;        // Cumulative eWatts for a single miner from block 1
+    for (let block = 0; block < totalBlocks; block++) {
+      const totalBW = adoption(block);
+      histBuf.push(totalBW);
+      const histAvg = histBuf.avg();
 
-      if (supply >= THRESHOLD && mature_at_year === null) {
-        mature_at_year = block / BLOCKS_YEAR;
-      }
+      const emission = calcEmission(totalBW, histAvg);
+      const mReward = minerReward(minerCommitment, totalBW, emission, block);
 
-      // Sample point (cost computed from pre-emission supply, which is correct)
-      if (block % sample_every === 0 || block === total_blocks - 1) {
+      // Energy this block: bandwidth contributes accesses
+      // Each 64-byte access: J_PER_ACCESS. Total accesses proportional to bandwidth.
+      // Simplify: total_eff (GB/s) × block_time (s) → total GB accessed
+      // Each GB accessed = (1024^3 / 64) accesses ≈ 16.78M accesses
+      const accessesPerBlock = totalBW * BLOCK_TIME * (1073741824 / 64);
+      // with difficulty baseline considered
+      const blockEnergyJ = accessesPerBlock * J_PER_ACCESS;
+      const blockEnergyKWh = blockEnergyJ / J_PER_KWH;
+      cumEnergyKWh += blockEnergyKWh;
+
+      // Track supply at year boundaries
+      const currYearIdx = Math.floor(block / BLOCKS_YEAR);
+      while (yearlySupply.length <= currYearIdx + 1) yearlySupply.push(supply);
+      yearlySupply[currYearIdx + 1] = supply;
+
+      // Sample point
+      if (block % sampleEvery === 0 || block === totalBlocks - 1) {
+        const vr = supply > 0 ? cumEnergyKWh / supply : 0;
         points.push({
-          block, year: block / BLOCKS_YEAR, supply, emission: e,
-          cost: P_TARGET / mult(supply),  // cost = P_target / M(S)
-          n_active: n,
-          early_daily: (e / n) * BLOCKS_DAY,
+          block, year: block / BLOCKS_YEAR,
+          supply, emission,
+          bw: totalBW,
+          histAvg,
+          dailyEarnings: mReward * BLOCKS_DAY,
+          vr, cumEnergyKWh,
         });
       }
 
-      // Track supply at year boundaries for inflation calculation
-      const currYearIdx = Math.floor(block / BLOCKS_YEAR);
-      while (yearly_supply.length <= currYearIdx + 1) {
-        yearly_supply.push(supply);
-      }
-      yearly_supply[currYearIdx + 1] = supply;
-
-      supply += e;
+      supply += emission;
     }
+    yearlySupply.push(supply);
 
-    // Post-loop: final supply
-    yearly_supply.push(supply);
-
-    // Compute year-over-year inflation
-    const yearly_inflation = [];
-    for (let y = 1; y < yearly_supply.length - 1; y++) {
-      const prev = yearly_supply[y - 1];
-      const curr = yearly_supply[y];
+    // Year-over-year inflation
+    const yearlyInflation = [];
+    for (let y = 1; y < yearlySupply.length - 1; y++) {
+      const prev = yearlySupply[y - 1];
+      const curr = yearlySupply[y];
       if (prev > 0) {
-        yearly_inflation.push({ year: y, inflation: (curr - prev) / prev * 100 });
+        yearlyInflation.push({ year: y, inflation: (curr - prev) / prev * 100 });
       }
     }
 
-    return { points, mature_at_year, early_total, supply_final: supply, yearly_inflation };
+    // Avg emission in year 1
+    let y1EmissionSum = 0, y1Count = 0;
+    for (const p of points) {
+      if (p.year >= 0 && p.year < 1) { y1EmissionSum += p.emission; y1Count++; }
+    }
+
+    return {
+      points,
+      supplyFinal: supply,
+      yearlyInflation,
+      avgEmissionY1: y1Count > 0 ? y1EmissionSum / y1Count : 0,
+      vrFinal: supply > 0 ? cumEnergyKWh / supply : 0,
+    };
   }
 
   // ── Formatting helpers ───────────────────────────────────────────
-  function formatN(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 2) + 'M miners';
-    if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k miners';
-    return Math.round(n) + ' miners';
+  function formatBW(bw) {
+    if (bw >= 1000) return (bw / 1000).toFixed(1) + ' TB/s';
+    return Math.round(bw) + ' GB/s';
   }
 
   function formatTime(years) {
-    if (years < 1) {
-      const months = Math.round(years * 12);
-      return months + (months === 1 ? ' month' : ' months');
-    }
+    if (years < 1) { const m = Math.round(years * 12); return m + (m === 1 ? ' month' : ' months'); }
     return years.toFixed(1) + (years === 1 ? ' year' : ' years');
   }
 
-  function isDark() {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
-
-  function gridColor() {
-    return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  }
-
-  function tickColor() {
-    return isDark() ? '#888780' : '#8a8a83';
-  }
+  function isDark() { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; }
+  function gridColor() { return isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'; }
+  function tickColor() { return isDark() ? '#888780' : '#8a8a83'; }
 
   function commonOpts(yTitle, logY, xTitle) {
     return {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 400 },
+      responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
       scales: {
         y: {
           type: logY ? 'logarithmic' : 'linear',
@@ -425,37 +497,36 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
           border: { color: gridColor() }
         }
       },
-      plugins: {
-        legend: { display: false },
-        tooltip: { mode: 'index', intersect: false }
-      }
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
     };
   }
 
   // ── Render all charts ────────────────────────────────────────────
   function render() {
-    // Destroy previous charts before re-rendering
     Object.values(charts).forEach(c => c.destroy());
     charts = {};
 
     const sim = simulate(20);
-
-    // Update metric cards
-    document.getElementById('m-mature').textContent =
-      sim.mature_at_year ? sim.mature_at_year.toFixed(1) + ' years' : '>20 years';
-    document.getElementById('m-supply20').textContent =
-      (sim.supply_final / 1e9).toFixed(1) + 'B';
-
-    const sim6 = simulate(6);
-    document.getElementById('m-early').textContent =
-      Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.round(sim6.early_total)) + ' eW';
-    const cost_6y = 6 * BLOCKS_YEAR * USD_BLOCK_NODE;
-    document.getElementById('m-roi').textContent =
-      Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.round(sim6.early_total / cost_6y)) + '×';
-
     const yearLabels = sim.points.map(p => p.year.toFixed(1));
 
-    // ── A: Emission per block (log scale) ──────────────────────────
+    // Update metric cards
+    document.getElementById('m-avg-emission1').textContent =
+      sim.avgEmissionY1.toFixed(0) + ' Ewatt';
+    document.getElementById('m-supply20').textContent =
+      (sim.supplyFinal / 1e9).toFixed(1) + 'B';
+    document.getElementById('m-vr20').textContent =
+      sim.vrFinal < 0.001 ? (sim.vrFinal * 1e6).toFixed(2) + ' &micro;kWh' :
+      sim.vrFinal < 1 ? (sim.vrFinal * 1000).toFixed(2) + ' Wh' :
+      sim.vrFinal.toFixed(4) + ' kWh';
+
+    // Peak inflation
+    let peakInf = 0, peakYr = 0;
+    for (const d of sim.yearlyInflation) {
+      if (d.inflation > peakInf && d.inflation < 5000) { peakInf = d.inflation; peakYr = d.year; }
+    }
+    document.getElementById('m-peak-inf').textContent = peakInf.toFixed(1) + '% (yr ' + peakYr + ')';
+
+    // ── A: Emission per block ──────────────────────────────────────
     charts.a = new Chart(document.getElementById('chart-a'), {
       type: 'line',
       data: {
@@ -468,28 +539,27 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
         }]
       },
-      options: commonOpts('eWatts/block (log)', true)
+      options: commonOpts('Ewatt/block', false)
     });
 
-    // ── B: Cost per eWatt (log scale, $ prefix) ────────────────────
-    const costOpts = commonOpts('USD per eWatt (log)', true);
-    costOpts.scales.y.ticks.callback = v => '$' + v;
+    // ── B: VR (kWh per eWatt) ─────────────────────────────────────
+    const vrOpts = commonOpts('kWh / eWatt (log)', true);
     charts.b = new Chart(document.getElementById('chart-b'), {
       type: 'line',
       data: {
         labels: yearLabels,
         datasets: [{
-          label: 'Cost per eWatt',
-          data: sim.points.map(p => p.cost),
+          label: 'VR',
+          data: sim.points.map(p => Math.max(1e-8, p.vr)),
           borderColor: '#1D9E75',
           backgroundColor: 'rgba(29,158,117,0.08)',
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
         }]
       },
-      options: costOpts
+      options: vrOpts
     });
 
-    // ── C: Cumulative supply (billions, linear) ────────────────────
+    // ── C: Cumulative supply ───────────────────────────────────────
     charts.c = new Chart(document.getElementById('chart-c'), {
       type: 'line',
       data: {
@@ -505,30 +575,28 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       options: commonOpts('Supply (billions)', false)
     });
 
-    // ── D: Early miner daily earnings (log scale) ──────────────────
+    // ── D: 1 GB/s miner daily earnings ────────────────────────────
     charts.d = new Chart(document.getElementById('chart-d'), {
       type: 'line',
       data: {
         labels: yearLabels,
         datasets: [{
           label: 'Daily earnings',
-          data: sim.points.map(p => Math.max(0.001, p.early_daily)),
+          data: sim.points.map(p => Math.max(0.001, p.dailyEarnings)),
           borderColor: '#7F77DD',
           backgroundColor: 'rgba(127,119,221,0.08)',
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
         }]
       },
-      options: commonOpts('eWatts/day (log)', true)
+      options: commonOpts('Ewatt/day (log)', true)
     });
 
-    // ── E: Inflation comparison (log scale, with legend) ───────────
-    const infYears = sim.yearly_inflation.filter(d => d.inflation > 0 && d.inflation < 5000 && d.year <= 20);
+    // ── E: Inflation comparison ────────────────────────────────────
+    const infYears = sim.yearlyInflation.filter(d => d.inflation > 0 && d.inflation < 5000 && d.year <= 20);
     const eOpts = commonOpts('Annual inflation %', true);
     eOpts.scales.y.ticks.callback = v => v + '%';
     eOpts.plugins.legend = {
-      display: true,
-      position: 'top',
-      align: 'end',
+      display: true, position: 'top', align: 'end',
       labels: { font: { size: 11 }, boxWidth: 12, color: tickColor() }
     };
     charts.e = new Chart(document.getElementById('chart-e'), {
@@ -536,48 +604,34 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       data: {
         labels: infYears.map(d => d.year),
         datasets: [
-          {
-            label: 'eWatts',
-            data: infYears.map(d => d.inflation),
-            borderColor: '#378ADD', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3,
-          },
-          {
-            label: 'Bitcoin (0.83%)',
-            data: infYears.map(() => 0.83),
-            borderColor: '#BA7517', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false,
-          },
-          {
-            label: 'Gold (1.7%)',
-            data: infYears.map(() => 1.7),
-            borderColor: '#888780', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false,
-          },
-          {
-            label: 'USD M2 (6.5%)',
-            data: infYears.map(() => 6.5),
-            borderColor: '#D4537E', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false,
-          },
+          { label: 'eWatts', data: infYears.map(d => d.inflation),
+            borderColor: '#378ADD', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
+          { label: 'Bitcoin (0.83%)', data: infYears.map(() => 0.83),
+            borderColor: '#BA7517', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false },
+          { label: 'Gold (1.7%)', data: infYears.map(() => 1.7),
+            borderColor: '#888780', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false },
+          { label: 'USD M2 (6.5%)', data: infYears.map(() => 6.5),
+            borderColor: '#D4537E', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false },
         ]
       },
       options: eOpts
     });
 
-    // ── F: Cost sensitivity vs network size ────────────────────────
-    const sensN = [];
-    const sensCost = [];
-    for (let i = 0; i <= 40; i++) {
-      const n = Math.round(1000 + (1000000 - 1000) * (i / 40));
-      sensN.push(Math.round(n / 1000) + 'k');
-      sensCost.push(P_TARGET * n / N_CAL);  // cost ∝ n / N_cal
+    // ── F: Emission response curve ────────────────────────────────
+    const ratioVals = [];
+    const emissionVals = [];
+    for (let r = 0.01; r <= 50; r *= 1.05) {
+      ratioVals.push(r.toFixed(2) + 'x');
+      emissionVals.push(clamp(BASE_EMISSION * r, EMISSION_FLOOR, EMISSION_CEILING));
     }
-    const fOpts = commonOpts('USD per eWatt', false, 'Actual active miners');
-    fOpts.scales.y.ticks.callback = v => '$' + v.toFixed(1);
+    const fOpts = commonOpts('Ewatt/block', false, 'Bandwidth / hist_avg');
     charts.f = new Chart(document.getElementById('chart-f'), {
       type: 'line',
       data: {
-        labels: sensN,
+        labels: ratioVals,
         datasets: [{
-          label: 'Mature cost per eWatt',
-          data: sensCost,
+          label: 'Emission',
+          data: emissionVals,
           borderColor: '#534AB7',
           backgroundColor: 'rgba(83,74,183,0.08)',
           borderWidth: 2, pointRadius: 0, fill: true, tension: 0,
@@ -594,13 +648,10 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
   const timeDisplay = document.getElementById('time-display');
 
   function updateFromSliders() {
-    // Logarithmic scale: 10^3 to 10^6.3 ≈ 1,000 to 2,000,000
-    targetN = Math.round(Math.pow(10, parseFloat(targetSlider.value)));
+    targetBW = Math.round(Math.pow(10, parseFloat(targetSlider.value)));
     timeToTarget = parseFloat(timeSlider.value);
-
-    targetDisplay.textContent = formatN(targetN);
+    targetDisplay.textContent = formatBW(targetBW);
     timeDisplay.textContent = formatTime(timeToTarget);
-
     clearTimeout(renderTimeout);
     renderTimeout = setTimeout(render, 60);
   }
@@ -618,10 +669,8 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     });
   });
 
-  // Initialize
   updateFromSliders();
 
-  // Re-render on color scheme change
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
   }
