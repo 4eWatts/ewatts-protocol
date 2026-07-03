@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="eWatts v0.5 (AOPS) — 2026-07-03">
-<meta name="description" content="Interactive economic model of the eWatts protocol v0.5: free-entry equilibrium, VR = P/p_elec, elastic emission anchored to energy cost.">
-<title>eWatts — Economic Model v0.5</title>
+<meta name="version" content="eWatts v0.5 code · economic model v2 (free-entry equilibrium) — 2026-07-03">
+<meta name="description" content="Economic model of the eWatts protocol: free entry as an implicit auction. Network size is endogenous; the energy anchor converges to market price over electricity cost. All consensus constants from constants.rs.">
+<title>eWatts — Economic Model v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
- --bg:#0B0F14; --surface:#131A24; --surface2:#0F151E; --line:#22303F;
- --text:#E8EEF5; --muted:#8FA0B3; --faint:#5C6B7E;
- --green:#4ADE80; --blue:#60A5FA; --amber:#FBBF24; --red:#F87171; --violet:#A78BFA;
- --mono:'JetBrains Mono',monospace; --disp:'Space Grotesk',sans-serif; --body:'Inter',sans-serif;
+  --bg:#0B0F14; --surface:#131A24; --surface2:#0F151E; --line:#22303F;
+  --text:#E8EEF5; --muted:#8FA0B3; --faint:#5C6B7E;
+  --green:#4ADE80; --blue:#60A5FA; --amber:#FBBF24; --red:#F87171; --violet:#A78BFA;
+  --mono:'JetBrains Mono',monospace; --disp:'Space Grotesk',sans-serif; --body:'Inter',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -34,14 +34,16 @@ header{padding:64px 0 40px}
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:14px}
 h1{font-family:var(--disp);font-size:clamp(30px,4.5vw,46px);font-weight:700;line-height:1.12;letter-spacing:-.01em;margin-bottom:18px}
 .lede{color:var(--muted);max-width:760px;font-size:17px}
-.callout-green{border-left:3px solid var(--green);background:rgba(74,222,128,.05);border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;max-width:780px}
-.callout-green p{color:var(--muted);font-size:14.5px;margin:0}
-.callout-green p+p{margin-top:10px}
-.callout-green b{color:var(--text)}
-.callout-amber{border-left:3px solid var(--amber);background:rgba(251,191,36,.05);border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;max-width:780px}
-.callout-amber p{color:var(--muted);font-size:14.5px;margin:0}
-.callout-amber p+p{margin-top:10px}
-.callout-amber b{color:var(--text)}
+.formula-strip{margin:36px 0 8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 28px;overflow-x:auto}
+.formula-strip + .formula-strip{margin-top:14px}
+.formula-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+.formula{font-family:var(--mono);font-size:clamp(15px,2.4vw,21px);white-space:nowrap;color:var(--text)}
+.formula .fn{color:var(--violet)}
+.formula .num{color:var(--green)}
+.formula .var{color:var(--blue)}
+.formula .clamp{color:var(--amber)}
+.formula-live{margin-top:14px;font-family:var(--mono);font-size:14px;color:var(--muted)}
+.formula-live b{color:var(--green);font-weight:600}
 section{padding:44px 0;border-top:1px solid var(--line)}
 h2{font-family:var(--disp);font-size:26px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
 h3{font-family:var(--disp);font-size:18px;font-weight:600;margin:26px 0 10px}
@@ -52,7 +54,7 @@ h3{font-family:var(--disp);font-size:18px;font-weight:600;margin:26px 0 10px}
 .param .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:4px;color:var(--text)}
 .param .n{font-size:12px;color:var(--muted);margin-top:3px}
 .controls{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px 26px;margin-bottom:26px}
-.controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px 28px;margin-top:16px}
+.controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px 28px;margin-top:16px}
 .ctl label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
 .ctl label output{font-family:var(--mono);color:var(--text);font-weight:600}
 input[type=range]{width:100%;accent-color:var(--green);height:4px;cursor:pointer}
@@ -69,17 +71,30 @@ input[type=range]{width:100%;accent-color:var(--green);height:4px;cursor:pointer
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:860px){.charts{grid-template-columns:1fr}}
 .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.chart-card.wide{grid-column:1/-1}
 .chart-card h4{font-family:var(--disp);font-size:15px;font-weight:600;margin-bottom:4px}
 .chart-card p{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.45}
 .chart-box{position:relative;height:240px}
+.wide .chart-box{height:280px}
 .prose{max-width:780px}
 .prose p{color:var(--muted);margin-bottom:16px}
 .prose strong{color:var(--text)}
 .prose code{font-family:var(--mono);font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--green)}
-.codeblock{font-family:var(--mono);font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:18px 0;overflow-x:auto;color:var(--text)}
+.codeblock{font-family:var(--mono);font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:18px 0;overflow-x:auto;color:var(--text);line-height:1.8}
+.codeblock .c{color:var(--faint)}
+.codeblock .hl{color:var(--green)}
 ul.plain{list-style:none;max-width:780px}
 ul.plain li{padding:10px 0;border-bottom:1px solid var(--line);color:var(--muted)}
 ul.plain li strong{color:var(--text)}
+.callout{border-left:3px solid var(--amber);background:rgba(251,191,36,.05);border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;max-width:780px}
+.callout.green{border-color:var(--green);background:rgba(74,222,128,.05)}
+.callout p{color:var(--muted);font-size:14.5px;margin:0}
+.callout p+p{margin-top:10px}
+.callout b{color:var(--text)}
+table.scen{border-collapse:collapse;margin:18px 0;font-size:14px;width:100%;max-width:780px}
+table.scen th,table.scen td{border:1px solid var(--line);padding:9px 13px;text-align:right;font-family:var(--mono)}
+table.scen th{background:var(--surface);color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+table.scen td:first-child,table.scen th:first-child{text-align:left;font-family:var(--body)}
 .assump{font-size:14px;color:var(--muted);max-width:820px}
 .assump li{margin:8px 0 8px 18px}
 .refs{font-size:13.5px;color:var(--muted);max-width:820px}
@@ -92,438 +107,378 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 <body>
 
 <nav>
- <div class="wrap">
- <div class="brand">eWatts<span>.org</span> <span style="font-size:13px">/ economic model</span></div>
- <div class="navlinks">
- <a href="https://ewatts.org/index.html">Home</a>
- <a href="https://ewatts.org/protocol.html">Protocol</a>
- <a href="https://ewatts.org/architecture.html">Architecture</a>
- <a class="active" href="#">Economic Model</a>
- <a href="https://ewatts.org/test-results.html">Tests</a>
- <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
- </div>
- </div>
+  <div class="wrap">
+    <div class="brand">eWatts<span>.org</span> <span style="font-size:13px">/ economic model</span></div>
+    <div class="navlinks">
+      <a href="https://ewatts.org/index.html">Home</a>
+      <a href="https://ewatts.org/protocol.html">Protocol</a>
+      <a href="https://ewatts.org/architecture.html">Architecture</a>
+      <a class="active" href="#">Economic Model</a>
+      <a href="https://ewatts.org/test-results.html">Tests</a>
+      <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
+    </div>
+  </div>
 </nav>
 
 <header>
- <div class="wrap">
- <div class="eyebrow">Economic Model — v0.5 · Protocol 0x0005 · AOPS</div>
- <h1>Free entry as equilibrium</h1>
- <p class="lede">Each node is a continuous bid in an implicit auction. The block reward is fixed at 100 eWatts. Under free entry, the network finds its own size: the margin goes to zero and bandwidth becomes endogenous. The Value Reference converges to <strong>P / p<sub>elec</sub></strong> — hardware efficiency drops out of the equation.</p>
+  <div class="wrap">
+    <div class="eyebrow">Economic Model v2 · Free-entry Equilibrium · Protocol 0x0005</div>
+    <h1>The network sizes itself.<br>Free entry is the auction.</h1>
+    <p class="lede">Every node running eWatts is a continuous bid — ~12.5 Wh per block — competing for a fixed reward of 100 eWatts. Entry requires no capital purchase: the hardware is commodity DRAM people already own. Competition drives margins toward zero, and the network finds its own size. From that single condition, the energy anchor emerges as a market identity, not a protocol parameter.</p>
 
- <div class="callout-green">
- <p><b>The key result.</b> A 5% efficiency improvement does not weaken the energy anchor. It allows 5% more nodes to enter at the same total energy. The drift is absorbed by network size, not by the Value Reference. The previous simulations showing 5-7%/year drift modeled the scenario where entry is frozen — the only scenario where the market mechanism is disabled by construction.</p>
- </div>
- </div>
+    <div class="formula-strip">
+      <div class="formula-label">Consensus — emission per block (reward.rs)</div>
+      <div class="formula"><span class="var">emission</span> = <span class="fn">clamp</span>( <span class="num">100</span> × <span class="var">total_eff</span> / <span class="var">hist_avg</span>,&nbsp; <span class="clamp">5</span>,&nbsp; <span class="clamp">2000</span> )</div>
+      <div class="formula-live">The 100-block trailing window keeps issuance at ~<b>100 eWatt/block</b> under any organic growth path (simulated hypergrowth peaks at 100.25). Supply grows ~5.26M eWatts/year — near-linear, no halving calendar.</div>
+    </div>
+
+    <div class="formula-strip">
+      <div class="formula-label">Market — free-entry equilibrium (this page)</div>
+      <div class="formula"><span class="var">VR</span> ≈ <span class="var">φ</span> × <span class="var">P</span> / <span class="var">p<sub>elec</sub></span> &nbsp;&nbsp;<span class="c" style="color:var(--faint)">kWh per eWatt — hardware efficiency cancels out</span></div>
+      <div class="formula-live">Current scenario: equilibrium network of <b id="liveN">—</b> nodes · anchor <b id="liveVR">—</b> kWh/eWatt · total draw <b id="liveMW">—</b></div>
+    </div>
+  </div>
 </header>
 
 <section id="params">
- <div class="wrap">
- <h2>Protocol parameters</h2>
- <p class="sub">Source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/constants.rs">constants.rs</a>, v0.5 (AOPS migration, protocol version 0x0005). These are consensus constants, not model inputs.</p>
- <div class="params">
- <div class="param"><div class="k">Base emission</div><div class="v">100 eWatt/block</div><div class="n">BASE_EMISSION</div></div>
- <div class="param"><div class="k">Block time</div><div class="v">600 s</div><div class="n">≈ 52,560 blocks / year</div></div>
- <div class="param"><div class="k">Energy per access</div><div class="v">3.75 µJ</div><div class="n">= 75 W ÷ 20M aops (wall power)</div></div>
- <div class="param"><div class="k">Min commitment</div><div class="v">20 M aops</div><div class="n">≈ 1 GB/s per node</div></div>
- <div class="param"><div class="k">Node power</div><div class="v">75 W</div><div class="n">DDR5 reference node</div></div>
- <div class="param"><div class="k">Emission range</div><div class="v">5 – 2,000</div><div class="n">floor / ceiling per block</div></div>
- <div class="param"><div class="k">hist_avg window</div><div class="v">100 blocks</div><div class="n">≈ 16.7 hours trailing</div></div>
- <div class="param"><div class="k">Ramp-up cap</div><div class="v">80%</div><div class="n">first 10,000 blocks</div></div>
- </div>
- </div>
+  <div class="wrap">
+    <h2>Protocol parameters</h2>
+    <p class="sub">Source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/constants.rs">constants.rs</a>, v0.5 (AOPS migration, protocol version 0x0005). Consensus constants — the protocol knows nothing else. Everything below the fold is market, not code.</p>
+    <div class="params">
+      <div class="param"><div class="k">Base emission</div><div class="v">100 eWatt/block</div><div class="n">BASE_EMISSION</div></div>
+      <div class="param"><div class="k">Emission range</div><div class="v">5 – 2,000</div><div class="n">floor / ceiling per block</div></div>
+      <div class="param"><div class="k">Block time</div><div class="v">600 s</div><div class="n">≈ 52,560 blocks / year</div></div>
+      <div class="param"><div class="k">Work metric</div><div class="v">AOPS</div><div class="n">random DRAM accesses / second</div></div>
+      <div class="param"><div class="k">Min commitment</div><div class="v">20 M aops</div><div class="n">MIN_COMMIT_AOPS per node</div></div>
+      <div class="param"><div class="k">Energy per access</div><div class="v">3.75 µJ</div><div class="n">= 75 W ÷ 20M aops (wall power)</div></div>
+      <div class="param"><div class="k">hist_avg window</div><div class="v">100 blocks</div><div class="n">≈ 16.7 hours trailing</div></div>
+      <div class="param"><div class="k">Ramp-up cap</div><div class="v">80%</div><div class="n">first 10,000 blocks, excess burned</div></div>
+      <div class="param"><div class="k">Founder lock</div><div class="v">50,000 blocks</div><div class="n">early coinbase spend lock</div></div>
+      <div class="param"><div class="k">Initial DAG</div><div class="v">8 GB</div><div class="n">forces DRAM cache misses</div></div>
+    </div>
+  </div>
 </section>
 
 <section id="sim">
- <div class="wrap">
- <h2>Equilibrium simulator</h2>
- <p class="sub">Adjust market conditions below. The equilibrium node count, network bandwidth, and Value Reference all emerge from the free-entry identity: N x c = 100 x P. Hardware efficiency improvements are absorbed by N, not by the anchor.</p>
+  <div class="wrap">
+    <h2>Market equilibrium</h2>
+    <p class="sub">Network size N is not an input here — it is the output. Given a market price P, electricity cost, hardware wall power, and the electricity share of marginal cost, free entry determines how many nodes the reward can sustain. The protocol never sees any of these variables; they act on it from outside.</p>
 
- <div class="controls">
- <div class="controls-grid">
- <div class="ctl">
- <label>eWatt market price (P) <output id="oPrice">$1.00</output></label>
- <input type="range" id="rPrice" min="-2" max="2" step="0.02" value="0">
- </div>
- <div class="ctl">
- <label>Electricity cost <output id="oElec">$0.10 / kWh</output></label>
- <input type="range" id="rElec" min="0.02" max="0.50" step="0.005" value="0.10">
- </div>
- <div class="ctl">
- <label>Node power <output id="oWatts">75 W</output></label>
- <input type="range" id="rWatts" min="25" max="200" step="5" value="75">
- </div>
- <div class="ctl">
- <label>Node growth rate <output id="oRate">0.45</output></label>
- <input type="range" id="rRate" min="0.1" max="1.0" step="0.05" value="0.45">
- </div>
- <div class="ctl">
- <label>Annual efficiency improvement <output id="oDrift">5 % / y</output></label>
- <input type="range" id="rDrift" min="0" max="15" step="0.5" value="5">
- </div>
- </div>
- <div class="presets">
- <button class="preset on" data-p="0" data-e="0.10" data-w="75">Base ($1.00, $0.10)</button>
- <button class="preset" data-p="-1" data-e="0.10" data-w="75">Bear ($0.10, $0.10)</button>
- <button class="preset" data-p="0.699" data-e="0.10" data-w="75">Bull ($5.00, $0.10)</button>
- <button class="preset" data-p="0" data-e="0.30" data-w="75">Expensive power ($1.00, $0.30)</button>
- </div>
- </div>
+    <div class="controls">
+      <div class="controls-grid">
+        <div class="ctl">
+          <label>eWatt market price P <output id="oP">$1.00</output></label>
+          <input type="range" id="rP" min="-1.3" max="1" step="0.02" value="0">
+        </div>
+        <div class="ctl">
+          <label>Electricity (marginal miner) <output id="oElec">$0.100 / kWh</output></label>
+          <input type="range" id="rElec" min="0.03" max="0.40" step="0.005" value="0.10">
+        </div>
+        <div class="ctl">
+          <label>Node wall power W <output id="oW">75 W</output></label>
+          <input type="range" id="rW" min="20" max="300" step="5" value="75">
+        </div>
+        <div class="ctl">
+          <label>Electricity share of cost φ <output id="oPhi">0.85</output></label>
+          <input type="range" id="rPhi" min="0.60" max="1.00" step="0.01" value="0.85">
+        </div>
+        <div class="ctl">
+          <label>Hardware efficiency drift <output id="oDrift">5.0 % / y</output></label>
+          <input type="range" id="rDrift" min="0" max="8" step="0.5" value="5">
+        </div>
+      </div>
+      <div class="presets">
+        <button class="preset" data-p="bear">Bear — P $0.10</button>
+        <button class="preset on" data-p="base">Base — P $1.00</button>
+        <button class="preset" data-p="bull">Bull — P $5.00</button>
+        <button class="preset" data-p="exp">Expensive power — $0.30/kWh</button>
+      </div>
+    </div>
 
- <div class="kpis">
- <div class="kpi"><div class="k">Equilibrium nodes</div><div class="v g" id="kNodes">80,000</div><div class="n">N = 8,000 x P / p_elec</div></div>
- <div class="kpi"><div class="k">Network bandwidth</div><div class="v b" id="kBW">80 TB/s</div><div class="n">~1 GB/s per node</div></div>
- <div class="kpi"><div class="k">Value Reference (VR)</div><div class="v a" id="kVR">10.00 kWh</div><div class="n">P / p_elec = kWh per eWatt</div></div>
- <div class="kpi"><div class="k">Network energy</div><div class="v vi" id="kEnergy">1.0 GWh/yr</div><div class="n">energy per year at equilibrium</div></div>
- </div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Equilibrium nodes N*</div><div class="v g" id="kN">—</div><div class="n">sustained by 100 eWatt/block at margin ≈ 0</div></div>
+      <div class="kpi"><div class="k">Energy anchor (VR)</div><div class="v a" id="kVR">—</div><div class="n">kWh per eWatt = φ·P / p_elec</div></div>
+      <div class="kpi"><div class="k">Network draw</div><div class="v b" id="kMW">—</div><div class="n">total wall power, all nodes</div></div>
+      <div class="kpi"><div class="k">Annual network energy</div><div class="v vi" id="kGWh">—</div><div class="n">for scale: Bitcoin ≈ 160,000 GWh/yr</div></div>
+    </div>
 
- <div class="charts">
- <div class="chart-card">
- <h4>Tokens per kWh — bootstrap convergence</h4>
- <p>eWatt/kWh starts at ~8,000 (single node) and converges to p_elec / P as N grows. The VR (kWh/eWatt) converges in inverse. All dynamics driven by node growth, not hardware efficiency.</p>
- <div class="chart-box"><canvas id="cTPE"></canvas></div>
- </div>
- <div class="chart-card">
- <h4>Cumulative supply — linear issuance</h4>
- <p>Supply grows at ~5.26M eWatts/year regardless of node count. The emission formula keeps per-block reward at ~100 even during rapid growth. No cap, no halving.</p>
- <div class="chart-box"><canvas id="cSupply"></canvas></div>
- </div>
- <div class="chart-card">
- <h4>Annual supply inflation</h4>
- <p>eWatts issues ~5.26M/year regardless of network size. Inflation declines as supply grows. References: BTC 0.83% (post-halving), gold ~1.7%, USD M2 ~6.5%.</p>
- <div class="chart-box"><canvas id="cInflation"></canvas></div>
- </div>
- <div class="chart-card">
- <h4>Node growth — bootstrap to equilibrium</h4>
- <p>N grows from 1 node toward equilibrium (N = 8,000 x P / p_elec). The growth rate is the only real variable the testnet must calibrate.</p>
- <div class="chart-box"><canvas id="cNodes"></canvas></div>
- </div>
- </div>
- </div>
+    <div class="charts">
+      <div class="chart-card wide">
+        <h4>Efficiency absorption — the anchor holds while the network grows</h4>
+        <p>Ten years of hardware efficiency drift at the selected rate. Wall power per node falls; free entry converts every efficiency gain into more nodes; the kWh-per-eWatt anchor stays flat. Indexed to 100 at year 0. This is the mechanism that replaces programmed work escalation.</p>
+        <div class="chart-box"><canvas id="cAbsorb"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Equilibrium network size vs price</h4>
+        <p>N* = φ·100·P / c. Higher price sustains more nodes; cheaper power sustains more nodes at any price. Log scale.</p>
+        <div class="chart-box"><canvas id="cN"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Energy anchor vs price</h4>
+        <p>VR = φ·P / p_elec — a straight line whose slope is set by electricity cost. The anchor follows price; it does not prop it up.</p>
+        <div class="chart-box"><canvas id="cVRP"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Cumulative supply</h4>
+        <p>Consensus-side: ~5.26M eWatts/year, effectively linear regardless of network size or price. Predictable issuance without a halving calendar.</p>
+        <div class="chart-box"><canvas id="cSupply"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Annual supply inflation</h4>
+        <p>Declines as 1/t from fixed absolute issuance. References: BTC 0.83%, gold ~1.7%, USD M2 ~6.5%.</p>
+        <div class="chart-box"><canvas id="cInfl"></canvas></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section id="derivation">
- <div class="wrap prose">
- <h2>The derivation</h2>
- <p>Each node running eWatts consumes W watts. Over one 600-second block, the electricity cost is:</p>
- <div class="codeblock">c = W x 600 x p_elec / 3,600,000 &nbsp;&nbsp;($/block/node)</div>
- <p>For a 75W DDR5 node at $0.10/kWh: c = $0.00125/block/node.</p>
- <p>With N identical nodes and a block reward of 100 eWatts, free entry competition drives the margin to zero:</p>
- <div class="codeblock">N x c = 100 x P<br>N = 8,000 x P / p_elec &nbsp;&nbsp;(for W = 75W)</div>
- <p>Network energy per block:</p>
- <div class="codeblock">E = N x W x 600 / 3,600,000 = 100 x P / p_elec</div>
- <p>The Value Reference at equilibrium is simply:</p>
- <div class="codeblock">VR = E / 100 = P / p_elec</div>
- <p><strong>W cancels completely.</strong> Hardware efficiency does not appear in the equilibrium VR. Energy improvements are absorbed by N, not by the anchor.</p>
+  <div class="wrap prose">
+    <h2>The implicit auction, derived</h2>
+    <p>Each node consumes W watts. Over one 600-second block, its electricity cost is:</p>
+    <div class="codeblock">c = W × 600 × p_elec / 3,600,000 &nbsp;<span class="c">// $/block/node — at 75 W and $0.10/kWh: $0.00125</span></div>
+    <p>With free entry and exit, competition compresses the mining margin toward zero. Electricity is the φ-share of marginal cost (the rest is wear, connectivity, attention):</p>
+    <div class="codeblock">N* × c = φ × 100 × P &nbsp;<span class="c">// free-entry condition</span><br>E = N* × W × 600 / 3,600,000 = <span class="hl">φ × 100 × P / p_elec</span> &nbsp;<span class="c">// kWh per block — W cancels</span><br>VR = E / 100 = <span class="hl">φ × P / p_elec</span> &nbsp;<span class="c">// kWh per eWatt — W cancels</span></div>
+    <p><strong>Hardware wall power W appears in N*, but cancels in E and VR.</strong> When efficiency improves, cost per node falls, the margin opens, and entry closes it — more nodes fit inside the same energy envelope. A 5% efficiency gain becomes 5% more nodes and an unchanged anchor. Note the direction precisely: N* depends inversely on W; it is the <em>network energy</em> and the <em>anchor</em> that are invariant to it.</p>
 
- <div class="callout-green">
- <p><b>Example scenarios (W = 75W).</b></p>
- <p>Bear ($0.10, $0.10/kWh): N = 8,000, E = 100 kWh/block, VR = 1 kWh/eWatt</p>
- <p>Base ($1.00, $0.10/kWh): N = 80,000, E = 1,000 kWh/block, VR = 10 kWh/eWatt</p>
- <p>Bull ($5.00, $0.10/kWh): N = 400,000, E = 5,000 kWh/block, VR = 50 kWh/eWatt</p>
- </div>
+    <div class="callout green">
+      <p><b>Why this replaces programmed work escalation.</b> A protocol-side counterweight to efficiency drift would need to observe watts — which no permissionless, Sybil-resistant protocol can do (splitting one miner into two identities must change nothing, so per-miner metrics are unobservable by design). The market observes watts perfectly, through every miner's electricity bill, and prices them into the entry decision. The counterweight exists; it just lives outside the protocol.</p>
+    </div>
 
- <h3>The real risk: bootstrap entry lag</h3>
- <p>The equilibrium assumes instant entry and exit. During the bootstrap phase with few nodes and low liquidity, the response to a margin signal has delay. During that delay, efficiency drift affects real returns. This risk is real, measurable, and temporary. It exists on every young PoW network, and eWatts minimizes it relative to others because no ASIC fabrication lag exists.</p>
+    <h3>Scenario table (identity bound, φ = 1, W = 75 W)</h3>
+    <table class="scen">
+      <tr><th>Scenario</th><th>P</th><th>p_elec</th><th>N*</th><th>kWh/block</th><th>VR</th></tr>
+      <tr><td>Bear</td><td>$0.10</td><td>$0.10</td><td>8,000</td><td>100</td><td>1.0</td></tr>
+      <tr><td>Base</td><td>$1.00</td><td>$0.10</td><td>80,000</td><td>1,000</td><td>10.0</td></tr>
+      <tr><td>Bull</td><td>$5.00</td><td>$0.10</td><td>400,000</td><td>5,000</td><td>50.0</td></tr>
+      <tr><td>Expensive power</td><td>$1.00</td><td>$0.30</td><td>26,667</td><td>333</td><td>3.33</td></tr>
+    </table>
+    <p style="font-size:13.5px;color:var(--faint)">Realized values sit below this bound by the factor φ (electricity share of marginal cost, ~0.85 for commodity hardware with near-zero capex — far higher than ASIC mining, where hardware amortization consumes a large share of revenue).</p>
 
- <h3>Why a burn auction is unnecessary</h3>
- <p>An explicit bidding mechanism (burning eWatt for reward weight) would also stabilize the system, but compare where the margin goes: free entry absorbs it via new nodes (more distribution, wider decentralization), while a burn auction absorbs it via supply destruction (same incumbents, injects a PoS-like barrier). For a protocol built on accessibility and neutrality, free entry is strictly superior. The auction you asked about already exists.</p>
+    <h3>Comparison to Bitcoin</h3>
+    <p>Bitcoin obeys the same identity — production cost tracks mining revenue (the basis of the Cambridge CCAF consumption estimates). The difference is adjustment speed: ASIC entry requires months of fabrication lead time and heavy capital, so Bitcoin's equilibrium tracks with quarters of lag. eWatts entry is switching on a machine that already exists — minutes, not months, and no capital purchase. <strong>Free entry in eWatts is closer to the theoretical ideal than in any existing PoW.</strong> The commodity-hardware choice is not a compromise on the anchor; it is what makes the anchor's arbitrage nearly frictionless.</p>
 
- <h3>Comparison to Bitcoin</h3>
- <p>Bitcoin has the same fundamental identity (production cost ≈ revenue, per Cambridge CCAF). The difference is adjustment speed: ASIC manufacturing takes months, while eWatts runs on commodity DRAM that billions of devices already have. eWatts free entry is closer to the theoretical ideal than any existing PoW network.</p>
- </div>
+    <h3>Why an explicit burn auction is unnecessary</h3>
+    <p>Miners burning eWatts for extra reward weight would also absorb efficiency margins — but into supply destruction, concentrated among incumbents who already hold eWatts, adding a proof-of-stake-like entry barrier. Free entry absorbs the same margin into <em>more independent nodes</em>. For a protocol built on accessibility and neutrality, distribution strictly dominates destruction. The auction the protocol needs is the one it already has.</p>
+  </div>
 </section>
 
-<section id="formula">
- <div class="wrap prose">
- <h2>How the emission formula works</h2>
- <div class="codeblock">emission = clamp(100 x total_eff / hist_avg, 5, 2000)</div>
- <p><strong>total_eff</strong> is the sum of all miners' effective committed work in AOPS. <strong>hist_avg</strong> is the trailing average over 100 blocks (~16.7 hours). When network work equals its average, emission is exactly 100 eWatt per block. The short window means organic multi-year growth barely moves the ratio — the clamps exist for abrupt shocks, not trends. Effective issuance is near-constant at ~5.26M eWatts/year.</p>
- <p>The first 10,000 blocks carry a ramp-up cap of 80% (no single miner receives more than 80% of the block reward; excess burned) and a founder lock of 50,000 blocks on early coinbase outputs.</p>
- </div>
+<section id="anchor">
+  <div class="wrap prose">
+    <h2>What the anchor is — and is not</h2>
+    <p>VR = φ·P / p_elec means the energy embodied in each eWatt <strong>converges to its market price</strong> expressed in electricity terms. Read the causality in the correct direction:</p>
+    <div class="callout">
+      <p><b>The anchor is descriptive, not prescriptive.</b> Production cost follows price — it does not prop price up. If P falls, miners exit, the network shrinks, and the cost floor moves down with it. What the protocol guarantees is the relationship: at all times, acquiring an eWatt by mining costs real, measurable energy, and competition keeps that cost pinned to what the market says an eWatt is worth. "Energy-backed" means the backing is continuously re-priced by physics and free entry — the same way gold's production cost tracks gold's price across cycles, not a fixed redemption promise.</p>
+    </div>
+    <p>Consensus-side, issuance stays near-constant (~5.26M eWatts/year) and percentage inflation declines as 1/t — 10% in year 10, 5% in year 20 — without a halving calendar or any programmed decay.</p>
+  </div>
 </section>
 
 <section id="notdo">
- <div class="wrap">
- <h2>What the protocol does not do</h2>
- <ul class="plain">
- <li><strong>No price target.</strong> No $1.00/eWatt programmed value. The market discovers price; the protocol only measures energy.</li>
- <li><strong>No inflation target.</strong> No arbitrary rate codified. Absolute issuance is near-constant; percentage inflation declines naturally.</li>
- <li><strong>No supply cap.</strong> Hard caps create hoarding pressure. Scarcity here is physical production cost, not a number.</li>
- <li><strong>No halving schedule.</strong> No time-based decay. Emission responds to delivered work, not a calendar.</li>
- <li><strong>No oracles.</strong> No price feeds, no external dependencies, no governance committees.</li>
- <li><strong>No founder allocation.</strong> No pre-mine, no admin keys, no privileged minting.</li>
- <li><strong>No burn auction.</strong> Free entry is the auction. No mechanism needed beyond what exists.</li>
- </ul>
- </div>
+  <div class="wrap">
+    <h2>What the protocol does not do</h2>
+    <ul class="plain">
+      <li><strong>No price target.</strong> There is no $1.00/eWatt or any other programmed price anywhere in consensus code. Price is discovered; the anchor follows it.</li>
+      <li><strong>No inflation target.</strong> Absolute issuance is near-constant; percentage inflation declines naturally as 1/t.</li>
+      <li><strong>No supply cap.</strong> Hard caps create hoarding pressure that conflicts with settlement function. Scarcity here is the continuously re-priced physical cost of production.</li>
+      <li><strong>No halving schedule.</strong> Emission responds to delivered work inside a 17-hour window, not a calendar.</li>
+      <li><strong>No programmed work escalation.</strong> Efficiency drift is absorbed by free entry, not by parameter adjustment. The counterweight lives in the market, where watts are observable.</li>
+      <li><strong>No oracles.</strong> P, p_elec, W, φ never touch consensus. They act on the protocol from outside, through miners' entry and exit decisions.</li>
+      <li><strong>No founder allocation.</strong> No pre-mine, no admin keys. Early coinbase is capped at 80% and time-locked on-chain.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="open">
+  <div class="wrap prose">
+    <h2>Open questions, acknowledged</h2>
+    <p><strong>Entry lag is the real risk — not efficiency drift.</strong> The equilibrium holds only when participation responds to margins. In a small, illiquid bootstrap network, the response has delay; during that delay, efficiency gains erode returns for incumbents and the anchor drifts below the identity. This risk is real, measurable, and characteristic of every young PoW network — eWatts minimizes it relative to ASIC chains (no fabrication lag, no capital barrier) but cannot eliminate it. <em>The testnet hypothesis: does entry respond to margin?</em> That is the single most informative thing the testnet can measure.</p>
+    <p><strong>P is endogenous in the full system.</strong> This page treats price as an input; in reality price emerges from supply and demand for the token itself. The scenarios here are conditional statements ("if the market sustains P, then…"), not predictions.</p>
+    <p><strong>Electricity heterogeneity.</strong> Miners face costs from ~$0.03 (hydro, stranded energy) to ~$0.30/kWh (European residential). The marginal miner — the most expensive one still profitable — sets the equilibrium; cheaper miners earn Ricardian rents. The p_elec in the formula is the marginal miner's, which shifts as the network composition changes.</p>
+    <p><strong>Long-term security budget.</strong> With near-constant issuance, per-block rewards dilute across a growing miner set. Transaction fees must eventually carry miner compensation, as on Bitcoin. Whether fees will suffice cannot be predicted in advance.</p>
+    <p><strong>The equilibrium is a bound, not a law.</strong> Frictions (φ &lt; 1, lag, lumpy participation, price volatility) keep the realized network inside the identity bound. Bitcoin's fifteen-year record shows production cost tracking price through cycles with lag measured in months — the best empirical calibration available for how tightly such identities bind in practice.</p>
+  </div>
 </section>
 
 <section id="assumptions">
- <div class="wrap">
- <h2>Assumptions &amp; considerations</h2>
- <ul class="assump">
- <li><strong>Consensus constants</strong> from eWatts v0.5 (constants.rs, reward.rs, vr.rs, proof.rs), protocol version 0x0005.</li>
- <li><strong>Node uniformity:</strong> all simulated nodes commit ~20M AOPS at 75W (calibration point). Real networks are heterogeneous (2-3x dispersion).</li>
- <li><strong>Free-entry equilibrium:</strong> assumes N x c = 100 x P. Nodes are the marginal producer. More efficient nodes earn excess profits, attracting entry until marginal node breaks even.</li>
- <li><strong>Price discovery:</strong> the model requires a market price P. Before exchange listing, P is indeterminate and equilibrium does not apply. The computational VR (vr.rs) still functions.</li>
- <li><strong>Transaction fees:</strong> ignored. In maturity, fees dominate miner compensation. The identity shifts to N x c = (100 + avg_fees) x P, tightening the equilibrium.</li>
- <li><strong>Electricity price</strong> default $0.10/kWh approximates US industrial average.</li>
- <li><strong>Reference inflation rates:</strong> Bitcoin 0.83% (post-2024 halving), gold ~1.7% (World Gold Council, 25-year average), USD M2 ~6.5% (Federal Reserve long-run average).</li>
- <li><strong>Risk of error:</strong> this model is a faithful re-implementation of the consensus formulas, but it is not consensus code. No external audit has yet validated either.</li>
- </ul>
- <p style="margin-top:18px;font-size:13.5px;color:var(--faint)">Sources: <a href="https://github.com/4eWatts/ewatts-protocol">eWatts v0.5 source code</a> (constants.rs, reward.rs, vr.rs, proof.rs) · US EIA · Cambridge CBECI</p>
- </div>
+  <div class="wrap">
+    <h2>Assumptions &amp; considerations</h2>
+    <ul class="assump">
+      <li><strong>Consensus constants</strong> are read from eWatts v0.5 source (constants.rs, reward.rs, vr.rs, proof.rs), protocol version 0x0005, post-AOPS migration. If the code changes, this page must be regenerated.</li>
+      <li><strong>Emission treated as constant</strong> at 100 eWatt/block: simulation of the elastic formula shows the 100-block hist_avg window keeps emission within 0.3% of base under any organic growth path. Clamps [5, 2000] bind only on hour-scale shocks.</li>
+      <li><strong>Free-entry condition</strong> N*·c = φ·100·P assumes miners respond to margins with negligible frictions. Realized networks sit below the bound; adjustment has lag, especially during bootstrap.</li>
+      <li><strong>φ (electricity share of marginal cost)</strong> defaults to 0.85: commodity hardware people already own implies near-zero marginal capex, but wear, connectivity, and attention are not free. The identity bound (φ = 1) is shown in the scenario table.</li>
+      <li><strong>p_elec is the marginal miner's cost</strong>, not the average. Heterogeneity gives cheaper miners inframarginal rents without changing the equilibrium condition.</li>
+      <li><strong>P is exogenous</strong> in this model; all outputs are conditional on the market sustaining the selected price. No prediction of adoption or price is made or implied.</li>
+      <li><strong>Node uniformity:</strong> W applies to every node at the reference commitment of 20M AOPS. Real hardware spans ~20–300 W; the W slider explores the range, and the equilibrium results (E, VR) are invariant to it by construction.</li>
+      <li><strong>Hardware drift</strong> (default 5%/year, historical DDR3→DDR5 wall-power trend) affects only the absorption chart: it moves N*, never E or VR, under free entry.</li>
+      <li><strong>Reference rates:</strong> Bitcoin inflation 0.83% (post-2024 halving), gold ~1.7% (World Gold Council, 25-year average), USD M2 ~6.5% (Federal Reserve long-run average), Bitcoin consumption ~160 TWh/yr (Cambridge CCAF).</li>
+      <li><strong>Risk of error:</strong> the consensus formulas are re-implemented faithfully, but this page is not the consensus code; divergence from reward.rs is a bug in this page. The equilibrium model is standard production-cost theory applied to the protocol's constants — it has not yet been validated by live network data, and no external audit has reviewed either.</li>
+    </ul>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--faint)">Sources: <a href="https://github.com/4eWatts/ewatts-protocol">eWatts v0.5 source code</a> (constants.rs, reward.rs, vr.rs, proof.rs) · Cambridge CCAF (Bitcoin electricity consumption methodology) · US EIA · World Gold Council · Federal Reserve (M2)</p>
+  </div>
+</section>
+
+<section id="refs">
+  <div class="wrap">
+    <h2>References — DRAM latency &amp; energy</h2>
+    <ol class="refs">
+      <li>O. Mutlu, L. Subramanian, "Understanding and Improving the Latency of DRAM-Based Memory Systems," <em>Communications of the ACM</em> 64(8), 2021 — DRAM latency improved only ~1.3× in ~20 years while capacity grew 128× and bandwidth ~20×.</li>
+      <li>Y. Lee, J. Kim, O. Mutlu, "Tiered-Latency DRAM," <em>HPCA</em> 2013 — row-activation latency remains fundamentally limited.</li>
+      <li>T. Vogelsang, "Understanding the Energy Consumption of Dynamic Random Access Memories," <em>MICRO</em> 2010 — energy per access improved across generations, dominated by row activation.</li>
+      <li>W. A. Wulf, S. A. McKee, "Hitting the Memory Wall," <em>ACM SIGARCH</em> 23(1), 1995 — the original memory-wall paper.</li>
+      <li>Cambridge Centre for Alternative Finance, Bitcoin Electricity Consumption Index — methodology based on the same production-cost identity used in this model.</li>
+    </ol>
+  </div>
 </section>
 
 <footer>
- <div class="wrap">
- <div>eWatts v0.5 · Protocol 0x0005 · Model regenerated 2026-07-03 · MIT License</div>
- <div><a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a> · <a href="https://ewatts.org/test-results.html">Test results</a> · <a href="https://ewatts.org/whitepaper-v31.md">Whitepaper v31</a></div>
- </div>
+  <div class="wrap">
+    <div>eWatts v0.5 · Protocol 0x0005 · Economic model v2 · Regenerated 2026-07-03 · MIT License</div>
+    <div><a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a> · <a href="https://ewatts.org/test-results.html">Test results</a> · <a href="https://ewatts.org/whitepaper-v28.md">Whitepaper</a></div>
+  </div>
 </footer>
 
 <script>
-(function(){
-const C = { BASE_EMISSION: 100, BLOCK_S: 600, BLOCKS_YEAR: 52560 };
-const J_PER_KWH = 3600000;
+/* ============ eWatts economic model v2 — free-entry equilibrium ============
+   Consensus constants from constants.rs (protocol 0x0005).
+   Market model: N* × c = φ × 100 × P  →  VR = φ × P / p_elec (W cancels). */
+const C = { R: 100, BLOCK_S: 600, BLOCKS_YEAR: 52560, J_PER_KWH: 3.6e6, ISSUANCE_M: 5.256 };
 const $ = id => document.getElementById(id);
-const NODE_BW = 1.0; // GB/s per node
+const state = { P: 1.0, elec: 0.10, W: 75, phi: 0.85, drift: 0.05 };
 
-const state = { price: 1.0, elec: 0.10, watts: 75, rate: 0.45, drift: 5 };
-
-function eq(p, ec, w) {
- const c = w * C.BLOCK_S * ec / J_PER_KWH;
- const n = c > 0 ? Math.round((C.BASE_EMISSION * p) / c) : 0;
- const bw = n * NODE_BW;
- const energyKwhBlock = n * w * C.BLOCK_S / J_PER_KWH;
- const vr = energyKwhBlock / C.BASE_EMISSION; // = p / ec
- return { c, n, bw, energyKwhBlock, vr, energyMwhYear: energyKwhBlock * C.BLOCKS_YEAR / 1000 };
+function eq(P, elec, W, phi) {
+  const c = W * C.BLOCK_S * elec / C.J_PER_KWH;        // $/block/node
+  const N = phi * C.R * P / c;                          // equilibrium nodes
+  const E = N * W * C.BLOCK_S / C.J_PER_KWH;            // kWh/block = phi*R*P/elec... /R below
+  return { N, E, VR: E / C.R, MW: N * W / 1e6, GWh: (N * W / 1e6) * 8.766 };
 }
 
-function driftSeries(p, ec, w0, driftPct, years) {
- const d = [];
- let curW = w0;
- for (let y = 0; y <= years; y++) {
- const e = eq(p, ec, curW);
- d.push({ year: y, watts: curW, nodes: e.n, bw: e.bw, vr: e.vr, energyMwhYear: e.energyMwhYear });
- curW *= (1 - driftPct / 100);
- }
- return d;
-}
-
-function eqCurve(pMin, pMax, ec, w) {
- const pts = [];
- for (let i = 0; i <= 100; i++) {
- const p = pMin * Math.pow(pMax / pMin, i / 100);
- const e = eq(p, ec, w);
- pts.push({ price: p, nodes: e.n, vr: e.vr });
- }
- return pts;
-}
-
-function fmtPrice(v) { return v < 0.01 ? '$' + v.toFixed(4) : v < 1 ? '$' + v.toFixed(2) : '$' + v.toFixed(2); }
-function fmtBW(v) { return v >= 1000 ? (v/1000).toFixed(1)+' TB/s' : v.toFixed(0)+' GB/s'; }
-function fmtNodes(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toString(); }
-function fmtVR(v) { return v < 0.01 ? (v*1000).toFixed(2)+' Wh' : v.toFixed(2)+' kWh'; }
-function fmtEnergy(v) { return v >= 1000 ? (v/1000).toFixed(1)+' GWh/yr' : v.toFixed(1)+' MWh/yr'; }
-
-/* Charts */
+/* ---------- charts ---------- */
 Chart.defaults.color = '#8FA0B3';
 Chart.defaults.borderColor = '#22303F';
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 11;
 
-let chartsReady = false;
-const chartRefs = {};
-
-function initCharts() {
- chartRefs.cTPE = new Chart($('cTPE'), {
- type: 'line',
- data: {
- labels: [],
- datasets: [
- { label: 'eWatt/kWh', data: [], borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
- { label: 'VR (kWh/eWatt)', data: [], borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' },
- { label: 'Equilibrium eWatt/kWh', data: [], borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 }
- ]
- },
- options: {
- responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
- scales: {
- x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { type: 'logarithmic', position: 'left', title: { display: true, text: 'eWatt / kWh', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
- y1: { type: 'logarithmic', position: 'right', title: { display: true, text: 'kWh / eWatt', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
- }
- }
- });
-
- chartRefs.cSupply = new Chart($('cSupply'), {
- type: 'line',
- data: {
- labels: [],
- datasets: [
- { label: 'Cumulative supply', data: [], borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
- { label: 'Emission per block', data: [], borderColor: '#4ADE80', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
- ]
- },
- options: {
- responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
- scales: {
- x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { position: 'left', title: { display: true, text: 'M eWatts', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
- y1: { position: 'right', title: { display: true, text: 'eWatt / block', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', min: 0, max: 200 }, grid: { display: false } }
- }
- }
- });
-
- chartRefs.cInflation = new Chart($('cInflation'), {
- type: 'line',
- data: {
- labels: [],
- datasets: [
- { label: 'eWatts', data: [], borderColor: '#F87171', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
- { label: 'USD M2 ~6.5%', data: [], borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 },
- { label: 'Gold ~1.7%', data: [], borderColor: '#8a7a4a', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 },
- { label: 'BTC 0.83%', data: [], borderColor: '#7a5c3a', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 }
- ]
- },
- options: {
- responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
- scales: {
- x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { title: { display: true, text: '% / year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v + '%'; } }, grid: { color: '#1a2431' } }
- }
- }
- });
-
- chartRefs.cNodes = new Chart($('cNodes'), {
- type: 'line',
- data: {
- labels: [],
- datasets: [
- { label: 'Active nodes (N)', data: [], borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
- { label: 'Equilibrium N', data: [], borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 }
- ]
- },
- options: {
- responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
- scales: {
- x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { type: 'logarithmic', title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; } }, grid: { color: '#1a2431' } }
- }
- }
- });
-
- chartsReady = true;
-}
-
-function bootstrapSim(p, ec, w, years) {
- const nEq = Math.round((100 * p) / (w * 600 * ec / 3600000));
- const pts = years * 4;
- const rate = state.rate; // exponential approach: N(t) = 1 + (nEq-1)*(1 - exp(-rate*t))
- const out = [];
- let supply = 0;
- for (let i = 0; i <= pts; i++) {
- const t = i / 4;
- const n = nEq > 1 ? Math.round(1 + (nEq - 1) * (1 - Math.exp(-rate * t))) : 1;
- const energyKwhPerYear = n * w * 600 * 52560 / 3600000;
- const energyKwhPerBlock = n * w * 600 / 3600000;
- const tpe = energyKwhPerBlock > 0 ? 100 / energyKwhPerBlock : 0;
- const vr = tpe > 0 ? 1 / tpe : 0;
- const eqEnergyKwhPerYear = nEq * w * 600 * 52560 / 3600000;
- supply += 100 * 52560 / pts;
- out.push({ year: t, tpe, vr, nodes: Math.round(n), nEq, energyKwhPerYear, eqEnergyKwhPerYear, supply: supply / 1e6, emission: 100 });
- }
- return out;
-}
-
-function updateCharts() {
- const sim = bootstrapSim(state.price, state.elec, state.watts, 20);
- const lbls = sim.map(d => d.year.toFixed(1));
-
- chartRefs.cTPE.data.labels = lbls;
- chartRefs.cTPE.data.datasets[0].data = sim.map(d => d.tpe);
- chartRefs.cTPE.data.datasets[1].data = sim.map(d => d.vr);
- chartRefs.cTPE.data.datasets[2].data = sim.map(d => state.elec / state.price);
- chartRefs.cTPE.update();
-
- chartRefs.cSupply.data.labels = lbls;
- chartRefs.cSupply.data.datasets[0].data = sim.map(d => d.supply);
- chartRefs.cSupply.data.datasets[1].data = sim.map(d => d.emission);
- chartRefs.cSupply.update();
-
- const annualInfl = sim.map(d => d.supply > 0 ? (5.26 / d.supply) * 100 : 100);
- chartRefs.cInflation.data.labels = lbls;
- chartRefs.cInflation.data.datasets[0].data = annualInfl;
- chartRefs.cInflation.data.datasets[1].data = sim.map(() => 6.5);
- chartRefs.cInflation.data.datasets[2].data = sim.map(() => 1.7);
- chartRefs.cInflation.data.datasets[3].data = sim.map(() => 0.83);
- chartRefs.cInflation.update();
-
- chartRefs.cNodes.data.labels = lbls;
- chartRefs.cNodes.data.datasets[0].data = sim.map(d => d.nodes);
- chartRefs.cNodes.data.datasets[1].data = sim.map(d => d.nEq);
- chartRefs.cNodes.update();
-}
-
-function render() {
- const e = eq(state.price, state.elec, state.watts);
-
- $('oPrice').textContent = fmtPrice(state.price);
- $('oElec').textContent = '$'+state.elec.toFixed(3)+' / kWh';
- $('oWatts').textContent = state.watts + ' W';
- $('oRate').textContent = state.rate.toFixed(2);
- $('oDrift').textContent = state.drift.toFixed(1)+' % / y';
-
- $('kNodes').textContent = fmtNodes(e.n);
- $('kBW').textContent = fmtBW(e.bw);
- $('kVR').textContent = fmtVR(e.vr);
- $('kEnergy').textContent = fmtEnergy(e.energyMwhYear);
-
- if (!chartsReady) {
- initCharts();
- }
- updateCharts();
-}
-
-/* Slider wiring *//* Slider wiring *//* Slider wiring */
-const rPrice = $('rPrice'), rElec = $('rElec'), rWatts = $('rWatts'), rRate = $('rRate'), rDrift = $('rDrift');
-function upd() {
- state.price = Math.pow(10, parseFloat(rPrice.value));
- state.elec = parseFloat(rElec.value);
- state.watts = parseInt(rWatts.value);
- state.rate = parseFloat(rRate.value);
- state.drift = parseFloat(rDrift.value);
- render();
-}
-rPrice.addEventListener('input', upd);
-rElec.addEventListener('input', upd);
-rWatts.addEventListener('input', upd);
-rRate.addEventListener('input', upd);
-rDrift.addEventListener('input', upd);
-
-document.querySelectorAll('.preset').forEach(btn => {
- btn.addEventListener('click', function() {
- const p = parseFloat(this.dataset.p), e = parseFloat(this.dataset.e), w = parseFloat(this.dataset.w);
- rPrice.value = p; rElec.value = e; rWatts.value = w;
- document.querySelectorAll('.preset').forEach(b => b.classList.remove('on'));
- this.classList.add('on');
- upd();
- });
+const baseOpts = (xLabel, yLabel, xLog = false, yLog = false) => ({
+  responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
+  scales: {
+    x: { title: { display: true, text: xLabel }, type: xLog ? 'logarithmic' : 'category',
+         grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+    y: { title: { display: true, text: yLabel }, type: yLog ? 'logarithmic' : 'linear',
+         grid: { color: '#1a2431' } }
+  }
+});
+const ds = (label, color, opts = {}) => ({
+  label, borderColor: color, backgroundColor: color + '22',
+  borderWidth: 2, pointRadius: 0, tension: .25, fill: false, ...opts
 });
 
+const P_GRID = Array.from({ length: 41 }, (_, i) => +(Math.pow(10, -1.3 + i * (2.3 / 40))).toFixed(3));
+const ELEC_REF = [0.05, 0.10, 0.30];
+const ELEC_COLORS = ['#4ADE80', '#60A5FA', '#F87171'];
 
+const chAbsorb = new Chart($('cAbsorb'), { type: 'line',
+  data: { labels: [], datasets: [
+    ds('wall power per node (index)', '#FBBF24'),
+    ds('equilibrium nodes N* (index)', '#60A5FA'),
+    ds('anchor VR (index)', '#4ADE80', { borderWidth: 3 })] },
+  options: baseOpts('years', 'index (year 0 = 100)') });
 
-upd();
-})();
+const chN = new Chart($('cN'), { type: 'line',
+  data: { labels: P_GRID.map(p => '$' + p), datasets: [
+    ...ELEC_REF.map((e, i) => ds(`p_elec $${e.toFixed(2)}`, ELEC_COLORS[i])),
+    ds('current scenario', '#E8EEF5', { showLine: false, pointRadius: 5, pointStyle: 'crossRot', borderWidth: 2 })] },
+  options: baseOpts('eWatt price P', 'nodes N*', false, true) });
+
+const chVRP = new Chart($('cVRP'), { type: 'line',
+  data: { labels: P_GRID.map(p => '$' + p), datasets: [
+    ...ELEC_REF.map((e, i) => ds(`p_elec $${e.toFixed(2)}`, ELEC_COLORS[i])),
+    ds('current scenario', '#E8EEF5', { showLine: false, pointRadius: 5, pointStyle: 'crossRot', borderWidth: 2 })] },
+  options: baseOpts('eWatt price P', 'kWh / eWatt') });
+
+const YEARS20 = Array.from({ length: 21 }, (_, i) => i);
+const chSupply = new Chart($('cSupply'), { type: 'line',
+  data: { labels: YEARS20.map(String), datasets: [ds('supply', '#60A5FA', { fill: true })] },
+  options: baseOpts('years', 'M eWatts') });
+chSupply.data.datasets[0].data = YEARS20.map(t => +(C.ISSUANCE_M * t).toFixed(2));
+chSupply.update();
+
+const YEARS_I = Array.from({ length: 20 }, (_, i) => i + 1);
+const chInfl = new Chart($('cInfl'), { type: 'line',
+  data: { labels: YEARS_I.map(String), datasets: [
+    ds('eWatts', '#F87171'),
+    ds('USD M2 ~6.5%', '#5C6B7E', { borderDash: [4, 4], borderWidth: 1 }),
+    ds('gold ~1.7%', '#8a7a4a', { borderDash: [4, 4], borderWidth: 1 }),
+    ds('BTC 0.83%', '#7a5c3a', { borderDash: [4, 4], borderWidth: 1 })] },
+  options: baseOpts('years', '% / year') });
+chInfl.data.datasets[0].data = YEARS_I.map(t => +(100 / t).toFixed(2));
+chInfl.data.datasets[1].data = YEARS_I.map(() => 6.5);
+chInfl.data.datasets[2].data = YEARS_I.map(() => 1.7);
+chInfl.data.datasets[3].data = YEARS_I.map(() => 0.83);
+chInfl.update();
+
+/* ---------- render ---------- */
+const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : n.toFixed(0);
+
+function render() {
+  const s = state, r = eq(s.P, s.elec, s.W, s.phi);
+  $('oP').textContent = '$' + s.P.toFixed(2);
+  $('oElec').textContent = '$' + s.elec.toFixed(3) + ' / kWh';
+  $('oW').textContent = s.W + ' W';
+  $('oPhi').textContent = s.phi.toFixed(2);
+  $('oDrift').textContent = (s.drift * 100).toFixed(1) + ' % / y';
+
+  $('kN').textContent = fmtN(r.N);
+  $('kVR').textContent = r.VR.toFixed(2) + ' kWh';
+  $('kMW').textContent = r.MW >= 1 ? r.MW.toFixed(1) + ' MW' : (r.MW * 1000).toFixed(0) + ' kW';
+  $('kGWh').textContent = r.GWh.toFixed(1) + ' GWh';
+  $('liveN').textContent = fmtN(r.N);
+  $('liveVR').textContent = r.VR.toFixed(2);
+  $('liveMW').textContent = $('kMW').textContent;
+
+  // absorption chart: 10 years, quarterly
+  const T = Array.from({ length: 41 }, (_, i) => i / 4);
+  chAbsorb.data.labels = T.map(t => t.toFixed(0));
+  chAbsorb.data.datasets[0].data = T.map(t => +(100 * Math.pow(1 - s.drift, t)).toFixed(1));
+  chAbsorb.data.datasets[1].data = T.map(t => +(100 / Math.pow(1 - s.drift, t)).toFixed(1));
+  chAbsorb.data.datasets[2].data = T.map(() => 100);
+  chAbsorb.update();
+
+  // N* and VR vs P curves (use current W, phi)
+  ELEC_REF.forEach((e, i) => {
+    chN.data.datasets[i].data = P_GRID.map(p => eq(p, e, s.W, s.phi).N);
+    chVRP.data.datasets[i].data = P_GRID.map(p => +eq(p, e, s.W, s.phi).VR.toFixed(3));
+  });
+  // current-scenario marker: nearest grid index
+  const idx = P_GRID.reduce((best, p, i) => Math.abs(p - s.P) < Math.abs(P_GRID[best] - s.P) ? i : best, 0);
+  chN.data.datasets[3].data = P_GRID.map((_, i) => i === idx ? eq(s.P, s.elec, s.W, s.phi).N : null);
+  chVRP.data.datasets[3].data = P_GRID.map((_, i) => i === idx ? +r.VR.toFixed(3) : null);
+  chN.update(); chVRP.update();
+}
+
+/* ---------- UI ---------- */
+$('rP').addEventListener('input', e => { state.P = Math.pow(10, +e.target.value); clearP(); render(); });
+$('rElec').addEventListener('input', e => { state.elec = +e.target.value; clearP(); render(); });
+$('rW').addEventListener('input', e => { state.W = +e.target.value; render(); });
+$('rPhi').addEventListener('input', e => { state.phi = +e.target.value; render(); });
+$('rDrift').addEventListener('input', e => { state.drift = +e.target.value / 100; render(); });
+
+function clearP() { document.querySelectorAll('.preset').forEach(b => b.classList.remove('on')); }
+const presets = {
+  bear: { P: 0.10, elec: 0.10 }, base: { P: 1.00, elec: 0.10 },
+  bull: { P: 5.00, elec: 0.10 }, exp: { P: 1.00, elec: 0.30 }
+};
+document.querySelectorAll('.preset').forEach(btn => btn.addEventListener('click', () => {
+  const p = presets[btn.dataset.p];
+  state.P = p.P; state.elec = p.elec;
+  $('rP').value = Math.log10(p.P); $('rElec').value = p.elec;
+  clearP(); btn.classList.add('on'); render();
+}));
+
+render();
 </script>
 </body>
 </html>
