@@ -329,24 +329,116 @@ Chart.defaults.borderColor = '#22303F';
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 11;
 
-function baseOpts(yLabel) {
- return { responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+let chartsReady = false;
+const chartRefs = {};
+
+function initCharts() {
+ const curve = eqCurve(0.01, 100, state.elec, state.watts);
+ const drift = driftSeries(state.price, state.elec, state.watts, state.drift, 20);
+ const yrLbls = drift.map(d => d.year);
+
+ chartRefs.cNodes = new Chart($('cNodes'), {
+ type: 'line',
+ data: {
+ labels: curve.map(p => '$' + (p.price < 0.1 ? p.price.toFixed(3) : p.price.toFixed(1))),
+ datasets: [{ label: 'Equilibrium nodes', data: curve.map(p => p.nodes), borderColor: '#4ADE80', backgroundColor: 'rgba(74,222,128,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
+ },
+ options: {
+ responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
  interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
+ plugins: { legend: { display: false } },
  scales: {
- x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
- y: { title: { display: true, text: yLabel }, grid: { color: '#1a2431' } }
- } };
+ x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
+ y: { type: 'logarithmic', title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; } }, grid: { color: '#1a2431' } }
+ }
+ }
+ });
+
+ chartRefs.cVR = new Chart($('cVR'), {
+ type: 'line',
+ data: {
+ labels: curve.map(p => '$' + (p.price < 0.1 ? p.price.toFixed(3) : p.price.toFixed(1))),
+ datasets: [{ label: 'VR = P / p_elec', data: curve.map(p => p.price / state.elec), borderColor: '#FBBF24', backgroundColor: 'rgba(251,191,36,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
+ },
+ options: {
+ responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: false } },
+ scales: {
+ x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
+ y: { title: { display: true, text: 'kWh / eWatt', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } }
+ }
+ }
+ });
+
+ chartRefs.cEnergy = new Chart($('cEnergy'), {
+ type: 'line',
+ data: {
+ labels: yrLbls,
+ datasets: [
+ { label: 'Network energy (MWh/yr)', data: drift.map(d => d.energyMwhYear), borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
+ { label: 'Watts per node', data: drift.map(d => d.watts), borderColor: '#F87171', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
+ ]
+ },
+ options: {
+ responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
+ scales: {
+ x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
+ y: { type: 'linear', position: 'left', title: { display: true, text: 'MWh / year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
+ y1: { type: 'linear', position: 'right', title: { display: true, text: 'W per node', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
+ }
+ }
+ });
+
+ chartRefs.cNodesDrift = new Chart($('cNodesDrift'), {
+ type: 'line',
+ data: {
+ labels: yrLbls,
+ datasets: [
+ { label: 'Nodes', data: drift.map(d => d.nodes), borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
+ { label: 'VR (kWh/eWatt)', data: drift.map(d => d.vr), borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
+ ]
+ },
+ options: {
+ responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
+ scales: {
+ x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
+ y: { type: 'linear', position: 'left', title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; } }, grid: { color: '#1a2431' } },
+ y1: { type: 'linear', position: 'right', title: { display: true, text: 'VR (kWh/eWatt)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
+ }
+ }
+ });
+
+ chartsReady = true;
 }
 
-const charts = {};
+function updateCharts() {
+ const curve = eqCurve(0.01, 100, state.elec, state.watts);
+ const drift = driftSeries(state.price, state.elec, state.watts, state.drift, 20);
+
+ chartRefs.cNodes.data.labels = curve.map(p => '$' + (p.price < 0.1 ? p.price.toFixed(3) : p.price.toFixed(1)));
+ chartRefs.cNodes.data.datasets[0].data = curve.map(p => p.nodes);
+ chartRefs.cNodes.update();
+
+ chartRefs.cVR.data.labels = curve.map(p => '$' + (p.price < 0.1 ? p.price.toFixed(3) : p.price.toFixed(1)));
+ chartRefs.cVR.data.datasets[0].data = curve.map(p => p.price / state.elec);
+ chartRefs.cVR.update();
+
+ chartRefs.cEnergy.data.datasets[0].data = drift.map(d => d.energyMwhYear);
+ chartRefs.cEnergy.data.datasets[1].data = drift.map(d => d.watts);
+ chartRefs.cEnergy.update();
+
+ chartRefs.cNodesDrift.data.datasets[0].data = drift.map(d => d.nodes);
+ chartRefs.cNodesDrift.data.datasets[1].data = drift.map(d => d.vr);
+ chartRefs.cNodesDrift.update();
+}
 
 function render() {
- Object.values(charts).forEach(c => c.destroy());
- Object.keys(charts).forEach(k => delete charts[k]);
-
  const e = eq(state.price, state.elec, state.watts);
- const drift = driftSeries(state.price, state.elec, state.watts, state.drift, 20);
 
  $('oPrice').textContent = fmtPrice(state.price);
  $('oElec').textContent = '$'+state.elec.toFixed(3)+' / kWh';
@@ -358,83 +450,14 @@ function render() {
  $('kVR').textContent = fmtVR(e.vr);
  $('kEnergy').textContent = fmtEnergy(e.energyMwhYear);
 
- // Chart A: Equilibrium nodes vs price
- const curve = eqCurve(0.01, 100, state.elec, state.watts);
- charts.cNodes = new Chart($('cNodes'), {
- type: 'line',
- data: {
- labels: curve.map(p => fmtPrice(p.price)),
- datasets: [{ label: 'Equilibrium nodes', data: curve.map(p => p.nodes), borderColor: '#4ADE80', backgroundColor: 'rgba(74,222,128,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
- },
- options: Object.assign(baseOpts('Nodes'), {
- scales: {
- x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)' }, ticks: { font: { size: 9 }, maxTicksLimit: 8, callback: v => '$'+v }, grid: { display: false } },
- y: { type: 'logarithmic', title: { display: true, text: 'Nodes' }, ticks: { font: { size: 9 }, callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v }, grid: { color: '#1a2431' } }
- } })
- });
-
- // Chart B: VR = P/p_elec
- const vrCurve = curve.map(p => ({ price: p.price, vr: p.price / state.elec }));
- charts.cVR = new Chart($('cVR'), {
- type: 'line',
- data: {
- labels: vrCurve.map(p => fmtPrice(p.price)),
- datasets: [{ label: 'VR = P / p_elec', data: vrCurve.map(p => p.vr), borderColor: '#FBBF24', backgroundColor: 'rgba(251,191,36,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
- },
- options: Object.assign(baseOpts('kWh / eWatt'), {
- scales: {
- x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)' }, ticks: { font: { size: 9 }, maxTicksLimit: 8, callback: v => '$'+v }, grid: { display: false } },
- y: { title: { display: true, text: 'VR (kWh / eWatt)' }, ticks: { font: { size: 9 } }, grid: { color: '#1a2431' } }
- } })
- });
-
- // Chart C: Energy flat over 20 years with efficiency improvement
- const yrLbls = drift.map(d => d.year);
- charts.cEnergy = new Chart($('cEnergy'), {
- type: 'line',
- data: {
- labels: yrLbls,
- datasets: [
- { label: 'Network energy (MWh/yr)', data: drift.map(d => d.energyMwhYear), borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
- { label: 'Watts per node', data: drift.map(d => d.watts), borderColor: '#F87171', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
- ]
- },
- options: Object.assign({
- responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
- scales: {
- x: { title: { display: true, text: 'Year' }, ticks: { maxTicksLimit: 10 }, grid: { display: false } },
- y: { type: 'linear', position: 'left', title: { display: true, text: 'MWh / year' }, ticks: { font: { size: 9 } }, grid: { color: '#1a2431' } },
- y1: { type: 'linear', position: 'right', title: { display: true, text: 'W per node' }, ticks: { font: { size: 9 } }, grid: { display: false } }
+ if (!chartsReady) {
+ initCharts();
+ } else {
+ updateCharts();
  }
- })
- });
-
- // Chart D: Nodes absorbing drift
- charts.cNodesDrift = new Chart($('cNodesDrift'), {
- type: 'line',
- data: {
- labels: yrLbls,
- datasets: [
- { label: 'Nodes', data: drift.map(d => d.nodes), borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
- { label: 'VR (kWh / eWatt)', data: drift.map(d => d.vr), borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
- ]
- },
- options: Object.assign({
- responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
- interaction: { mode: 'index', intersect: false },
- plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
- scales: {
- x: { title: { display: true, text: 'Year' }, ticks: { maxTicksLimit: 10 }, grid: { display: false } },
- y: { type: 'linear', position: 'left', title: { display: true, text: 'Nodes' }, ticks: { font: { size: 9 }, callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v }, grid: { color: '#1a2431' } },
- y1: { type: 'linear', position: 'right', title: { display: true, text: 'VR (kWh/eWatt)' }, ticks: { font: { size: 9 } }, grid: { display: false } }
- }
- })
- });
 }
 
-/* Slider wiring */
+/* Slider wiring *//* Slider wiring */
 const rPrice = $('rPrice'), rElec = $('rElec'), rWatts = $('rWatts'), rDrift = $('rDrift');
 function upd() {
  state.price = Math.pow(10, parseFloat(rPrice.value));
