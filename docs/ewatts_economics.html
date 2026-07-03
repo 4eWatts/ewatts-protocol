@@ -424,18 +424,18 @@ function initCharts() {
 function bootstrapSim(p, ec, w, years) {
  const nEq = Math.round((100 * p) / (w * 600 * ec / 3600000));
  const pts = years * 4;
+ const rate = 0.45; // exponential approach: N(t) = 1 + (nEq-1)*(1 - exp(-rate*t))
  const out = [];
  let supply = 0;
  for (let i = 0; i <= pts; i++) {
  const t = i / 4;
- const x = t / 10;
- const n = nEq > 1 ? 1 + (nEq - 1) / (1 + Math.exp(-1.5 * (x - 3))) : 1;
+ const n = nEq > 1 ? Math.round(1 + (nEq - 1) * (1 - Math.exp(-rate * t))) : 1;
  const energyKwhPerYear = n * w * 600 * 52560 / 3600000;
  const energyKwhPerBlock = n * w * 600 / 3600000;
  const tpe = energyKwhPerBlock > 0 ? 100 / energyKwhPerBlock : 0;
  const vr = tpe > 0 ? 1 / tpe : 0;
  const eqEnergyKwhPerYear = nEq * w * 600 * 52560 / 3600000;
- supply += 100 * 52560 / pts; // ~5.26M/yr
+ supply += 100 * 52560 / pts;
  out.push({ year: t, tpe, vr, nodes: Math.round(n), nEq, energyKwhPerYear, eqEnergyKwhPerYear, supply: supply / 1e6, emission: 100 });
  }
  return out;
