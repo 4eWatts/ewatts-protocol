@@ -190,9 +190,9 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
  <div class="chart-box"><canvas id="cEnergy"></canvas></div>
  </div>
  <div class="chart-card">
- <h4>Emission per block — stable at 100</h4>
- <p>The emission formula (clamp(100 x total_eff / hist_avg, 5, 2000)) keeps per-block issuance at ~100 even as the network grows. No programmed decay, no halving.</p>
- <div class="chart-box"><canvas id="cEmission"></canvas></div>
+ <h4>Tokens per kWh — stable anchor</h4>
+ <p>eWatt per kWh of network energy = p_elec / P in equilibrium. Hardware efficiency cancels. The ratio is constant regardless of DRAM generation or node count.</p>
+ <div class="chart-box"><canvas id="cTPE"></canvas></div>
  </div>
  </div>
  </div>
@@ -392,13 +392,13 @@ function initCharts() {
  }
  });
 
- chartRefs.cEmission = new Chart($('cEmission'), {
+ chartRefs.cTPE = new Chart($('cTPE'), {
  type: 'line',
  data: {
  labels: yrLbls,
  datasets: [
- { label: 'Emission per block', data: drift.map(d => 100), borderColor: '#4ADE80', backgroundColor: 'rgba(74,222,128,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
- { label: 'Reference (100)', data: drift.map(d => 100), borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
+ { label: 'eWatt/kWh', data: drift.map(d => state.elec / state.price), borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
+ { label: 'VR (kWh/eWatt)', data: drift.map(d => state.price / state.elec), borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
  ]
  },
  options: {
@@ -407,7 +407,8 @@ function initCharts() {
  plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
  scales: {
  x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { title: { display: true, text: 'Ewatt / block', font: { size: 11 }, color: '#8FA0B3' }, min: 0, max: 200, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } }
+ y: { type: 'linear', position: 'left', title: { display: true, text: 'eWatt / kWh', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
+ y1: { type: 'linear', position: 'right', title: { display: true, text: 'kWh / eWatt', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
  }
  }
  });
@@ -431,9 +432,9 @@ function updateCharts() {
  chartRefs.cEnergy.data.datasets[1].data = drift.map(d => d.watts);
  chartRefs.cEnergy.update();
 
- chartRefs.cEmission.data.datasets[0].data = drift.map(d => 100);
- chartRefs.cEmission.data.datasets[1].data = drift.map(d => 100);
- chartRefs.cEmission.update();
+ chartRefs.cTPE.data.datasets[0].data = drift.map(d => state.elec / state.price);
+ chartRefs.cTPE.data.datasets[1].data = drift.map(d => state.price / state.elec);
+ chartRefs.cTPE.update();
 }
 
 function render() {
