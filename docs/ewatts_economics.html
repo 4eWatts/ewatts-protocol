@@ -185,9 +185,9 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
  <div class="chart-box"><canvas id="cSupply"></canvas></div>
  </div>
  <div class="chart-card">
- <h4>Network energy per year</h4>
- <p>Starts low (single 75W node), grows with N, stabilizes at 100 x P / p_elec when N reaches equilibrium. Efficiency drift does not move this line.</p>
- <div class="chart-box"><canvas id="cEnergy"></canvas></div>
+ <h4>Annual supply inflation</h4>
+ <p>eWatts issues ~5.26M/year regardless of network size. Inflation declines as supply grows. References: BTC 0.83% (post-halving), gold ~1.7%, USD M2 ~6.5%.</p>
+ <div class="chart-box"><canvas id="cInflation"></canvas></div>
  </div>
  <div class="chart-card">
  <h4>Node growth — bootstrap to equilibrium</h4>
@@ -376,13 +376,15 @@ function initCharts() {
  }
  });
 
- chartRefs.cEnergy = new Chart($('cEnergy'), {
+ chartRefs.cInflation = new Chart($('cInflation'), {
  type: 'line',
  data: {
  labels: [],
  datasets: [
- { label: 'Network energy', data: [], borderColor: '#F87171', backgroundColor: 'rgba(248,113,113,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
- { label: 'Equilibrium energy', data: [], borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 }
+ { label: 'eWatts', data: [], borderColor: '#F87171', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
+ { label: 'USD M2 ~6.5%', data: [], borderColor: '#5C6B7E', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 },
+ { label: 'Gold ~1.7%', data: [], borderColor: '#8a7a4a', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 },
+ { label: 'BTC 0.83%', data: [], borderColor: '#7a5c3a', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 }
  ]
  },
  options: {
@@ -391,7 +393,7 @@ function initCharts() {
  plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
  scales: {
  x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { title: { display: true, text: 'kWh / year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } }
+ y: { title: { display: true, text: '% / year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v + '%'; } }, grid: { color: '#1a2431' } }
  }
  }
  });
@@ -454,10 +456,13 @@ function updateCharts() {
  chartRefs.cSupply.data.datasets[1].data = sim.map(d => d.emission);
  chartRefs.cSupply.update();
 
- chartRefs.cEnergy.data.labels = lbls;
- chartRefs.cEnergy.data.datasets[0].data = sim.map(d => d.energyKwhPerYear);
- chartRefs.cEnergy.data.datasets[1].data = sim.map(d => d.eqEnergyKwhPerYear);
- chartRefs.cEnergy.update();
+ const annualInfl = sim.map(d => d.supply > 0 ? (5.26 / d.supply) * 100 : 100);
+ chartRefs.cInflation.data.labels = lbls;
+ chartRefs.cInflation.data.datasets[0].data = annualInfl;
+ chartRefs.cInflation.data.datasets[1].data = sim.map(() => 6.5);
+ chartRefs.cInflation.data.datasets[2].data = sim.map(() => 1.7);
+ chartRefs.cInflation.data.datasets[3].data = sim.map(() => 0.83);
+ chartRefs.cInflation.update();
 
  chartRefs.cNodes.data.labels = lbls;
  chartRefs.cNodes.data.datasets[0].data = sim.map(d => d.nodes);
