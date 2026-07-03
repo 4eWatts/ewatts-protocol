@@ -1,758 +1,465 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
-<meta name="version" content="eWatts v0.5 — 2026-07-03" />
-<title>eWatts — Economic model</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="version" content="eWatts v0.5 (AOPS) — 2026-07-03">
+<meta name="description" content="Interactive economic model of the eWatts protocol v0.5: free-entry equilibrium, VR = P/p_elec, elastic emission anchored to energy cost.">
+<title>eWatts — Economic Model v0.5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Inter',-apple-system,sans-serif; background:#0b0b12; color:#d4d4dc; font-size:15px; line-height:1.7; }
-.container { max-width:1120px; margin:0 auto; padding:0 20px; }
-nav { position:sticky; top:0; z-index:100; background:#0b0b12; border-bottom:1px solid #1a1a2a; }
-.nav-inner { max-width:1120px; margin:0 auto; padding:0 20px; display:flex; justify-content:space-between; align-items:center; height:46px; }
-.logo { font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.2px; }
-.logo span { color:#5a5a72; }
-.nav-links { display:flex; gap:20px; }
-.nav-links a { color:#5a5a72; text-decoration:none; font-size:13px; transition:color .15s; }
-.nav-links a:hover { color:#c8c8cc; }
-header { margin:2rem 0 2.5rem; padding-bottom:1.5rem; border-bottom:1px solid #1a1a2a; }
-.eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:#5a5a72; margin-bottom:.75rem; }
-h1 { font-size:2.25rem; font-weight:500; margin:0 0 .75rem; line-height:1.2; letter-spacing:-.02em; color:#e0e0e0; }
-.subtitle { font-size:1rem; color:#6b6b8a; margin:0; max-width:740px; }
-h2 { font-size:1.3rem; font-weight:500; margin:3rem 0 1rem; color:#e0e0e0; }
-h3 { font-size:1rem; font-weight:500; margin:0 0 .5rem; color:#d4d4dc; }
-p { margin:0 0 1rem; color:#6b6b8a; }
-a { color:#3b82f6; text-decoration:none; }
-a:hover { opacity:.8; }
-.calibration { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin:2rem 0; }
-.calibration-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin-top:.75rem; }
-.calibration-item { font-size:.9rem; }
-.calibration-label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5a5a72; margin-bottom:2px; }
-.calibration-value { font-family:ui-monospace,monospace; font-weight:500; color:#d4d4dc; }
-.scenario-bar { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin:2rem 0 1.5rem; }
-.scenario-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#5a5a72; margin-bottom:.6rem; }
-.slider-row { margin-bottom:1.1rem; }
-.slider-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.5rem; }
-.slider-name { font-size:.9rem; color:#6b6b8a; }
-.slider-value { font-size:.95rem; font-weight:500; font-family:ui-monospace,monospace; color:#d4d4dc; }
-input[type="range"] { -webkit-appearance:none; appearance:none; width:100%; height:6px; background:#2a2a3a; border-radius:3px; outline:none; cursor:pointer; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:#3b82f6; border-radius:50%; cursor:pointer; border:2px solid #111121; transition:transform .1s; }
-input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.1); }
-input[type="range"]::-moz-range-thumb { width:18px; height:18px; background:#3b82f6; border-radius:50%; cursor:pointer; border:2px solid #111121; }
-.scenario-presets { display:flex; flex-wrap:wrap; gap:6px; margin-top:1.2rem; padding-top:1rem; border-top:1px solid #1a1a2a; }
-.preset-label { font-size:11px; color:#5a5a72; align-self:center; margin-right:6px; }
-.preset-btn { padding:4px 10px; font-size:12px; font-family:inherit; border:1px solid #2a2a3a; border-radius:4px; background:#111121; color:#6b6b8a; cursor:pointer; transition:.15s; }
-.preset-btn:hover { background:#1a1a2a; border-color:#3b82f6; color:#3b82f6; }
-.metric-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:2.5rem; }
-.metric-card { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.1rem; }
-.metric-label { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5a5a72; margin-bottom:.4rem; }
-.metric-value { font-size:1.4rem; font-weight:500; font-family:ui-monospace,monospace; color:#d4d4dc; }
-.chart-grid { display:grid; grid-template-columns:1fr; gap:1.5rem; }
-@media(min-width:800px){.chart-grid{grid-template-columns:1fr 1fr;}}
-.chart-card { background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.4rem 1.4rem; }
-.chart-title { font-size:.95rem; font-weight:500; margin:0 0 .35rem; color:#d4d4dc; }
-.chart-desc { font-size:.82rem; color:#6b6b8a; margin:0 0 1rem; line-height:1.5; }
-.chart-wrapper { position:relative; height:240px; }
-.footer-note { background:#0c0c18; border:1px solid #1a1a2a; border-radius:6px; padding:1.25rem 1.5rem; margin-top:3rem; font-size:.85rem; color:#6b6b8a; line-height:1.6; }
-.footer-note strong { color:#d4d4dc; font-weight:500; }
-hr { border:none; border-top:1px solid #1a1a2a; margin:3rem 0; }
-.source-line { font-size:.8rem; color:#5a5a72; margin-top:3rem; text-align:center; }
-ul.assumption-list { list-style:none; padding:0; margin:0; }
-ul.assumption-list li { padding:.4rem 0; border-bottom:1px solid #1a1a2a; color:#6b6b8a; font-size:.92rem; }
-ul.assumption-list li:last-child { border-bottom:none; }
-ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
-.highlight-box { background:#111121; border:1px solid #1a1a2a; border-left:3px solid #378ADD; border-radius:6px; padding:1rem 1.5rem; margin:1.5rem 0; }
-.highlight-box p { margin:0; }
+:root{
+ --bg:#0B0F14; --surface:#131A24; --surface2:#0F151E; --line:#22303F;
+ --text:#E8EEF5; --muted:#8FA0B3; --faint:#5C6B7E;
+ --green:#4ADE80; --blue:#60A5FA; --amber:#FBBF24; --red:#F87171; --violet:#A78BFA;
+ --mono:'JetBrains Mono',monospace; --disp:'Space Grotesk',sans-serif; --body:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+nav{border-bottom:1px solid var(--line);padding:16px 0;position:sticky;top:0;background:rgba(11,15,20,.92);backdrop-filter:blur(8px);z-index:50}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.brand{font-family:var(--disp);font-weight:700;font-size:18px;color:var(--text)}
+.brand span{color:var(--faint);font-weight:400}
+.navlinks{display:flex;gap:20px;font-size:14px;flex-wrap:wrap}
+.navlinks a{color:var(--muted)}
+.navlinks a:hover{color:var(--text);text-decoration:none}
+.navlinks a.active{color:var(--green)}
+header{padding:64px 0 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:14px}
+h1{font-family:var(--disp);font-size:clamp(30px,4.5vw,46px);font-weight:700;line-height:1.12;letter-spacing:-.01em;margin-bottom:18px}
+.lede{color:var(--muted);max-width:760px;font-size:17px}
+.callout-green{border-left:3px solid var(--green);background:rgba(74,222,128,.05);border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;max-width:780px}
+.callout-green p{color:var(--muted);font-size:14.5px;margin:0}
+.callout-green p+p{margin-top:10px}
+.callout-green b{color:var(--text)}
+.callout-amber{border-left:3px solid var(--amber);background:rgba(251,191,36,.05);border-radius:0 10px 10px 0;padding:16px 20px;margin:20px 0;max-width:780px}
+.callout-amber p{color:var(--muted);font-size:14.5px;margin:0}
+.callout-amber p+p{margin-top:10px}
+.callout-amber b{color:var(--text)}
+section{padding:44px 0;border-top:1px solid var(--line)}
+h2{font-family:var(--disp);font-size:26px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
+h3{font-family:var(--disp);font-size:18px;font-weight:600;margin:26px 0 10px}
+.sub{color:var(--muted);margin-bottom:26px;max-width:740px}
+.params{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.param{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.param .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.param .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:4px;color:var(--text)}
+.param .n{font-size:12px;color:var(--muted);margin-top:3px}
+.controls{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px 26px;margin-bottom:26px}
+.controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px 28px;margin-top:16px}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
+.ctl label output{font-family:var(--mono);color:var(--text);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--green);height:4px;cursor:pointer}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.preset{font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s}
+.preset:hover{border-color:var(--green);color:var(--text)}
+.preset.on{border-color:var(--green);color:var(--green);background:rgba(74,222,128,.08)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:30px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:6px}
+.kpi .v.g{color:var(--green)} .kpi .v.b{color:var(--blue)} .kpi .v.a{color:var(--amber)} .kpi .v.vi{color:var(--violet)}
+.kpi .n{font-size:11.5px;color:var(--faint);margin-top:4px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.charts{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.chart-card h4{font-family:var(--disp);font-size:15px;font-weight:600;margin-bottom:4px}
+.chart-card p{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.45}
+.chart-box{position:relative;height:240px}
+.prose{max-width:780px}
+.prose p{color:var(--muted);margin-bottom:16px}
+.prose strong{color:var(--text)}
+.prose code{font-family:var(--mono);font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--green)}
+.codeblock{font-family:var(--mono);font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:18px 0;overflow-x:auto;color:var(--text)}
+ul.plain{list-style:none;max-width:780px}
+ul.plain li{padding:10px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+ul.plain li strong{color:var(--text)}
+.assump{font-size:14px;color:var(--muted);max-width:820px}
+.assump li{margin:8px 0 8px 18px}
+.refs{font-size:13.5px;color:var(--muted);max-width:820px}
+.refs li{margin:10px 0 10px 18px}
+footer{border-top:1px solid var(--line);padding:30px 0 50px;font-size:13px;color:var(--faint)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
+
 <nav>
-  <div class="nav-inner">
-    <div class="logo"><a href="index.html" style="color:#fff;text-decoration:none;">eWatts<span style="color:#5a5a72;">.org</span></a> <span style="font-size:11px;color:#3b82f6;font-weight:400;">economic model</span></div>
-    <div class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="protocol.html">Protocol</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="ewatts_economics.html">Economic Model</a>
-    </div>
-  </div>
+ <div class="wrap">
+ <div class="brand">eWatts<span>.org</span> <span style="font-size:13px">/ economic model</span></div>
+ <div class="navlinks">
+ <a href="https://ewatts.org/index.html">Home</a>
+ <a href="https://ewatts.org/protocol.html">Protocol</a>
+ <a href="https://ewatts.org/architecture.html">Architecture</a>
+ <a class="active" href="#">Economic Model</a>
+ <a href="https://ewatts.org/test-results.html">Tests</a>
+ <a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a>
+ </div>
+ </div>
 </nav>
 
-<div class="container">
-
-  <header>
-    <div class="eyebrow">Economic Model — v0.5</div>
-    <h1>Free entry as equilibrium</h1>
-    <p class="subtitle">Every node running eWatts is a continuous bid in an implicit auction. The block reward is fixed at 100 eWatts. Free entry and exit mean the network finds its own size: the margin goes to zero, and bandwidth becomes a function of price and electricity cost, not an exogenous assumption.</p>
-  </header>
-
-  <div class="highlight-box">
-    <p><strong>The key result:</strong> Under free entry, the network's Value Reference converges to <em>P / p<sub>elec</sub></em> — the market price of eWatt divided by the price of electricity. Hardware efficiency drops out of the equilibrium entirely. A 5% efficiency improvement does not weaken the anchor; it attracts 5% more nodes. Total network energy and the VR stay constant.</p>
-  </div>
-
-  <div class="calibration">
-    <h3>Protocol parameters (constants.rs)</h3>
-    <div class="calibration-grid">
-      <div class="calibration-item">
-        <div class="calibration-label">Base emission</div>
-        <div class="calibration-value">100 Ewatt/block</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">Block time</div>
-        <div class="calibration-value">600 s</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">Energy per access</div>
-        <div class="calibration-value">3.75 &mu;J</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">Default node</div>
-        <div class="calibration-value">75 W DDR5</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">Node bandwidth</div>
-        <div class="calibration-value">~1 GB/s</div>
-      </div>
-      <div class="calibration-item">
-        <div class="calibration-label">Emission range</div>
-        <div class="calibration-value">5 - 2,000 Ewatt</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="scenario-bar">
-    <div class="scenario-label">Market assumptions</div>
-
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-name">eWatt market price (P)</span>
-        <span class="slider-value" id="price-display">$1.00</span>
-      </div>
-      <input type="range" id="price-slider" min="-2" max="2" step="0.02" value="0" />
-    </div>
-
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-name">Electricity cost (p<sub>elec</sub>)</span>
-        <span class="slider-value" id="elec-display">$0.10/kWh</span>
-      </div>
-      <input type="range" id="elec-slider" min="0.02" max="0.50" step="0.005" value="0.10" />
-    </div>
-
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-name">Node power</span>
-        <span class="slider-value" id="power-display">75 W</span>
-      </div>
-      <input type="range" id="power-slider" min="25" max="200" step="5" value="75" />
-    </div>
-
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-name">Annual efficiency improvement</span>
-        <span class="slider-value" id="eff-display">5%/yr</span>
-      </div>
-      <input type="range" id="eff-slider" min="0" max="15" step="0.5" value="5" />
-    </div>
-
-    <div class="scenario-presets">
-      <span class="preset-label">Quick presets:</span>
-      <button class="preset-btn" id="preset-bear">Bear ($0.10, $0.10)</button>
-      <button class="preset-btn" id="preset-base">Base ($1.00, $0.10)</button>
-      <button class="preset-btn" id="preset-bull">Bull ($5.00, $0.10)</button>
-      <button class="preset-btn" id="preset-expensive">Expensive power ($1.00, $0.30)</button>
-    </div>
-  </div>
-
-  <div class="metric-cards">
-    <div class="metric-card">
-      <div class="metric-label">Equilibrium nodes</div>
-      <div class="metric-value" id="m-nodes">—</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Network bandwidth</div>
-      <div class="metric-value" id="m-bandwidth">—</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Value Reference (VR)</div>
-      <div class="metric-value" id="m-vr">—</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Network energy</div>
-      <div class="metric-value" id="m-energy">—</div>
-    </div>
-  </div>
-
-  <div class="chart-grid">
-
-    <div class="chart-card">
-      <h3 class="chart-title">Equilibrium nodes vs market price</h3>
-      <p class="chart-desc">At any price P, free entry drives the node count to N = 8,000 &times; P / p<sub>elec</sub>. Linear: if P doubles, N doubles.</p>
-      <div class="chart-wrapper"><canvas id="chart-a" role="img" aria-label="Equilibrium nodes as a function of market price"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">Value Reference = P / p<sub>elec</sub></h3>
-      <p class="chart-desc">The VR converges to market price divided by electricity cost. It is not a fixed number of kWh. Efficiency does not appear in the equation.</p>
-      <div class="chart-wrapper"><canvas id="chart-b" role="img" aria-label="VR as P over p_elec identity line"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">Network energy over 20 years</h3>
-      <p class="chart-desc">Efficiency improves 5%/yr (compounding). Each year, node power drops, but that opens margin, new nodes enter, and network energy stays flat. No drift.</p>
-      <div class="chart-wrapper"><canvas id="chart-c" role="img" aria-label="Network energy stays flat as efficiency improves"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">Nodes absorbing efficiency gains</h3>
-      <p class="chart-desc">As node power drops from 75 W toward ~25 W over 20 years, the equilibrium node count rises to keep total cost = total reward. VR stays at P / p<sub>elec</sub>.</p>
-      <div class="chart-wrapper"><canvas id="chart-d" role="img" aria-label="Node count rises to absorb efficiency gains"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">eWatt unit economics (per node)</h3>
-      <p class="chart-desc">Revenue per node = 100/N &times; P. Cost per node = watts &times; 600s &times; p<sub>elec</sub> / 3.6e6. Margin goes to zero in equilibrium. Entry closes any gap.</p>
-      <div class="chart-wrapper"><canvas id="chart-e" role="img" aria-label="Per-node revenue vs cost over time"></canvas></div>
-    </div>
-
-    <div class="chart-card">
-      <h3 class="chart-title">Bitcoin parallel: the lag advantage</h3>
-      <p class="chart-desc">Bitcoin has the same production-cost-revenue identity, but ASIC replacement takes months. eWatts hardware is commodity DRAM: entry and exit happen in minutes.</p>
-      <div class="chart-wrapper"><canvas id="chart-f" role="img" aria-label="eWatts vs Bitcoin re-equilibration speed"></canvas></div>
-    </div>
-
-  </div>
-
-  <hr />
-
-  <h2>The derivation</h2>
-
-  <p>Each node running eWatts consumes W watts of power. Over one 600-second block, the energy cost is:</p>
-
-  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
-    c = W &times; 600 &times; p<sub>elec</sub> / 3,600,000 &nbsp;($/block/node)
-  </p>
-
-  <p>There are N identical nodes. The block reward is 100 eWatts. With free entry, competition drives the margin to zero. Total network cost equals total reward value:</p>
-
-  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
-    N &times; c = 100 &times; P
-    <br/>
-    &there4; N = 100 &times; P / c = 8,000 &times; P / p<sub>elec</sub>
-  </p>
-
-  <p>Network energy per block:</p>
-
-  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
-    E = N &times; W &times; 600 / 3,600,000 &nbsp;(kWh/block)
-    <br/>
-    &there4; E = 100 &times; P / p<sub>elec</sub>
-  </p>
-
-  <p>Dividing by the block reward (100 eWatts) gives the marginal Value Reference at equilibrium:</p>
-
-  <p style="font-family:ui-monospace,monospace; background:#111121; border:1px solid #1a1a2a; border-radius:6px; padding:1rem 1.25rem; font-size:.9rem; color:#d4d4dc;">
-    VR = E / 100 = P / p<sub>elec</sub>
-  </p>
-
-  <p><strong>Watts per node cancel out.</strong> Hardware efficiency does not appear in the equilibrium VR. The anchor follows price and electricity cost, not the generation of DRAM.</p>
-
-  <h2>What efficiency drift actually does</h2>
-
-  <p>When hardware efficiency improves (e.g., DDR5 replaces DDR4), node power W drops while maintaining the same ~1 GB/s bandwidth. This cuts the per-node cost c. Margin opens, and new nodes enter. N rises exactly enough to close the margin. Total network energy and the VR return to exactly where they were.</p>
-
-  <p>The drift is absorbed entirely by network size, not by the anchor. The only scenario where efficiency drift matters for the VR is the one where node entry is frozen by assumption &mdash; which is the scenario without the market mechanism that exists.</p>
-
-  <p>This is the same identity that governs Bitcoin (Cambridge Centre for Alternative Finance estimates Bitcoin&rsquo;s energy consumption using the same production-cost-equals-revenue identity). The difference is <strong>speed of adjustment</strong>: Bitcoin requires ASIC manufacturing lead times and months of mining profitability lag. eWatts runs on commodity DRAM that billions of devices already have, and entry/exit happens in minutes.</p>
-
-  <h2>Why a burn auction is unnecessary</h2>
-
-  <p>An explicit bidding mechanism (miners burning eWatt for additional reward weight) would also stabilize the system. But compare where the margin goes:</p>
-
-  <ul class="assumption-list">
-    <li><strong>Free entry:</strong> Margin absorbed by new nodes. More participants, more distribution, wider decentralization. Hardware anyone already owns.</li>
-    <li><strong>Burn auction:</strong> Margin absorbed by supply destruction. Same incumbents keep mining. Burn creates a barrier: you need eWatt to bid, which injects a proof-of-stake component.</li>
-  </ul>
-
-  <p>For a protocol built on accessibility and neutrality, absorbing margin via entry is strictly superior to absorbing it via burn. The leil&atilde;o Gustavo asked about already exists. It is the free entry of commodity hardware nodes.</p>
-
-  <div class="highlight-box">
-    <p><strong>Bottom line.</strong> The protocol does not need a new mechanism. It needs the testnet to demonstrate that entry responds to margin. That is the hypothesis the testnet validates or refutes.</p>
-  </div>
-
-  <h2>The real risk: lag in an illiquid network</h2>
-
-  <p>The equilibrium assumes instant entry and exit. In practice, during the bootstrap phase with few nodes and low liquidity, the response to a margin signal has lag. During that lag, efficiency drift affects real returns.</p>
-
-  <p>This risk is real, measurable, and temporary. It exists on every young PoW network. eWatts minimizes it relative to other PoW networks because no ASIC fabrication lag exists, but it does not eliminate it entirely. The bootstrap phase is when monitoring matters most.</p>
-
-  <h2>What the protocol does not do</h2>
-
-  <ul class="assumption-list">
-    <li><strong>No price target.</strong> No $1.00/eWatt programmed value. P is a market output.</li>
-    <li><strong>No inflation target.</strong> Supply adjusts to bandwidth, period.</li>
-    <li><strong>No supply cap.</strong> No programmed scarcity. Always energy-backed.</li>
-    <li><strong>No halving schedule.</strong> No time-based decay. Emission responds to network activity.</li>
-    <li><strong>No oracles.</strong> No price feeds, no external dependencies, no governance committees.</li>
-    <li><strong>No burn auction.</strong> Free entry is the auction. No mechanism needed beyond what already exists.</li>
-  </ul>
-
-  <h2>Open questions, updated</h2>
-
-  <p><strong>Does entry respond to margin?</strong> The equilibrium derivation assumes it does. Testnet data on node churn in response to profitability is the evidence that confirms or contradicts the model.</p>
-
-  <p><strong>Long-term security budget.</strong> Once network bandwidth stabilizes, per-block rewards are proportional to stable bandwidth. Transaction fees will eventually dominate miner compensation. Whether fees suffice is an open question that cannot be predicted in advance.</p>
-
-  <div class="footer-note">
-    <strong>Model assumptions and sources.</strong>
-    Base emission 100 Ewatt/block. Block time 600 s. J_PER_ACCESS = 3.75 &micro;J (constants.rs). Node power 75 W corresponds to a DDR5 mining node at MIN_COMMIT_AOPS = 20M ops/s. Node bandwidth ~1 GB/s derived from 20M &times; 64 bytes per access. Free entry equilibrium: N &times; c = 100 &times; P, where c = W &times; 600 &times; p<sub>elec</sub> / 3.6e6. VR = P / p<sub>elec</sub>. Efficiency drift modeled as compounding annual improvement in W/node holding bandwidth constant. Bitcoin energy reference: Cambridge Centre for Alternative Finance (CBECI methodology).
-  </div>
-
-  <div class="source-line">
-    Sources: eWatts v0.5 source code (constants.rs, reward.rs, vr.rs) &middot; US EIA &middot; Cambridge CCAF
-  </div>
-
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-(function() {
-  // ── Protocol constants ──────────────────────────────────────────
-  const BASE_EMISSION = 100;          // Ewatt/block
-  const BLOCK_TIME = 600;             // seconds
-  const BLOCKS_YEAR = 52560;          // 144 blocks/day x 365
-  const NODE_BW = 1.0;               // GB/s per node (20M AOPS x 64 bytes)
-
-  // ── State ────────────────────────────────────────────────────────
-  let price = 1.0;         // $/eWatt
-  let elecCost = 0.10;     // $/kWh
-  let nodeWatts = 75;      // W per node
-  let effImprovement = 5;  // %/year
-  let charts = {};
-  let renderTimeout = null;
-
-  // ── Core equilibrium ─────────────────────────────────────────────
-  // c = W * 600 * p_elec / 3,600,000  ($/block/node)
-  // N * c = 100 * P  (free entry, margin -> 0)
-  // N = 8000 * P / p_elec  (simplified when W=75)
-  function computeEq(p, ec, w) {
-    const c = w * BLOCK_TIME * ec / 3600000;
-    const n = c > 0 ? Math.round((BASE_EMISSION * p) / c) : 0;
-    const bw = n * NODE_BW;
-    const energyKwhPerBlock = n * w * BLOCK_TIME / 3600000;
-    const vr = energyKwhPerBlock / BASE_EMISSION;  // = p / ec
-    return { c, n, bw, energyKwhPerBlock, vr };
-  }
-
-  // ── Simulate 20-year efficiency drift ────────────────────────────
-  function simulateDrift(p, ec, w0, effPct, years) {
-    const data = [];
-    let currentW = w0;
-    for (let y = 0; y <= years; y++) {
-      const eq = computeEq(p, ec, currentW);
-      data.push({
-        year: y,
-        watts: currentW,
-        nodes: eq.n,
-        bandwidth: eq.bw,
-        vr: eq.vr,
-        energyKwhPerBlock: eq.energyKwhPerBlock,
-        energyMwhYear: eq.energyKwhPerBlock * BLOCKS_YEAR / 1000,
-        // Per-node economics
-        costPerBlock: eq.c,
-        revenuePerBlock: eq.n > 0 ? (BASE_EMISSION / eq.n) * p : 0,
-        marginPerBlock: eq.n > 0 ? (BASE_EMISSION / eq.n) * p - eq.c : 0,
-      });
-      if (y < years) currentW *= (1 - effPct / 100);
-    }
-    return data;
-  }
-
-  // ── Equilibrium curve as function of price ───────────────────────
-  function equilibriumCurve(pMin, pMax, ec, w) {
-    const pts = [];
-    const steps = 100;
-    for (let i = 0; i <= steps; i++) {
-      const p = pMin * Math.pow(pMax / pMin, i / steps);
-      const eq = computeEq(p, ec, w);
-      pts.push({ price: p, nodes: eq.n, bw: eq.bw, vr: eq.vr, energy: eq.energyKwhPerBlock });
-    }
-    return pts;
-  }
-
-  // ── Formatting ───────────────────────────────────────────────────
-  function fmtPrice(v) {
-    if (v < 0.01) return '$' + v.toFixed(4);
-    if (v < 1) return '$' + v.toFixed(2);
-    if (v < 100) return '$' + v.toFixed(2);
-    return '$' + v.toFixed(0);
-  }
-  function fmtBW(v) {
-    if (v >= 1000) return (v / 1000).toFixed(1) + ' TB/s';
-    if (v >= 1) return v.toFixed(1) + ' GB/s';
-    return (v * 1000).toFixed(0) + ' MB/s';
-  }
-  function fmtNodes(v) {
-    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
-    if (v >= 1000) return (v / 1000).toFixed(0) + 'k';
-    return v.toString();
-  }
-  function fmtVR(v) {
-    if (v < 1) return (v * 1000).toFixed(2) + ' Wh';
-    return v.toFixed(4) + ' kWh';
-  }
-  function fmtEnergy(v) {
-    if (v >= 1000) return (v / 1000).toFixed(1) + ' GWh/yr';
-    return v.toFixed(1) + ' MWh/yr';
-  }
-
-  function isDark() { return true; }
-  function gridColor() { return 'rgba(255,255,255,0.06)'; }
-  function tickColor() { return '#888780'; }
-
-  function commonOpts(yTitle, logY) {
-    return {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
-      scales: {
-        y: {
-          type: logY ? 'logarithmic' : 'linear',
-          title: { display: true, text: yTitle, font: { size: 11 }, color: tickColor() },
-          ticks: { font: { size: 10 }, color: tickColor(), callback: function(v) { if (v >= 1e6) return (v/1e6).toFixed(1)+'M'; if (v >= 1000) return (v/1000).toFixed(1)+'k'; return v; } },
-          grid: { color: gridColor() },
-          border: { color: gridColor() }
-        },
-        x: {
-          title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: tickColor() },
-          ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 8 },
-          grid: { display: false },
-          border: { color: gridColor() }
-        }
-      },
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
-    };
-  }
-
-  // ── Render ───────────────────────────────────────────────────────
-  function render() {
-    Object.values(charts).forEach(c => c.destroy());
-    charts = {};
-
-    const eq = computeEq(price, elecCost, nodeWatts);
-    const drift = simulateDrift(price, elecCost, nodeWatts, effImprovement, 20);
-
-    // Update metric cards
-    document.getElementById('m-nodes').textContent = fmtNodes(eq.n);
-    document.getElementById('m-bandwidth').textContent = fmtBW(eq.bw);
-    document.getElementById('m-vr').textContent = fmtVR(eq.vr);
-    document.getElementById('m-energy').textContent = fmtEnergy(eq.energyKwhPerBlock * BLOCKS_YEAR / 1000);
-
-    // ── A: Equilibrium nodes vs price ──────────────────────────────
-    const curve = equilibriumCurve(0.01, 100, elecCost, nodeWatts);
-    charts.a = new Chart(document.getElementById('chart-a'), {
-      type: 'line',
-      data: {
-        labels: curve.map(p => p.price),
-        datasets: [{
-          label: 'Equilibrium nodes',
-          data: curve.map(p => p.nodes),
-          borderColor: '#378ADD',
-          backgroundColor: 'rgba(55,138,221,0.08)',
-          borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1,
-        }]
-      },
-      options: Object.assign(commonOpts('Nodes'), {
-        scales: {
-          x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 8, callback: v => '$' + v }, grid: { display: false }, border: { color: gridColor() } },
-          y: { type: 'logarithmic', title: { display: true, text: 'Nodes', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), callback: function(v) { if (v >= 1e6) return (v/1e6).toFixed(1)+'M'; if (v >= 1000) return (v/1000).toFixed(1)+'k'; return v; } }, grid: { color: gridColor() }, border: { color: gridColor() } }
-        }
-      })
-    });
-
-    // ── B: VR identity ────────────────────────────────────────────
-    // Show VR = P / p_elec as a function of P (identity line)
-    const vrCurve = curve.map(p => ({
-      price: p.price,
-      vr: p.price / elecCost
-    }));
-    const bOpts = Object.assign(commonOpts('kWh / eWatt'), {
-      scales: {
-        x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 8, callback: v => '$' + v }, grid: { display: false }, border: { color: gridColor() } },
-        y: { title: { display: true, text: 'VR (kWh / eWatt)', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { color: gridColor() }, border: { color: gridColor() } }
-      }
-    });
-    charts.b = new Chart(document.getElementById('chart-b'), {
-      type: 'line',
-      data: {
-        labels: vrCurve.map(p => p.price),
-        datasets: [{
-          label: 'VR = P / p_elec',
-          data: vrCurve.map(p => p.vr),
-          borderColor: '#1D9E75',
-          backgroundColor: 'rgba(29,158,117,0.08)',
-          borderWidth: 2, pointRadius: 0, fill: true, tension: 0.05,
-        }]
-      },
-      options: bOpts
-    });
-
-    // ── C: Network energy over time (stays flat) ──────────────────
-    const yrLabels = drift.map(d => 'Yr ' + d.year);
-    const cOpts = Object.assign(commonOpts('MWh / year'), {
-      scales: {
-        y: { title: { display: true, text: 'MWh / year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { color: gridColor() }, border: { color: gridColor() } },
-        x: { title: { display: true, text: 'Year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 10 }, grid: { display: false }, border: { color: gridColor() } }
-      },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 10, color: tickColor() } }, tooltip: { mode: 'index', intersect: false } }
-    });
-    charts.c = new Chart(document.getElementById('chart-c'), {
-      type: 'line',
-      data: {
-        labels: drift.map(d => d.year),
-        datasets: [
-          {
-            label: 'Network energy',
-            data: drift.map(d => d.energyMwhYear),
-            borderColor: '#378ADD',
-            backgroundColor: 'rgba(55,138,221,0.08)',
-            borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
-          },
-          {
-            label: 'Node power (W)',
-            data: drift.map(d => d.watts),
-            borderColor: '#D85A30',
-            borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3,
-            yAxisID: 'y1',
-          }
-        ]
-      },
-      options: Object.assign(cOpts, {
-        scales: {
-          y: { type: 'linear', position: 'left', title: { display: true, text: 'MWh / year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { color: gridColor() }, border: { color: gridColor() } },
-          y1: { type: 'linear', position: 'right', title: { display: true, text: 'W per node', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { display: false }, border: { color: gridColor() } },
-          x: { title: { display: true, text: 'Year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 10 }, grid: { display: false }, border: { color: gridColor() } }
-        }
-      })
-    });
-
-    // ── D: Nodes absorbing efficiency ──────────────────────────────
-    const dOpts = Object.assign(commonOpts('Nodes'), {
-      scales: {
-        y: { title: { display: true, text: 'Nodes', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), callback: function(v) { if (v >= 1e6) return (v/1e6).toFixed(1)+'M'; if (v >= 1000) return (v/1000).toFixed(1)+'k'; return v; } }, grid: { color: gridColor() }, border: { color: gridColor() } },
-        x: { title: { display: true, text: 'Year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 10 }, grid: { display: false }, border: { color: gridColor() } }
-      },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 10, color: tickColor() } }, tooltip: { mode: 'index', intersect: false } }
-    });
-    charts.d = new Chart(document.getElementById('chart-d'), {
-      type: 'line',
-      data: {
-        labels: drift.map(d => d.year),
-        datasets: [
-          {
-            label: 'Nodes (absorbing drift)',
-            data: drift.map(d => d.nodes),
-            borderColor: '#7F77DD',
-            backgroundColor: 'rgba(127,119,221,0.08)',
-            borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3,
-          },
-          {
-            label: 'Bandwidth (TB/s)',
-            data: drift.map(d => d.bandwidth / 1000),
-            borderColor: '#1D9E75',
-            borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3,
-            yAxisID: 'y1',
-          }
-        ]
-      },
-      options: Object.assign(dOpts, {
-        scales: {
-          y: { type: 'linear', position: 'left', title: { display: true, text: 'Nodes', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), callback: function(v) { if (v >= 1e6) return (v/1e6).toFixed(1)+'M'; if (v >= 1000) return (v/1000).toFixed(1)+'k'; return v; } }, grid: { color: gridColor() }, border: { color: gridColor() } },
-          y1: { type: 'linear', position: 'right', title: { display: true, text: 'Bandwidth (TB/s)', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { display: false }, border: { color: gridColor() } },
-          x: { title: { display: true, text: 'Year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 10 }, grid: { display: false }, border: { color: gridColor() } }
-        }
-      })
-    });
-
-    // ── E: Per-node unit economics ─────────────────────────────────
-    const eOpts = Object.assign(commonOpts('$ per block'), {
-      scales: {
-        y: { title: { display: true, text: '$ per block', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, grid: { color: gridColor() }, border: { color: gridColor() } },
-        x: { title: { display: true, text: 'Year', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 10 }, grid: { display: false }, border: { color: gridColor() } }
-      },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 10, color: tickColor() } }, tooltip: { mode: 'index', intersect: false } }
-    });
-    charts.e = new Chart(document.getElementById('chart-e'), {
-      type: 'line',
-      data: {
-        labels: drift.map(d => d.year),
-        datasets: [
-          {
-            label: 'Revenue/node/block',
-            data: drift.map(d => d.revenuePerBlock),
-            borderColor: '#378ADD',
-            borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3,
-          },
-          {
-            label: 'Cost/node/block',
-            data: drift.map(d => d.costPerBlock),
-            borderColor: '#D85A30',
-            borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3,
-          },
-          {
-            label: 'Margin (rev - cost)',
-            data: drift.map(d => d.marginPerBlock),
-            borderColor: '#534AB7',
-            borderWidth: 1.5, pointRadius: 0, borderDash: [2,2], fill: false, tension: 0.3,
-          }
-        ]
-      },
-      options: eOpts
-    });
-
-    // ── F: Bitcoin vs eWatts re-equilibration ─────────────────────
-    // Show eWatts reaching equilibrium first (no ASIC lag),
-    // Bitcoin with 6-month ASIC lag after efficiency shock
-    const fLabels = [];
-    for (let m = 0; m <= 24; m++) fLabels.push(m);  // months
-    const shockMonth = 3;
-
-    // eWatts: instant rebalance after shock
-    const ewattN = [];
-    const btcN = [];
-    for (let m = 0; m <= 24; m++) {
-      const baseEquil = 80;  // normalized to 80 nodes pre-shock
-      if (m < shockMonth) {
-        ewattN.push(baseEquil);
-        btcN.push(baseEquil);
-      } else {
-        // 10% efficiency shock at month 3
-        // eWatts: nodes rise immediately to absorb
-        ewattN.push(baseEquil * 1.1);
-        // Bitcoin: ASIC replacement takes 6 months to ramp
-        if (m <= shockMonth + 6) {
-          const progress = (m - shockMonth) / 6;
-          btcN.push(baseEquil * (1 + 0.10 * progress));
-        } else {
-          btcN.push(baseEquil * 1.1);
-        }
-      }
-    }
-
-    const fOpts = Object.assign(commonOpts('Nodes (index)'), {
-      scales: {
-        y: { title: { display: true, text: 'Network size (index)', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor() }, min: 70, max: 95, grid: { color: gridColor() }, border: { color: gridColor() } },
-        x: { title: { display: true, text: 'Months', font: { size: 11 }, color: tickColor() }, ticks: { font: { size: 10 }, color: tickColor(), maxTicksLimit: 12 }, grid: { display: false }, border: { color: gridColor() } }
-      },
-      plugins: { legend: { display: true, position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 10, color: tickColor() } }, tooltip: { mode: 'index', intersect: false } }
-    });
-    charts.f = new Chart(document.getElementById('chart-f'), {
-      type: 'line',
-      data: {
-        labels: fLabels,
-        datasets: [
-          {
-            label: 'eWatts (instantly rebalances)',
-            data: ewattN,
-            borderColor: '#378ADD',
-            borderWidth: 2, pointRadius: 0, fill: false, tension: 0.2,
-          },
-          {
-            label: 'Bitcoin (~6mo ASIC lag)',
-            data: btcN,
-            borderColor: '#BA7517',
-            borderWidth: 2, pointRadius: 0, fill: false, tension: 0.2,
-            borderDash: [4,3],
-          }
-        ]
-      },
-      options: fOpts
-    });
-  }
-
-  // ── Slider hooks ─────────────────────────────────────────────────
-  const priceSlider = document.getElementById('price-slider');
-  const elecSlider = document.getElementById('elec-slider');
-  const powerSlider = document.getElementById('power-slider');
-  const effSlider = document.getElementById('eff-slider');
-
-  function updateFromSliders() {
-    price = Math.pow(10, parseFloat(priceSlider.value));
-    elecCost = parseFloat(elecSlider.value);
-    nodeWatts = parseInt(powerSlider.value);
-    effImprovement = parseFloat(effSlider.value);
-
-    document.getElementById('price-display').textContent = fmtPrice(price);
-    document.getElementById('elec-display').textContent = '$' + elecCost.toFixed(3) + '/kWh';
-    document.getElementById('power-display').textContent = nodeWatts + ' W';
-    document.getElementById('eff-display').textContent = effImprovement.toFixed(1) + '%/yr';
-
-    clearTimeout(renderTimeout);
-    renderTimeout = setTimeout(render, 60);
-  }
-
-  priceSlider.addEventListener('input', updateFromSliders);
-  elecSlider.addEventListener('input', updateFromSliders);
-  powerSlider.addEventListener('input', updateFromSliders);
-  effSlider.addEventListener('input', updateFromSliders);
-
-  document.getElementById('preset-bear').addEventListener('click', function() {
-    priceSlider.value = -1;     // log10(0.10)
-    elecSlider.value = 0.10;
-    powerSlider.value = 75;
-    effSlider.value = 5;
-    updateFromSliders();
-  });
-  document.getElementById('preset-base').addEventListener('click', function() {
-    priceSlider.value = 0;      // log10(1.00)
-    elecSlider.value = 0.10;
-    powerSlider.value = 75;
-    effSlider.value = 5;
-    updateFromSliders();
-  });
-  document.getElementById('preset-bull').addEventListener('click', function() {
-    priceSlider.value = 0.699;  // log10(5.00)
-    elecSlider.value = 0.10;
-    powerSlider.value = 75;
-    effSlider.value = 5;
-    updateFromSliders();
-  });
-  document.getElementById('preset-expensive').addEventListener('click', function() {
-    priceSlider.value = 0;      // log10(1.00)
-    elecSlider.value = 0.30;
-    powerSlider.value = 75;
-    effSlider.value = 5;
-    updateFromSliders();
-  });
-
-  updateFromSliders();
-})();
-</script>
-
-<hr />
-
-<section style="max-width:1120px; margin:0 auto; padding:48px 20px;">
-  <div class="eyebrow">References</div>
-  <h2 style="font-size:1.3rem; font-weight:500; margin:0 0 1.5rem; color:#e0e0e0;">Protocol &amp; Energy Economics</h2>
-  <div style="font-size:14px; color:#6b6b8a; line-height:1.8;">
-    <p style="margin:0 0 0.5rem;">
-      [1] eWatts v0.5 source code. constants.rs: J_PER_ACCESS = 3.75 &mu;J, MIN_COMMIT_AOPS = 20M, BASE_EMISSION = 100. vr.rs: compute_vr(&hellip;) derives VR from AOPS &times; block time &times; J_PER_ACCESS.
-      <a href="https://github.com/4eWatts/ewatts-protocol" style="color:#3b82f6;font-size:12px;">[GitHub]</a>
-    </p>
-    <p style="margin:0 0 0.5rem;">
-      [2] Cambridge Centre for Alternative Finance, &ldquo;Cambridge Bitcoin Electricity Consumption Index (CBECI).&rdquo; Methodology estimates Bitcoin energy consumption using production-cost-equals-revenue identity.
-      <a href="https://ccaf.io/cbeci/index" style="color:#3b82f6;font-size:12px;">[CCAF]</a>
-    </p>
-    <p style="margin:0 0 0.5rem;">
-      [3] US Energy Information Administration (EIA). Average retail electricity prices by sector.
-      <a href="https://www.eia.gov/electricity/" style="color:#3b82f6;font-size:12px;">[EIA]</a>
-    </p>
-    <p style="margin:0;">
-      [4] O. Mutlu and L. Subramanian, &ldquo;Understanding and Improving the Latency of DRAM-Based Memory Systems,&rdquo; <em>Communications of the ACM</em>, vol. 64, no. 8, pp. 80&ndash;89, 2021. &mdash; DRAM latency improved only ~1.3x in ~20 years while capacity grew 128x and bandwidth ~20x.
-      <a href="https://www.mobt3ath.com/uplode/book/book-25910.pdf" style="color:#3b82f6;font-size:12px;">[PDF]</a>
-    </p>
-  </div>
+<header>
+ <div class="wrap">
+ <div class="eyebrow">Economic Model — v0.5 · Protocol 0x0005 · AOPS</div>
+ <h1>Free entry as equilibrium</h1>
+ <p class="lede">Each node is a continuous bid in an implicit auction. The block reward is fixed at 100 eWatts. Under free entry, the network finds its own size: the margin goes to zero and bandwidth becomes endogenous. The Value Reference converges to <strong>P / p<sub>elec</sub></strong> — hardware efficiency drops out of the equation.</p>
+
+ <div class="callout-green">
+ <p><b>The key result.</b> A 5% efficiency improvement does not weaken the energy anchor. It allows 5% more nodes to enter at the same total energy. The drift is absorbed by network size, not by the Value Reference. The previous simulations showing 5-7%/year drift modeled the scenario where entry is frozen — the only scenario where the market mechanism is disabled by construction.</p>
+ </div>
+ </div>
+</header>
+
+<section id="params">
+ <div class="wrap">
+ <h2>Protocol parameters</h2>
+ <p class="sub">Source: <a href="https://github.com/4eWatts/ewatts-protocol/blob/main/src/constants.rs">constants.rs</a>, v0.5 (AOPS migration, protocol version 0x0005). These are consensus constants, not model inputs.</p>
+ <div class="params">
+ <div class="param"><div class="k">Base emission</div><div class="v">100 eWatt/block</div><div class="n">BASE_EMISSION</div></div>
+ <div class="param"><div class="k">Block time</div><div class="v">600 s</div><div class="n">≈ 52,560 blocks / year</div></div>
+ <div class="param"><div class="k">Energy per access</div><div class="v">3.75 µJ</div><div class="n">= 75 W ÷ 20M aops (wall power)</div></div>
+ <div class="param"><div class="k">Min commitment</div><div class="v">20 M aops</div><div class="n">≈ 1 GB/s per node</div></div>
+ <div class="param"><div class="k">Node power</div><div class="v">75 W</div><div class="n">DDR5 reference node</div></div>
+ <div class="param"><div class="k">Emission range</div><div class="v">5 – 2,000</div><div class="n">floor / ceiling per block</div></div>
+ <div class="param"><div class="k">hist_avg window</div><div class="v">100 blocks</div><div class="n">≈ 16.7 hours trailing</div></div>
+ <div class="param"><div class="k">Ramp-up cap</div><div class="v">80%</div><div class="n">first 10,000 blocks</div></div>
+ </div>
+ </div>
 </section>
 
+<section id="sim">
+ <div class="wrap">
+ <h2>Equilibrium simulator</h2>
+ <p class="sub">Adjust market conditions below. The equilibrium node count, network bandwidth, and Value Reference all emerge from the free-entry identity: N x c = 100 x P. Hardware efficiency improvements are absorbed by N, not by the anchor.</p>
+
+ <div class="controls">
+ <div class="controls-grid">
+ <div class="ctl">
+ <label>eWatt market price (P) <output id="oPrice">$1.00</output></label>
+ <input type="range" id="rPrice" min="-2" max="2" step="0.02" value="0">
+ </div>
+ <div class="ctl">
+ <label>Electricity cost <output id="oElec">$0.10 / kWh</output></label>
+ <input type="range" id="rElec" min="0.02" max="0.50" step="0.005" value="0.10">
+ </div>
+ <div class="ctl">
+ <label>Node power <output id="oWatts">75 W</output></label>
+ <input type="range" id="rWatts" min="25" max="200" step="5" value="75">
+ </div>
+ <div class="ctl">
+ <label>Annual efficiency improvement <output id="oDrift">5 % / y</output></label>
+ <input type="range" id="rDrift" min="0" max="15" step="0.5" value="5">
+ </div>
+ </div>
+ <div class="presets">
+ <button class="preset on" data-p="0" data-e="0.10" data-w="75">Base ($1.00, $0.10)</button>
+ <button class="preset" data-p="-1" data-e="0.10" data-w="75">Bear ($0.10, $0.10)</button>
+ <button class="preset" data-p="0.699" data-e="0.10" data-w="75">Bull ($5.00, $0.10)</button>
+ <button class="preset" data-p="0" data-e="0.30" data-w="75">Expensive power ($1.00, $0.30)</button>
+ </div>
+ </div>
+
+ <div class="kpis">
+ <div class="kpi"><div class="k">Equilibrium nodes</div><div class="v g" id="kNodes">80,000</div><div class="n">N = 8,000 x P / p_elec</div></div>
+ <div class="kpi"><div class="k">Network bandwidth</div><div class="v b" id="kBW">80 TB/s</div><div class="n">~1 GB/s per node</div></div>
+ <div class="kpi"><div class="k">Value Reference (VR)</div><div class="v a" id="kVR">10.00 kWh</div><div class="n">P / p_elec = kWh per eWatt</div></div>
+ <div class="kpi"><div class="k">Network energy</div><div class="v vi" id="kEnergy">1.0 GWh/yr</div><div class="n">energy per year at equilibrium</div></div>
+ </div>
+
+ <div class="charts">
+ <div class="chart-card">
+ <h4>Equilibrium nodes vs market price</h4>
+ <p>At any price P, free entry drives the node count to N = 8,000 x P / p_elec (for W = 75W). Doubling P doubles N.</p>
+ <div class="chart-box"><canvas id="cNodes"></canvas></div>
+ </div>
+ <div class="chart-card">
+ <h4>Value Reference = P / p<sub>elec</sub></h4>
+ <p>The VR converges to market price divided by electricity cost. Hardware efficiency does not appear. The anchor is an economic equilibrium, not a physical constant.</p>
+ <div class="chart-box"><canvas id="cVR"></canvas></div>
+ </div>
+ <div class="chart-card">
+ <h4>Network energy over 20 years</h4>
+ <p>As efficiency improves 5%/year, node power drops, margins open, new nodes enter. Network energy stays flat. The drift is absorbed by N.</p>
+ <div class="chart-box"><canvas id="cEnergy"></canvas></div>
+ </div>
+ <div class="chart-card">
+ <h4>Efficiency drift: absorbed by N</h4>
+ <p>As node power drops from 75W toward ~25W over 20 years, the equilibrium node count rises proportionally. VR stays at P / p_elec throughout.</p>
+ <div class="chart-box"><canvas id="cNodesDrift"></canvas></div>
+ </div>
+ </div>
+ </div>
+</section>
+
+<section id="derivation">
+ <div class="wrap prose">
+ <h2>The derivation</h2>
+ <p>Each node running eWatts consumes W watts. Over one 600-second block, the electricity cost is:</p>
+ <div class="codeblock">c = W x 600 x p_elec / 3,600,000 &nbsp;&nbsp;($/block/node)</div>
+ <p>For a 75W DDR5 node at $0.10/kWh: c = $0.00125/block/node.</p>
+ <p>With N identical nodes and a block reward of 100 eWatts, free entry competition drives the margin to zero:</p>
+ <div class="codeblock">N x c = 100 x P<br>N = 8,000 x P / p_elec &nbsp;&nbsp;(for W = 75W)</div>
+ <p>Network energy per block:</p>
+ <div class="codeblock">E = N x W x 600 / 3,600,000 = 100 x P / p_elec</div>
+ <p>The Value Reference at equilibrium is simply:</p>
+ <div class="codeblock">VR = E / 100 = P / p_elec</div>
+ <p><strong>W cancels completely.</strong> Hardware efficiency does not appear in the equilibrium VR. Energy improvements are absorbed by N, not by the anchor.</p>
+
+ <div class="callout-green">
+ <p><b>Example scenarios (W = 75W).</b></p>
+ <p>Bear ($0.10, $0.10/kWh): N = 8,000, E = 100 kWh/block, VR = 1 kWh/eWatt</p>
+ <p>Base ($1.00, $0.10/kWh): N = 80,000, E = 1,000 kWh/block, VR = 10 kWh/eWatt</p>
+ <p>Bull ($5.00, $0.10/kWh): N = 400,000, E = 5,000 kWh/block, VR = 50 kWh/eWatt</p>
+ </div>
+
+ <h3>The real risk: bootstrap entry lag</h3>
+ <p>The equilibrium assumes instant entry and exit. During the bootstrap phase with few nodes and low liquidity, the response to a margin signal has delay. During that delay, efficiency drift affects real returns. This risk is real, measurable, and temporary. It exists on every young PoW network, and eWatts minimizes it relative to others because no ASIC fabrication lag exists.</p>
+
+ <h3>Why a burn auction is unnecessary</h3>
+ <p>An explicit bidding mechanism (burning eWatt for reward weight) would also stabilize the system, but compare where the margin goes: free entry absorbs it via new nodes (more distribution, wider decentralization), while a burn auction absorbs it via supply destruction (same incumbents, injects a PoS-like barrier). For a protocol built on accessibility and neutrality, free entry is strictly superior. The auction you asked about already exists.</p>
+
+ <h3>Comparison to Bitcoin</h3>
+ <p>Bitcoin has the same fundamental identity (production cost ≈ revenue, per Cambridge CCAF). The difference is adjustment speed: ASIC manufacturing takes months, while eWatts runs on commodity DRAM that billions of devices already have. eWatts free entry is closer to the theoretical ideal than any existing PoW network.</p>
+ </div>
+</section>
+
+<section id="formula">
+ <div class="wrap prose">
+ <h2>How the emission formula works</h2>
+ <div class="codeblock">emission = clamp(100 x total_eff / hist_avg, 5, 2000)</div>
+ <p><strong>total_eff</strong> is the sum of all miners' effective committed work in AOPS. <strong>hist_avg</strong> is the trailing average over 100 blocks (~16.7 hours). When network work equals its average, emission is exactly 100 eWatt per block. The short window means organic multi-year growth barely moves the ratio — the clamps exist for abrupt shocks, not trends. Effective issuance is near-constant at ~5.26M eWatts/year.</p>
+ <p>The first 10,000 blocks carry a ramp-up cap of 80% (no single miner receives more than 80% of the block reward; excess burned) and a founder lock of 50,000 blocks on early coinbase outputs.</p>
+ </div>
+</section>
+
+<section id="notdo">
+ <div class="wrap">
+ <h2>What the protocol does not do</h2>
+ <ul class="plain">
+ <li><strong>No price target.</strong> No $1.00/eWatt programmed value. The market discovers price; the protocol only measures energy.</li>
+ <li><strong>No inflation target.</strong> No arbitrary rate codified. Absolute issuance is near-constant; percentage inflation declines naturally.</li>
+ <li><strong>No supply cap.</strong> Hard caps create hoarding pressure. Scarcity here is physical production cost, not a number.</li>
+ <li><strong>No halving schedule.</strong> No time-based decay. Emission responds to delivered work, not a calendar.</li>
+ <li><strong>No oracles.</strong> No price feeds, no external dependencies, no governance committees.</li>
+ <li><strong>No founder allocation.</strong> No pre-mine, no admin keys, no privileged minting.</li>
+ <li><strong>No burn auction.</strong> Free entry is the auction. No mechanism needed beyond what exists.</li>
+ </ul>
+ </div>
+</section>
+
+<section id="assumptions">
+ <div class="wrap">
+ <h2>Assumptions &amp; considerations</h2>
+ <ul class="assump">
+ <li><strong>Consensus constants</strong> from eWatts v0.5 (constants.rs, reward.rs, vr.rs, proof.rs), protocol version 0x0005.</li>
+ <li><strong>Node uniformity:</strong> all simulated nodes commit ~20M AOPS at 75W (calibration point). Real networks are heterogeneous (2-3x dispersion).</li>
+ <li><strong>Free-entry equilibrium:</strong> assumes N x c = 100 x P. Nodes are the marginal producer. More efficient nodes earn excess profits, attracting entry until marginal node breaks even.</li>
+ <li><strong>Price discovery:</strong> the model requires a market price P. Before exchange listing, P is indeterminate and equilibrium does not apply. The computational VR (vr.rs) still functions.</li>
+ <li><strong>Transaction fees:</strong> ignored. In maturity, fees dominate miner compensation. The identity shifts to N x c = (100 + avg_fees) x P, tightening the equilibrium.</li>
+ <li><strong>Electricity price</strong> default $0.10/kWh approximates US industrial average.</li>
+ <li><strong>Reference inflation rates:</strong> Bitcoin 0.83% (post-2024 halving), gold ~1.7% (World Gold Council, 25-year average), USD M2 ~6.5% (Federal Reserve long-run average).</li>
+ <li><strong>Risk of error:</strong> this model is a faithful re-implementation of the consensus formulas, but it is not consensus code. No external audit has yet validated either.</li>
+ </ul>
+ <p style="margin-top:18px;font-size:13.5px;color:var(--faint)">Sources: <a href="https://github.com/4eWatts/ewatts-protocol">eWatts v0.5 source code</a> (constants.rs, reward.rs, vr.rs, proof.rs) · US EIA · Cambridge CBECI</p>
+ </div>
+</section>
+
+<footer>
+ <div class="wrap">
+ <div>eWatts v0.5 · Protocol 0x0005 · Model regenerated 2026-07-03 · MIT License</div>
+ <div><a href="https://github.com/4eWatts/ewatts-protocol">GitHub</a> · <a href="https://ewatts.org/test-results.html">Test results</a> · <a href="https://ewatts.org/whitepaper-v31.md">Whitepaper v31</a></div>
+ </div>
+</footer>
+
+<script>
+(function(){
+const C = { BASE_EMISSION: 100, BLOCK_S: 600, BLOCKS_YEAR: 52560 };
+const J_PER_KWH = 3600000;
+const $ = id => document.getElementById(id);
+const NODE_BW = 1.0; // GB/s per node
+
+const state = { price: 1.0, elec: 0.10, watts: 75, drift: 5 };
+
+function eq(p, ec, w) {
+ const c = w * C.BLOCK_S * ec / J_PER_KWH;
+ const n = c > 0 ? Math.round((C.BASE_EMISSION * p) / c) : 0;
+ const bw = n * NODE_BW;
+ const energyKwhBlock = n * w * C.BLOCK_S / J_PER_KWH;
+ const vr = energyKwhBlock / C.BASE_EMISSION; // = p / ec
+ return { c, n, bw, energyKwhBlock, vr, energyMwhYear: energyKwhBlock * C.BLOCKS_YEAR / 1000 };
+}
+
+function driftSeries(p, ec, w0, driftPct, years) {
+ const d = [];
+ let curW = w0;
+ for (let y = 0; y <= years; y++) {
+ const e = eq(p, ec, curW);
+ d.push({ year: y, watts: curW, nodes: e.n, bw: e.bw, vr: e.vr, energyMwhYear: e.energyMwhYear });
+ curW *= (1 - driftPct / 100);
+ }
+ return d;
+}
+
+function eqCurve(pMin, pMax, ec, w) {
+ const pts = [];
+ for (let i = 0; i <= 100; i++) {
+ const p = pMin * Math.pow(pMax / pMin, i / 100);
+ const e = eq(p, ec, w);
+ pts.push({ price: p, nodes: e.n, vr: e.vr });
+ }
+ return pts;
+}
+
+function fmtPrice(v) { return v < 0.01 ? '$' + v.toFixed(4) : v < 1 ? '$' + v.toFixed(2) : '$' + v.toFixed(2); }
+function fmtBW(v) { return v >= 1000 ? (v/1000).toFixed(1)+' TB/s' : v.toFixed(0)+' GB/s'; }
+function fmtNodes(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toString(); }
+function fmtVR(v) { return v < 0.01 ? (v*1000).toFixed(2)+' Wh' : v.toFixed(2)+' kWh'; }
+function fmtEnergy(v) { return v >= 1000 ? (v/1000).toFixed(1)+' GWh/yr' : v.toFixed(1)+' MWh/yr'; }
+
+/* Charts */
+Chart.defaults.color = '#8FA0B3';
+Chart.defaults.borderColor = '#22303F';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 11;
+
+function baseOpts(yLabel) {
+ return { responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
+ scales: {
+ x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+ y: { title: { display: true, text: yLabel }, grid: { color: '#1a2431' } }
+ } };
+}
+
+const charts = {};
+
+function render() {
+ Object.values(charts).forEach(c => c.destroy());
+ Object.keys(charts).forEach(k => delete charts[k]);
+
+ const e = eq(state.price, state.elec, state.watts);
+ const drift = driftSeries(state.price, state.elec, state.watts, state.drift, 20);
+
+ $('oPrice').textContent = fmtPrice(state.price);
+ $('oElec').textContent = '$'+state.elec.toFixed(3)+' / kWh';
+ $('oWatts').textContent = state.watts + ' W';
+ $('oDrift').textContent = state.drift.toFixed(1)+' % / y';
+
+ $('kNodes').textContent = fmtNodes(e.n);
+ $('kBW').textContent = fmtBW(e.bw);
+ $('kVR').textContent = fmtVR(e.vr);
+ $('kEnergy').textContent = fmtEnergy(e.energyMwhYear);
+
+ // Chart A: Equilibrium nodes vs price
+ const curve = eqCurve(0.01, 100, state.elec, state.watts);
+ charts.cNodes = new Chart($('cNodes'), {
+ type: 'line',
+ data: {
+ labels: curve.map(p => fmtPrice(p.price)),
+ datasets: [{ label: 'Equilibrium nodes', data: curve.map(p => p.nodes), borderColor: '#4ADE80', backgroundColor: 'rgba(74,222,128,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
+ },
+ options: Object.assign(baseOpts('Nodes'), {
+ scales: {
+ x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)' }, ticks: { font: { size: 9 }, maxTicksLimit: 8, callback: v => '$'+v }, grid: { display: false } },
+ y: { type: 'logarithmic', title: { display: true, text: 'Nodes' }, ticks: { font: { size: 9 }, callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v }, grid: { color: '#1a2431' } }
+ } })
+ });
+
+ // Chart B: VR = P/p_elec
+ const vrCurve = curve.map(p => ({ price: p.price, vr: p.price / state.elec }));
+ charts.cVR = new Chart($('cVR'), {
+ type: 'line',
+ data: {
+ labels: vrCurve.map(p => fmtPrice(p.price)),
+ datasets: [{ label: 'VR = P / p_elec', data: vrCurve.map(p => p.vr), borderColor: '#FBBF24', backgroundColor: 'rgba(251,191,36,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1 }]
+ },
+ options: Object.assign(baseOpts('kWh / eWatt'), {
+ scales: {
+ x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)' }, ticks: { font: { size: 9 }, maxTicksLimit: 8, callback: v => '$'+v }, grid: { display: false } },
+ y: { title: { display: true, text: 'VR (kWh / eWatt)' }, ticks: { font: { size: 9 } }, grid: { color: '#1a2431' } }
+ } })
+ });
+
+ // Chart C: Energy flat over 20 years with efficiency improvement
+ const yrLbls = drift.map(d => d.year);
+ charts.cEnergy = new Chart($('cEnergy'), {
+ type: 'line',
+ data: {
+ labels: yrLbls,
+ datasets: [
+ { label: 'Network energy (MWh/yr)', data: drift.map(d => d.energyMwhYear), borderColor: '#60A5FA', backgroundColor: 'rgba(96,165,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
+ { label: 'Watts per node', data: drift.map(d => d.watts), borderColor: '#F87171', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
+ ]
+ },
+ options: Object.assign({
+ responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
+ scales: {
+ x: { title: { display: true, text: 'Year' }, ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+ y: { type: 'linear', position: 'left', title: { display: true, text: 'MWh / year' }, ticks: { font: { size: 9 } }, grid: { color: '#1a2431' } },
+ y1: { type: 'linear', position: 'right', title: { display: true, text: 'W per node' }, ticks: { font: { size: 9 } }, grid: { display: false } }
+ }
+ })
+ });
+
+ // Chart D: Nodes absorbing drift
+ charts.cNodesDrift = new Chart($('cNodesDrift'), {
+ type: 'line',
+ data: {
+ labels: yrLbls,
+ datasets: [
+ { label: 'Nodes', data: drift.map(d => d.nodes), borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, yAxisID: 'y' },
+ { label: 'VR (kWh / eWatt)', data: drift.map(d => d.vr), borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
+ ]
+ },
+ options: Object.assign({
+ responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+ interaction: { mode: 'index', intersect: false },
+ plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14 } } },
+ scales: {
+ x: { title: { display: true, text: 'Year' }, ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+ y: { type: 'linear', position: 'left', title: { display: true, text: 'Nodes' }, ticks: { font: { size: 9 }, callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v }, grid: { color: '#1a2431' } },
+ y1: { type: 'linear', position: 'right', title: { display: true, text: 'VR (kWh/eWatt)' }, ticks: { font: { size: 9 } }, grid: { display: false } }
+ }
+ })
+ });
+}
+
+/* Slider wiring */
+const rPrice = $('rPrice'), rElec = $('rElec'), rWatts = $('rWatts'), rDrift = $('rDrift');
+function upd() {
+ state.price = Math.pow(10, parseFloat(rPrice.value));
+ state.elec = parseFloat(rElec.value);
+ state.watts = parseInt(rWatts.value);
+ state.drift = parseFloat(rDrift.value);
+ render();
+}
+rPrice.addEventListener('input', upd);
+rElec.addEventListener('input', upd);
+rWatts.addEventListener('input', upd);
+rDrift.addEventListener('input', upd);
+
+document.querySelectorAll('.preset').forEach(btn => {
+ btn.addEventListener('click', function() {
+ const p = parseFloat(this.dataset.p), e = parseFloat(this.dataset.e), w = parseFloat(this.dataset.w);
+ rPrice.value = p; rElec.value = e; rWatts.value = w;
+ document.querySelectorAll('.preset').forEach(b => b.classList.remove('on'));
+ this.classList.add('on');
+ upd();
+ });
+});
+
+upd();
+})();
+</script>
 </body>
 </html>
