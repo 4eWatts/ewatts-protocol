@@ -365,7 +365,7 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
       }
     }
     avg() {
-      if (this.data.length === 0) return 1;
+      if (this.data.length === 0) return 0;
       return this.sum / this.data.length;
     }
   }
@@ -393,6 +393,9 @@ ul.assumption-list li strong { color:#d4d4dc; font-weight:500; }
     const totalBlocks = Math.floor(years * BLOCKS_YEAR);
     const sampleEvery = Math.max(1, Math.floor(totalBlocks / 200));
     const histBuf = new RingBuffer(DIFFICULTY_WINDOW);
+    // Pre-populate hist_avg with initial bandwidth to avoid spike
+    const initBW = adoption(0);
+    for (let i = 0; i < DIFFICULTY_WINDOW; i++) histBuf.push(initBW);
     let supply = 0;
     let cumEnergyKWh = 0;
     const points = [];
