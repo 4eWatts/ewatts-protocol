@@ -190,8 +190,8 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
  <div class="chart-box"><canvas id="cEnergy"></canvas></div>
  </div>
  <div class="chart-card">
- <h4>Tokens per kWh — stable anchor</h4>
- <p>eWatt per kWh of network energy = p_elec / P in equilibrium. Hardware efficiency cancels. The ratio is constant regardless of DRAM generation or node count.</p>
+ <h4>Tokens per kWh — bootstrap to equilibrium</h4>
+ <p>During bootstrap, N is small and tokens per kWh starts high. As N grows toward equilibrium, eWatt/kWh converges to p_elec / P. The convergence speed depends on how fast N grows.</p>
  <div class="chart-box"><canvas id="cTPE"></canvas></div>
  </div>
  </div>
@@ -392,13 +392,32 @@ function initCharts() {
  }
  });
 
+ // Simulate N growing toward equilibrium for the bootstrap chart
+ function bootstrapTPE(p, ec, w, years) {
+ const nEq = Math.round((100 * p) / (w * 600 * ec / 3600000));
+ const growthRate = 1.5; // logistic growth rate (how fast N converges)
+ const pts = years * 4; // quarterly samples
+ const out = [];
+ for (let i = 0; i <= pts; i++) {
+ const t = i / 4; // year
+ const x = t / 10; // reach 90% in ~10 years
+ const n = nEq > 1 ? 1 + (nEq - 1) / (1 + Math.exp(-growthRate * (x - 3))) : 1;
+ const ePerBlock = n * w * 600 / 3600000;
+ const tpe = ePerBlock > 0 ? 100 / ePerBlock : 0; // eWatt/kWh
+ const vr = tpe > 0 ? 1 / tpe : 0; // kWh/eWatt
+ out.push({ year: t, tpe, vr, nodes: Math.round(n), nEq });
+ }
+ return out;
+ }
+
  chartRefs.cTPE = new Chart($('cTPE'), {
  type: 'line',
  data: {
- labels: yrLbls,
+ labels: [],
  datasets: [
- { label: 'eWatt/kWh', data: drift.map(d => state.elec / state.price), borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
- { label: 'VR (kWh/eWatt)', data: drift.map(d => state.price / state.elec), borderColor: '#FBBF24', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
+ { label: 'eWatt/kWh (actual)', data: [], borderColor: '#A78BFA', backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 },
+ { label: 'Equilibrium (p_elec/P)', data: [], borderColor: '#A78BFA', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0 },
+ { label: 'Nodes', data: [], borderColor: '#60A5FA', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, yAxisID: 'y1' }
  ]
  },
  options: {
@@ -407,8 +426,8 @@ function initCharts() {
  plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 10 }, color: '#8FA0B3' } } },
  scales: {
  x: { title: { display: true, text: 'Year', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 10 }, grid: { display: false } },
- y: { type: 'linear', position: 'left', title: { display: true, text: 'eWatt / kWh', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
- y1: { type: 'linear', position: 'right', title: { display: true, text: 'kWh / eWatt', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
+ y: { type: 'logarithmic', title: { display: true, text: 'eWatt / kWh', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } },
+ y1: { type: 'logarithmic', position: 'right', title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { display: false } }
  }
  }
  });
@@ -432,8 +451,11 @@ function updateCharts() {
  chartRefs.cEnergy.data.datasets[1].data = drift.map(d => d.watts);
  chartRefs.cEnergy.update();
 
- chartRefs.cTPE.data.datasets[0].data = drift.map(d => state.elec / state.price);
- chartRefs.cTPE.data.datasets[1].data = drift.map(d => state.price / state.elec);
+ const btp = bootstrapTPE(state.price, state.elec, state.watts, 20);
+ chartRefs.cTPE.data.labels = btp.map(d => d.year.toFixed(1));
+ chartRefs.cTPE.data.datasets[0].data = btp.map(d => d.tpe);
+ chartRefs.cTPE.data.datasets[1].data = btp.map(d => state.elec / state.price);
+ chartRefs.cTPE.data.datasets[2].data = btp.map(d => d.nodes);
  chartRefs.cTPE.update();
 }
 
