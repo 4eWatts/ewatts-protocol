@@ -348,8 +348,8 @@ function initCharts() {
  interaction: { mode: 'index', intersect: false },
  plugins: { legend: { display: false } },
  scales: {
- x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
- y: { type: 'logarithmic', title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; } }, grid: { color: '#1a2431' } }
+ x: { title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
+ y: { title: { display: true, text: 'Nodes', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', callback: function(v) { return v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; } }, grid: { color: '#1a2431' } }
  }
  }
  });
@@ -365,7 +365,7 @@ function initCharts() {
  interaction: { mode: 'index', intersect: false },
  plugins: { legend: { display: false } },
  scales: {
- x: { type: 'logarithmic', title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
+ x: { title: { display: true, text: 'eWatt price ($)', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3', maxTicksLimit: 8 }, grid: { display: false } },
  y: { title: { display: true, text: 'kWh / eWatt', font: { size: 11 }, color: '#8FA0B3' }, ticks: { font: { size: 9 }, color: '#8FA0B3' }, grid: { color: '#1a2431' } }
  }
  }
