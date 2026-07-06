@@ -289,6 +289,28 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
   </div>
 </section>
 
+<section id="risks">
+  <div class="wrap prose">
+    <h2>Risks and attack vectors</h2>
+    <p>The free-entry equilibrium holds under specific assumptions about miner behavior, hardware symmetry, and market access. Each assumption can be challenged, with different probabilities and time horizons.</p>
+
+    <h3>Subsidized energy &mdash; most realistic near-term risk</h3>
+    <p>A state or company with access to zero- or negative-marginal-cost electricity (stranded renewables, curtailed hydro, flared gas that would otherwise be wasted) can mine with a cost base far below market electricity prices. This distorts the anchor because the <em>marginal</em> miner&rsquo;s p<sub>elec</sub> diverges from the market rate, and the identity VR = &phi;&middot;P/p<sub>elec</sub> is only as tight as the marginal miner&rsquo;s true cost. This risk is shared with every proof-of-work system that exists, including Bitcoin, and is partially self-limiting: subsidized miners who sell eWatts on the open market push P down, reducing the incentive to enter further. But a determined state actor could sustain below-cost mining for years as a strategic expense.</p>
+
+    <h3>Mining pool concentration &mdash; medium-term coordination risk</h3>
+    <p>If 2&ndash;3 mining pools control &gt;80% of effective bandwidth, they can coordinate to slow or block entry by new miners, throttle the hist_avg window to manipulate emission, or suppress commitment efficiency to degrade the anchor&rsquo;s signal. The free-entry equilibrium requires decentralized response to margin signals; pool concentration introduces a coordination layer that can delay or sever that response. Mitigation is structural: low barrier to entry (commodity DRAM) makes pool exit cheap, but the early network is the most vulnerable to this dynamic.</p>
+
+    <h3>Cache-on-chip ASIC &mdash; long-term hardware risk (5&ndash;10 years)</h3>
+    <p>The DAG cache is ~64 MB for the initial 8 GB DAG (DAG_size / 128). A custom ASIC could store this cache in on-chip SRAM (Apple M3 Ultra already has 192 MB of SRAM cache) and compute DAG elements on demand via a dedicated SHA512 pipeline, potentially eliminating the DRAM bandwidth bottleneck. Each DAG element requires chained SHA512 + FNV mixing through the cache, making on-the-fly computation slower than a DRAM read &mdash; but a sufficiently aggressive pipeline could close or invert that gap. Three defenses limit this vector: (1) the DAG grows 512 MB/year, forcing corresponding cache growth; (2) SRAM at that scale (&gt;64 MB) is expensive, ~100&times; the cost per bit of DRAM; (3) even a successful ASIC would gain at most 2&ndash;3&times; efficiency over commodity DDR5, a far cry from the 10<sup>5</sup>&times; advantage Bitcoin ASICs hold over CPUs. The protocol does not depend on impossibility, only on economic irrationality.</p>
+
+    <h3>Processing-in-Memory (PIM) &mdash; already shipping, marginal gain</h3>
+    <p>Samsung HBM-PIM and SK Hynix PIM integrate simple logic inside DRAM banks, reducing data movement overhead. For eWatts mining, this could give a ~2&times; efficiency improvement per watt by eliminating bus traversal. PIM does not break the anchor: the memory is still DRAM, available to any buyer, and the efficiency gain is proportional across all miners. It is the closest analogue to a &ldquo;DRAM ASIC&rdquo; that exists today, and its impact is to shift the equilibrium node count (N* changes since effective W per meaningful access falls) without shifting the anchor (E and VR remain invariant to W by construction).</p>
+
+    <h3>Liquidity lag in bootstrap phase</h3>
+    <p>With few nodes, the response to a margin signal (P increase, efficiency gain, power cost drop) can take days or weeks &mdash; the time for new miners to learn about eWatts, configure hardware, and commit bandwidth. During that lag, returns for existing miners are higher than the equilibrium would predict, and the anchor can drift above or below the identity. This is the single most important thing the testnet can measure: how fast does entry respond to margin? The lag is shorter than any ASIC chain (no fabrication, no capital outlay) but cannot be eliminated in a permissionless system. Modeling the lag as a first-order system with a time constant &tau; (hours to days) is the recommended framework for testnet data analysis.</p>
+  </div>
+</section>
+
 <section id="open">
   <div class="wrap prose">
     <h2>Open questions, acknowledged</h2>
