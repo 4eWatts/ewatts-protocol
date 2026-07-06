@@ -128,6 +128,7 @@ footer a:hover { color:#b0b0b8; }
 .carousel { display:flex; transition:transform .4s ease; }
 .carousel-slide { min-width:100%; box-sizing:border-box; position:relative; }
 .carousel-slide img { width:100%; height:380px; display:block; border-radius:6px; object-fit:cover; }
+.carousel-slide.text-slide img { object-fit:contain; background:#080810; }
 #slide1:checked ~ .carousel-wrap .carousel { transform:translateX(0); }
 #slide2:checked ~ .carousel-wrap .carousel { transform:translateX(-100%); }
 #slide3:checked ~ .carousel-wrap .carousel { transform:translateX(-200%); }
@@ -139,6 +140,7 @@ footer a:hover { color:#b0b0b8; }
 @media (max-width:720px) {
   .carousel-wrap { margin:12px 0; max-height:220px; }
   .carousel-slide img { height:220px; object-fit:cover; }
+  .carousel-slide.text-slide img { object-fit:contain; background:#080810; }
 }
 
 /* ============= SLIDE CAPTIONS ============= */
@@ -225,7 +227,7 @@ footer a:hover { color:#b0b0b8; }
       <div class="carousel-slide"><img src="slide_ponte.png" alt="Neutral bridge" loading="lazy"><div class="slide-label">Neutral bridge</div></div>
       <div class="carousel-slide"><img src="slide_dual.png" alt="Dual-layer design" loading="lazy"></div>
       <div class="carousel-slide"><img src="slide_privacy.png" alt="Private by default" loading="lazy"><div class="slide-label">Private by default</div></div>
-      <div class="carousel-slide"><img src="slide_ai_consensus.png?v=4" alt="What AIs think of it" loading="lazy"></div>
+      <div class="carousel-slide text-slide"><img src="slide_ai_consensus.png?v=5" alt="What AIs think of it" loading="lazy"></div>
     </div>
   </div>
 
