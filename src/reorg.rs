@@ -3,7 +3,7 @@
 use crate::block::Block;
 use crate::chain::ChainStore;
 use crate::state::{BlockDiff, UtxoKey, UtxoSet};
-use log::{info, trace};
+use log::{info, debug};
 
 #[derive(Debug)]
 pub enum ForkDecision {
@@ -105,7 +105,7 @@ fn execute_reorg_inner(
         // Use BlockDiff unwind when available (P2P path), fallback to legacy unwind
         if let Some(diff) = store.block_diffs.get(hash) {
             state.unwind_with_diff(diff)?;
-            trace!("REORG: unwound block #{} {:x}.. (diff)", height, hash[0]);
+            debug!("REORG: unwound block #{} {:x}.. (diff)", height, hash[0]);
         } else {
             // Fallback: construct BlockDiff from block data (disk-loaded or pre-diff era)
             let mut fallback_diff = BlockDiff::new();
@@ -129,7 +129,7 @@ fn execute_reorg_inner(
                 }
             }
             state.unwind_with_diff(&fallback_diff)?;
-            trace!("REORG: unwound block #{} {:x}.. (fallback)", height, hash[0]);
+            debug!("REORG: unwound block #{} {:x}.. (fallback)", height, hash[0]);
         }
     }
 
@@ -141,7 +141,7 @@ fn execute_reorg_inner(
         // Capture diff for future unwinds
         let diff = state.apply_block_and_track(block, height)?;
         store.block_diffs.insert(*hash, diff);
-        trace!("REORG: applied block #{} {:x}..", height, hash[0]);
+        debug!("REORG: applied block #{} {:x}..", height, hash[0]);
     }
 
     // Phase 3: Update chain tip

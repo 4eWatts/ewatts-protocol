@@ -7,7 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
-use log::{info, warn, error, trace};
+use log::{info, warn, error, debug};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::collections::{HashMap, VecDeque};
@@ -93,7 +93,7 @@ impl PeerManager {
         // Evict LRU if at capacity
         if self.peers.len() >= self.max_peers {
             if let Some(lru) = self.evict_one() {
-                trace!("P2P: Peer set full, evicting {}", lru);
+                debug!("P2P: Peer set full, evicting {}", lru);
             }
         }
 
@@ -379,7 +379,7 @@ impl P2pNode {
         let parent_known = store.get_block(&block.header.previous_hash).is_some();
         if !parent_known && height > 0 {
             // Orphan: queue for later
-            trace!("P2P: Orphan block #{} (parent unknown), queuing", height);
+            debug!("P2P: Orphan block #{} (parent unknown), queuing", height);
             store.add_orphan(block.clone());
             return Ok(());
         }
@@ -395,7 +395,7 @@ impl P2pNode {
                 let diff = state.apply_block_and_track(block, height)?;
                 store.block_diffs.insert(block.header.hash(), diff);
                 store.set_chain_tip(&block.header.hash()).ok();
-                trace!("P2P: Extended canonical chain to #{}", height);
+                debug!("P2P: Extended canonical chain to #{}", height);
             }
             crate::reorg::ForkDecision::ReorgToNew { to_unwind, to_apply } => {
                 info!("P2P: REORG — unwinding {} blocks, applying {}",
@@ -404,14 +404,14 @@ impl P2pNode {
                     &to_unwind, &to_apply, store, state
                 )?;
                 for tx_hash in &resurrected {
-                    trace!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
+                    debug!("P2P: Re-queuing tx {:x}.. to mempool after reorg", tx_hash[0]);
                 }
             }
             crate::reorg::ForkDecision::Sidechain => {
-                trace!("P2P: Sidechain block #{} stored (not heaviest)", height);
+                debug!("P2P: Sidechain block #{} stored (not heaviest)", height);
             }
             crate::reorg::ForkDecision::Orphan => {
-                trace!("P2P: Block #{} stored as orphan", height);
+                debug!("P2P: Block #{} stored as orphan", height);
             }
             crate::reorg::ForkDecision::Reject(msg) => {
                 return Err(format!("Block rejected: {}", msg));
@@ -433,7 +433,7 @@ impl P2pNode {
             error!("P2P: Store error: {}", e);
             return;
         }
-        trace!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
+        debug!("P2P: Accepted block #{} hash={:x}..", h, hash[0]);
 
         // Deterministic nonce: first 8 bytes of block hash.
         // Every node produces the same CompactBlock for the same block,
@@ -486,7 +486,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            trace!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            debug!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peer_mgr.remove(&peer_id);
                             // Clean up any pending compact block from this peer
                             self.pending_compact.retain(|_, (_, src)| src != &peer_id);
@@ -504,7 +504,7 @@ impl P2pNode {
                                                 Self::accept_block(&block, &mut self.swarm);
                                             }
                                             Err(e) => {
-                                                trace!("P2P: Gossip full block #{} rejected: {}", block.header.height, e);
+                                                debug!("P2P: Gossip full block #{} rejected: {}", block.header.height, e);
                                             }
                                         }
                                     }
@@ -513,13 +513,13 @@ impl P2pNode {
                                         // Skip if we already have this block (dedup by hash)
                                         let block_hash = cb.header.hash();
                                         if chain_store.get_block(&block_hash).is_some() {
-                                            trace!("P2P: Already have block #{:x}.. from compact gossip, skipping", block_hash[0]);
+                                            debug!("P2P: Already have block #{:x}.. from compact gossip, skipping", block_hash[0]);
                                             continue;
                                         }
                                         // Try to reconstruct from mempool
                                         match reconstruct_block(&cb) {
                                             Some(block) => {
-                                                trace!("P2P: Reconstructed block #{} from compact ({} txs)",
+                                                debug!("P2P: Reconstructed block #{} from compact ({} txs)",
                                                     h, block.body.transactions.len());
                                                 match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                     Ok(()) => {
@@ -528,12 +528,12 @@ impl P2pNode {
                                                         self.pending_compact.remove(&h);
                                                     }
                                                     Err(e) => {
-                                                        trace!("P2P: Compact block #{} rejected after reconstruction: {}", h, e);
+                                                        debug!("P2P: Compact block #{} rejected after reconstruction: {}", h, e);
                                                     }
                                                 }
                                             }
                                             None => {
-                                                trace!("P2P: Compact block #{} needs {} missing txns, requesting full block",
+                                                debug!("P2P: Compact block #{} needs {} missing txns, requesting full block",
                                                     h, cb.short_ids.len());
                                                 self.pending_compact.insert(h, (cb.clone(), propagation_source));
                                                 // Request the full block from the source peer via sync
@@ -548,7 +548,7 @@ impl P2pNode {
                                         let tx_hash_prefix = tx.hash()[0];
                                         match crate::mempool::submit(tx, state) {
                                             Ok(()) => {}
-                                            Err(e) => trace!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash_prefix, e),
+                                            Err(e) => debug!("P2P: Gossip tx {:x}.. rejected: {}", tx_hash_prefix, e),
                                         }
                                     }
                                     _ => {} // Other message types are handled via BlockSync, not gossip
@@ -566,7 +566,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height <= to_height)
                                                         .collect();
-                                                    trace!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
@@ -589,7 +589,7 @@ impl P2pNode {
                                         request_response::Message::Response { response, .. } => {
                                             match response {
                                                 P2pMessage::BlockResponse { blocks } => {
-                                                    trace!("P2P: Synced {} blocks from peer", blocks.len());
+                                                    debug!("P2P: Synced {} blocks from peer", blocks.len());
                                                     for block in &blocks {
                                                         let h = block.header.height;
                                                         match Self::validate_and_apply_block(block, state, &mut chain_store) {
@@ -597,7 +597,7 @@ impl P2pNode {
                                                                 Self::accept_block(block, &mut self.swarm);
                                                             }
                                                             Err(e) => {
-                                                                trace!("P2P: Sync block #{} rejected: {}", h, e);
+                                                                debug!("P2P: Sync block #{} rejected: {}", h, e);
                                                             }
                                                         }
                                                     }
@@ -606,14 +606,14 @@ impl P2pNode {
                                                 P2pMessage::FullBlockResponse { block } => {
                                                     // This was requested because compact block reconstruction failed
                                                     let h = block.header.height;
-                                                    trace!("P2P: Received full block #{} for compact fallback", h);
+                                                    debug!("P2P: Received full block #{} for compact fallback", h);
                                                     match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                         Ok(()) => {
                                                             Self::accept_block(&block, &mut self.swarm);
                                                             self.pending_compact.remove(&h);
                                                         }
                                                         Err(e) => {
-                                                            trace!("P2P: Full block #{} (compact fallback) rejected: {}", h, e);
+                                                            debug!("P2P: Full block #{} (compact fallback) rejected: {}", h, e);
                                                         }
                                                     }
                                                 }
