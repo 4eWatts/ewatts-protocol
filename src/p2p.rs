@@ -7,7 +7,7 @@ use libp2p::{
     gossipsub::{self, MessageAuthenticity, MessageId, IdentTopic as Topic},
     Transport, StreamProtocol,
 };
-use log::{info, warn, error, debug};
+use log::{info, warn, error, debug, trace};
 use serde::{Serialize, Deserialize};
 use sha3::Digest;
 use std::collections::{HashMap, VecDeque};
@@ -486,7 +486,7 @@ impl P2pNode {
                             );
                         }
                         SwarmEvent::ConnectionClosed { peer_id, num_established, cause, .. } => {
-                            debug!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
+                            trace!("P2P: Connection closed {} (remaining: {}, cause: {:?})", peer_id, num_established, cause);
                             self.peer_mgr.remove(&peer_id);
                             // Clean up any pending compact block from this peer
                             self.pending_compact.retain(|_, (_, src)| src != &peer_id);
@@ -513,13 +513,13 @@ impl P2pNode {
                                         // Skip if we already have this block (dedup by hash)
                                         let block_hash = cb.header.hash();
                                         if chain_store.get_block(&block_hash).is_some() {
-                                            debug!("P2P: Already have block #{:x}.. from compact gossip, skipping", block_hash[0]);
+                                            trace!("P2P: Already have block #{:x}.. from compact gossip, skipping", block_hash[0]);
                                             continue;
                                         }
                                         // Try to reconstruct from mempool
                                         match reconstruct_block(&cb) {
                                             Some(block) => {
-                                                debug!("P2P: Reconstructed block #{} from compact ({} txs)",
+                                                trace!("P2P: Reconstructed block #{} from compact ({} txs)",
                                                     h, block.body.transactions.len());
                                                 match Self::validate_and_apply_block(&block, state, &mut chain_store) {
                                                     Ok(()) => {
@@ -566,7 +566,7 @@ impl P2pNode {
                                                     let filtered: Vec<Block> = blocks.into_iter()
                                                         .filter(|b| b.header.height <= to_height)
                                                         .collect();
-                                                    debug!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
+                                                    trace!("P2P: Sync request: sending {} blocks ({}-{})", filtered.len(), from_height, to_height);
                                                     let _ = self.swarm.behaviour_mut().block_sync.send_response(
                                                         channel, P2pMessage::BlockResponse { blocks: filtered },
                                                     );
