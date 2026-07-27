@@ -1,0 +1,264 @@
+{
+  "generated": "2026-07-27",
+  "handbook_ref": "eWatts_Security_Engineering_Handbook_v4.md",
+  "protocol": "eWatts",
+  "protocol_version": "0x0005",
+  "purpose": "Official test vectors for re-implementation verification",
+  "vectors": [
+    {
+      "code_ref": "dag.rs:generate()",
+      "dag_element_0": "77b100ab54370d436b07b528ff0ab762790847b4f7b38248428e3d24d920c221",
+      "derivation": "DAG[0] = Keccak-256(SHA-512(epoch.to_le_bytes()))",
+      "id": "TV-1",
+      "inputs": {
+        "epoch": 0,
+        "size_bytes": 65536
+      },
+      "intermediate_sha512": "1b7409ccf0d5a34d3a77eaabfa9fe27427655be9297127ee9522aa1bf4046d4f945983678169cb1a7348edcac47ef0d9e2c924130e5bcc5f0d94937852c42f1b",
+      "protocol_version": "0x0005",
+      "section": "8.1",
+      "title": "DAG Determinism — Element 0, Epoch 0",
+      "verification": "test_dag_deterministic"
+    },
+    {
+      "code_ref": "proof.rs:merkle_root_from_leaves",
+      "construction": "merkle_root = Keccak-256(leaf_0 || leaf_1)  [self-pair for odd]",
+      "expected_root": "36adb521047c331e01bde0284611520bd9ddb3d2d9dd80f51d66e5fdbf4916bd",
+      "id": "TV-2",
+      "inputs": {
+        "leaf_0": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+        "leaf_1": "CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD"
+      },
+      "protocol_version": "0x0005",
+      "section": "8.2",
+      "title": "Binary Merkle Root — Two Leaves",
+      "verification": "test_merkle_root_verify"
+    },
+    {
+      "cases": [
+        {
+          "declared_aops": 25000000,
+          "expected_effective": 25000000,
+          "expected_efficiency": 1.0,
+          "name": "Honest",
+          "time_seconds": 1.0,
+          "total_ops": 25000000
+        },
+        {
+          "declared_aops": 25000000,
+          "expected_effective": 10000000,
+          "expected_efficiency": 0.4,
+          "name": "Underperforming (Penalty)",
+          "note": "e < 0.7: c_eff = d * e (linear penalty)",
+          "time_seconds": 1.0,
+          "total_ops": 10000000
+        },
+        {
+          "declared_aops": 25000000,
+          "expected_effective": 32500000,
+          "expected_efficiency": 2.0,
+          "name": "Overperforming (Cap)",
+          "note": "e > 1.3: c_eff = d * 1.3 (cap at 130%)",
+          "time_seconds": 1.0,
+          "total_ops": 50000000
+        }
+      ],
+      "code_ref": "commitment.rs:compute_efficiency, effective_commitment",
+      "formulas": {
+        "effective_commitment": "d * min(max(e, 0.0), 1.3)  [adjusted for e < 0.7]",
+        "efficiency": "w / (d * t)"
+      },
+      "id": "TV-3",
+      "protocol_version": "0x0005",
+      "section": "8.3",
+      "title": "Commitment Efficiency — Honest, Penalty, Cap",
+      "verification": "test_eff, test_penalty, test_cap"
+    },
+    {
+      "base_emission": 100.0,
+      "cases": [
+        {
+          "emission": 100.0,
+          "hist_avg_aops": 25000000,
+          "ratio": 1.0,
+          "region": "interior",
+          "total_eff_aops": 25000000,
+          "unclamped": 100.0
+        },
+        {
+          "emission": 200.0,
+          "hist_avg_aops": 25000000,
+          "ratio": 2.0,
+          "region": "interior",
+          "total_eff_aops": 50000000,
+          "unclamped": 200.0
+        },
+        {
+          "emission": 5.0,
+          "hist_avg_aops": 25000000,
+          "ratio": 0.04,
+          "region": "floor (0.05 * 100)",
+          "total_eff_aops": 1000000,
+          "unclamped": 4.0
+        },
+        {
+          "emission": 2000.0,
+          "hist_avg_aops": 25000000,
+          "ratio": 20.0,
+          "region": "ceiling (20 * 100)",
+          "total_eff_aops": 500000000,
+          "unclamped": 2000.0
+        }
+      ],
+      "ceiling": 2000.0,
+      "code_ref": "reward.rs:compute_emission_rate, constants.rs",
+      "floor": 5.0,
+      "formula": "emission = clamp(BASE_EMISSION * total_eff / hist_avg, FLOOR, CEILING)",
+      "id": "TV-4",
+      "protocol_version": "0x0005",
+      "section": "8.4",
+      "title": "Emission Rate — Elastic Supply with Clamping",
+      "verification": "test_emission_floor, test_emission_ceiling, test_emission_stable"
+    },
+    {
+      "code_ref": "privacy.rs:PedersenCommitment",
+      "example": {
+        "commit_10_no_blinding": "10*H",
+        "commit_5_no_blinding": "5*H",
+        "sum": "5*H + 10*H = 15*H = Commit(15, 0)"
+      },
+      "generators": {
+        "G": "HtoP(b\"Ewatts_Ring_G_v1\")",
+        "H": "HtoP(b\"Ewatts_Pedersen_H_v1\")"
+      },
+      "id": "TV-5",
+      "properties": {
+        "binding": "C = a*G + v*H. Given C, no PPT finds (a', v') != (a, v) with C = a'*G + v'*H [DLOG]",
+        "hiding": "If a is random uniform, C is computationally indistinguishable from random [DDH]",
+        "homomorphic_add": "C(v1, a1) + C(v2, a2) = C(v1+v2, a1+a2)"
+      },
+      "protocol_version": "0x0005",
+      "section": "8.5",
+      "title": "Pedersen Commitment — Binding + Homomorphic Add",
+      "verification": "test_pedersen_commitment, test_pedersen_homomorphic, privacy_pedersen_homomorphic_add"
+    },
+    {
+      "code_ref": "block.rs:BlockHeader::hash()",
+      "expected_hash": "8e62ba6991c91dec0928bccb20beb53333733ffd53b4d3ad6a1a47636164d55c",
+      "fields": {
+        "coinbase_burn": 0,
+        "difficulty_target": 1,
+        "elapsed_ms": 0,
+        "emission_rate": 100000000,
+        "epoch": 0,
+        "height": 0,
+        "merkle_root": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "miner_effective_commit": 0,
+        "nonce": 0,
+        "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "timestamp": 1000,
+        "total_effective_commit": 0,
+        "version": "0x0005",
+        "vr_block": 0
+      },
+      "id": "TV-6",
+      "protocol_version": "0x0005",
+      "section": "8.6",
+      "serialization": "header_hash = Keccak-256(version(2) || previous_hash(32) || merkle_root(32) || timestamp(8) || height(8) || epoch(8) || difficulty_target(8) || total_eff_commit(8) || emission_rate(8) || miner_eff_commit(8) || vr_block(8) || coinbase_burn(8) || nonce(8) || elapsed_ms(8))",
+      "serialized_bytes_hex": "05000000000000000000000000000000000000000000000000000000000000000000c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470e803000000000000000000000000000000000000000000000100000000000000000000000000000000e1f5050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "title": "Block Header Hash — Genesis Block",
+      "verification": "test_header_hash"
+    },
+    {
+      "cases": [
+        {
+          "avg_time_secs": 600.0,
+          "name": "On-target (10 min avg)",
+          "new_difficulty": "same (ratio clamped to [0.5, 2.0])",
+          "ratio": 1.0
+        },
+        {
+          "avg_time_secs": 1200.0,
+          "name": "Slow (20 min avg → half difficulty)",
+          "new_difficulty": "difficulty * 0.5",
+          "ratio": 0.5
+        },
+        {
+          "avg_time_secs": 300.0,
+          "name": "Fast (5 min avg → double difficulty)",
+          "new_difficulty": "difficulty * 2.0",
+          "ratio": 2.0
+        },
+        {
+          "avg_time_secs": 36000.0,
+          "name": "Extreme slow (adversarial, clamped to 0.5)",
+          "new_difficulty": "difficulty * 0.5",
+          "ratio_clamped": 0.5,
+          "ratio_computed": 0.0167
+        }
+      ],
+      "code_ref": "difficulty.rs:adjust_difficulty",
+      "formula": "new_diff = old_diff * clamp(window_secs / target_window_secs, 0.5, 2.0)",
+      "id": "TV-7",
+      "parameters": {
+        "bound_max": 2.0,
+        "bound_min": 0.5,
+        "target_block_time_secs": 600,
+        "target_window_secs": 60000,
+        "window_blocks": 100
+      },
+      "protocol_version": "0x0005",
+      "section": "4.3",
+      "title": "Difficulty Adjustment — Window-Based Retargeting",
+      "verification": "test_adjust, test_adjust_clamp, test_adjust_half"
+    },
+    {
+      "cases": [
+        {
+          "avg_effective_aops": 25000000.0,
+          "block_time_secs": 600,
+          "name": "Baseline: 25M AOPS, 100 eWatt, 1000 blocks",
+          "total_ewatts": 100.0,
+          "total_joules": 56250.0,
+          "total_kwh": 0.015625,
+          "total_secs": 600000,
+          "vr": 0.00015625,
+          "window_blocks": 1000
+        },
+        {
+          "avg_effective_aops": 25000000.0,
+          "block_time_secs": 600,
+          "name": "Double emission: 25M AOPS, 200 eWatt",
+          "total_ewatts": 200.0,
+          "total_joules": 56250.0,
+          "total_kwh": 0.015625,
+          "total_secs": 600000,
+          "vr": 0.000078125,
+          "window_blocks": 1000
+        },
+        {
+          "avg_effective_aops": 50000000.0,
+          "block_time_secs": 600,
+          "name": "Double AOPS, same emission: 50M AOPS, 100 eWatt",
+          "total_ewatts": 100.0,
+          "total_joules": 112500.0,
+          "total_kwh": 0.03125,
+          "total_secs": 600000,
+          "vr": 0.0003125,
+          "window_blocks": 1000
+        }
+      ],
+      "code_ref": "vr.rs:compute_vr",
+      "constants": {
+        "J_PER_ACCESS": 3.75e-6,
+        "J_PER_KWH": 3600000.0
+      },
+      "formula": "total_joules = avg_eff_aops * total_secs * J_PER_ACCESS; VR = total_kwh / total_ewatts",
+      "id": "TV-8",
+      "protocol_version": "0x0005",
+      "section": "6.5",
+      "title": "Reference Value — Energy Computation from AOPS",
+      "verification": "test_vr_basic, test_vr_doubles, test_vr_aops_to_joules, test_vr_zero"
+    }
+  ]
+}
